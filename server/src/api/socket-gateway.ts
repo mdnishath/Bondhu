@@ -28,7 +28,16 @@ export function attachGateway(io: IOServer, ctx: AppContext): void {
     if (userId) io.to(`user:${userId}`).emit(ev, { accountId, ...payload });
   };
 
-  ctx.manager.on('message', (accountId: string, m: any) => toUserRoom(accountId, 'message', m));
+  ctx.manager.on('message', async (accountId: string, m: any) => {
+    let translated: string | null = null;
+    const userId = ownerOf(ctx, accountId);
+    // Best-effort auto-translate of incoming text, only when the user has a key.
+    if (userId && !m.fromMe && m.type === 'text' && m.body && ctx.apiKeys.activeKey(userId)) {
+      const lang = ctx.langs.resolve(userId, accountId, m.chatJid);
+      try { translated = await ctx.translation.translate(userId, accountId, m.msgId, m.body, lang); } catch { /* best-effort */ }
+    }
+    toUserRoom(accountId, 'message', { ...m, translated });
+  });
   ctx.manager.on('status', (accountId: string, status: string, info?: any) =>
     toUserRoom(accountId, 'status', { status, ...(info ?? {}) }),
   );
