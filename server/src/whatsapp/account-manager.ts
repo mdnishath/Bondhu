@@ -3,6 +3,7 @@ import type { DB } from '../db/db.js';
 import type { AccountsRepo } from '../db/repositories/accounts.repo.js';
 import type { ChatsRepo } from '../db/repositories/chats.repo.js';
 import type { MessagesRepo, UpsertMessage } from '../db/repositories/messages.repo.js';
+import type { ReactionsRepo } from '../db/repositories/reactions.repo.js';
 import { WaConnection } from './wa-connection.js';
 
 export type ConnFactory = (accountId: string, db: DB) => any;
@@ -19,6 +20,7 @@ export class AccountManager extends EventEmitter {
     private accounts: AccountsRepo,
     private chats: ChatsRepo,
     private messages: MessagesRepo,
+    private reactions: ReactionsRepo,
     private factory: ConnFactory = (id, db) => new WaConnection(id, db),
   ) {
     super();
@@ -68,6 +70,11 @@ export class AccountManager extends EventEmitter {
       this.emit('ack', id, msgId, ack);
     });
 
+    conn.on('reaction', (msgId: string, emoji: string, fromMe: boolean, sender: string) => {
+      this.reactions.set(id, msgId, sender, emoji, fromMe);
+      this.emit('reaction', id, msgId, emoji, sender);
+    });
+
     conn.on('phone', (phone: string) => {
       // Keep the stable account id; just record the revealed phone number.
       // (Renaming the id mid-connection raced the auth-state migration and
@@ -95,6 +102,101 @@ export class AccountManager extends EventEmitter {
       this.emit('chat_update', accountId, jid);
     }
     return msgId;
+  }
+
+  private requireConn(accountId: string): any {
+    const conn = this.conns.get(accountId);
+    if (!conn) throw new Error('Account not connected');
+    return conn;
+  }
+
+  private getStored(accountId: string, msgId: string) {
+    const m = this.messages.getById(accountId, msgId);
+    if (!m) throw new Error('message not found');
+    return m;
+  }
+
+  private storeOutgoing(accountId: string, jid: string, msgId: string, body: string, type = 'text'): void {
+    const ts = Date.now();
+    this.messages.upsert({ accountId, msgId, chatJid: jid, senderJid: null, fromMe: true, type, body, timestamp: ts, ack: 1 });
+    this.chats.touch(accountId, jid, { lastMessageAt: ts, preview: body });
+    this.emit('chat_update', accountId, jid);
+  }
+
+  reactionsFor(accountId: string, msgIds: string[]) {
+    return this.reactions.listForChat(accountId, msgIds);
+  }
+
+  async react(accountId: string, msgId: string, emoji: string): Promise<void> {
+    const conn = this.requireConn(accountId);
+    const m = this.getStored(accountId, msgId);
+    await conn.react(m, emoji);
+    this.reactions.set(accountId, msgId, 'me', emoji, true);
+  }
+
+  async reply(accountId: string, jid: string, msgId: string, text: string): Promise<string | null> {
+    const conn = this.requireConn(accountId);
+    const raw = this.messages.getRaw(accountId, msgId);
+    if (!raw) throw new Error('original message unavailable');
+    const sentId = await conn.reply(jid, text, raw);
+    if (sentId) this.storeOutgoing(accountId, jid, sentId, text);
+    return sentId;
+  }
+
+  async forward(accountId: string, msgIds: string[], targetJids: string[]): Promise<number> {
+    const conn = this.requireConn(accountId);
+    let count = 0;
+    for (const msgId of msgIds) {
+      const raw = this.messages.getRaw(accountId, msgId);
+      if (!raw) continue;
+      for (const jid of targetJids) {
+        try { await conn.forward(jid, raw); count++; } catch { /* skip */ }
+      }
+    }
+    return count;
+  }
+
+  async deleteForEveryone(accountId: string, msgId: string): Promise<void> {
+    const conn = this.requireConn(accountId);
+    const m = this.getStored(accountId, msgId);
+    await conn.deleteMessage(m);
+    this.messages.markDeleted(accountId, msgId);
+  }
+
+  async markRead(accountId: string, jid: string): Promise<void> {
+    this.chats.clearUnread(accountId, jid);
+    const conn = this.conns.get(accountId);
+    if (!conn) return;
+    const latest = this.messages.listByChat(accountId, jid, 1).find((x) => !x.fromMe);
+    if (latest) {
+      try { await conn.markRead(this.getStored(accountId, latest.msgId)); } catch { /* best-effort */ }
+    }
+  }
+
+  async sendImage(accountId: string, jid: string, buffer: Buffer, caption?: string): Promise<string | null> {
+    const conn = this.requireConn(accountId);
+    const sentId = await conn.sendImage(jid, buffer, caption);
+    if (sentId) this.storeOutgoing(accountId, jid, sentId, caption ?? '[image]', 'image');
+    return sentId;
+  }
+
+  async sendVoice(accountId: string, jid: string, buffer: Buffer): Promise<string | null> {
+    const conn = this.requireConn(accountId);
+    const sentId = await conn.sendVoice(jid, buffer);
+    if (sentId) this.storeOutgoing(accountId, jid, sentId, '[voice]', 'ptt');
+    return sentId;
+  }
+
+  async downloadMedia(accountId: string, msgId: string): Promise<{ buffer: Buffer; mime: string }> {
+    const conn = this.requireConn(accountId);
+    const raw = this.messages.getRaw(accountId, msgId);
+    if (!raw) throw new Error('media unavailable');
+    return conn.downloadMedia(raw);
+  }
+
+  async profilePic(accountId: string, jid: string): Promise<string | null> {
+    const conn = this.conns.get(accountId);
+    return conn ? conn.profilePicUrl(jid) : null;
   }
 
   async stop(accountId: string): Promise<void> {
