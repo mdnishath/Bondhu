@@ -2,8 +2,10 @@ import { EventEmitter } from 'events';
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
+  downloadMediaMessage,
+  BufferJSON,
 } from '@whiskeysockets/baileys';
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket, WAMessage, WAMessageKey } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import P from 'pino';
 import type { DB } from '../db/db.js';
@@ -104,10 +106,21 @@ export class WaConnection extends EventEmitter {
       for (const m of messages) {
         const norm = normalizeMessage(this.accountId, m);
         if (!norm) continue;
+        norm.raw = JSON.stringify(m, BufferJSON.replacer);
         const name = m.pushName ?? undefined;
         const isGroup = norm.chatJid.endsWith('@g.us');
         this.emit('chat', norm.chatJid, name, isGroup);
         this.emit('message', norm);
+      }
+    });
+
+    sock.ev.on('messages.reaction', (reactions) => {
+      for (const r of reactions) {
+        const msgId = r.key?.id;
+        const emoji = r.reaction?.text ?? '';
+        const fromMe = !!r.key?.fromMe;
+        const sender = (r.reaction as any)?.key?.participant || (fromMe ? 'me' : (r.key?.remoteJid ?? 'unknown'));
+        if (msgId) this.emit('reaction', msgId, emoji, fromMe, String(sender));
       }
     });
 
@@ -122,7 +135,10 @@ export class WaConnection extends EventEmitter {
       }
       for (const m of messages) {
         const norm = normalizeMessage(this.accountId, m);
-        if (norm) this.emit('message', norm, true);
+        if (norm) {
+          norm.raw = JSON.stringify(m, BufferJSON.replacer);
+          this.emit('message', norm, true);
+        }
       }
     });
 
@@ -138,6 +154,76 @@ export class WaConnection extends EventEmitter {
     if (!this.sock) throw new Error('Not connected');
     const sent = await this.sock.sendMessage(jid, { text });
     return sent?.key?.id ?? null;
+  }
+
+  private keyFor(stored: { msgId: string; chatJid: string; fromMe: boolean; senderJid: string | null }): WAMessageKey {
+    const key: WAMessageKey = { id: stored.msgId, remoteJid: stored.chatJid, fromMe: stored.fromMe };
+    if (stored.chatJid.endsWith('@g.us') && stored.senderJid) key.participant = stored.senderJid;
+    return key;
+  }
+
+  private parseRaw(raw: string): WAMessage {
+    return JSON.parse(raw, BufferJSON.reviver) as WAMessage;
+  }
+
+  async react(stored: any, emoji: string): Promise<void> {
+    if (!this.sock) throw new Error('Not connected');
+    await this.sock.sendMessage(stored.chatJid, { react: { text: emoji, key: this.keyFor(stored) } });
+  }
+
+  async reply(jid: string, text: string, rawQuoted: string): Promise<string | null> {
+    if (!this.sock) throw new Error('Not connected');
+    const quoted = this.parseRaw(rawQuoted);
+    const sent = await this.sock.sendMessage(jid, { text }, { quoted });
+    return sent?.key?.id ?? null;
+  }
+
+  async forward(targetJid: string, rawMsg: string): Promise<string | null> {
+    if (!this.sock) throw new Error('Not connected');
+    const msg = this.parseRaw(rawMsg);
+    const sent = await this.sock.sendMessage(targetJid, { forward: msg });
+    return sent?.key?.id ?? null;
+  }
+
+  async deleteMessage(stored: any): Promise<void> {
+    if (!this.sock) throw new Error('Not connected');
+    await this.sock.sendMessage(stored.chatJid, { delete: this.keyFor(stored) });
+  }
+
+  async markRead(stored: any): Promise<void> {
+    if (!this.sock) return;
+    await this.sock.readMessages([this.keyFor(stored)]);
+  }
+
+  async sendImage(jid: string, buffer: Buffer, caption?: string): Promise<string | null> {
+    if (!this.sock) throw new Error('Not connected');
+    const sent = await this.sock.sendMessage(jid, { image: buffer, caption: caption || undefined });
+    return sent?.key?.id ?? null;
+  }
+
+  async sendVoice(jid: string, buffer: Buffer): Promise<string | null> {
+    if (!this.sock) throw new Error('Not connected');
+    const sent = await this.sock.sendMessage(jid, { audio: buffer, ptt: true, mimetype: 'audio/ogg; codecs=opus' });
+    return sent?.key?.id ?? null;
+  }
+
+  async downloadMedia(rawMsg: string): Promise<{ buffer: Buffer; mime: string }> {
+    const msg = this.parseRaw(rawMsg);
+    const buffer = (await downloadMediaMessage(msg, 'buffer', {})) as Buffer;
+    const content: any = msg.message ?? {};
+    const mime =
+      content.imageMessage?.mimetype || content.audioMessage?.mimetype ||
+      content.videoMessage?.mimetype || content.documentMessage?.mimetype || 'application/octet-stream';
+    return { buffer, mime };
+  }
+
+  async profilePicUrl(jid: string): Promise<string | null> {
+    if (!this.sock) return null;
+    try {
+      return (await this.sock.profilePictureUrl(jid, 'image')) ?? null;
+    } catch {
+      return null;
+    }
   }
 
   async stop(): Promise<void> {
