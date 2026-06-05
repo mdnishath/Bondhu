@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.db
+*.db-*
+firebase-service-account.json
+.wwebjs_auth/
+build/
+.gradle/
+local.properties
