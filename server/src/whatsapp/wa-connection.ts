@@ -111,6 +111,21 @@ export class WaConnection extends EventEmitter {
       }
     });
 
+    // Initial / incremental history sync: WhatsApp delivers existing chats and
+    // their past messages here (NOT via messages.upsert). Mark messages as
+    // history so unread counts are not inflated by the back-fill.
+    sock.ev.on('messaging-history.set', ({ chats, messages }) => {
+      for (const c of chats) {
+        const jid = (c as any).id;
+        if (!jid) continue;
+        this.emit('chat', jid, (c as any).name ?? undefined, jid.endsWith('@g.us'));
+      }
+      for (const m of messages) {
+        const norm = normalizeMessage(this.accountId, m);
+        if (norm) this.emit('message', norm, true);
+      }
+    });
+
     sock.ev.on('messages.update', (updates) => {
       for (const upd of updates) {
         const ack = upd.update?.status;

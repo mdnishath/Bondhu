@@ -12,3 +12,12 @@ test('upsert merges and list orders by recency', () => {
   expect(list[0].jid).toBe('y@s.whatsapp.net');
   expect(list[1].unreadCount).toBe(1);
 });
+
+test('touch keeps the newest preview when messages arrive out of order', () => {
+  const repo = new ChatsRepo(createDb(':memory:'));
+  repo.touch('a1', 'x@s.whatsapp.net', { lastMessageAt: 300, preview: 'newest' });
+  repo.touch('a1', 'x@s.whatsapp.net', { lastMessageAt: 100, preview: 'older' }); // out of order
+  const c = repo.list('a1', 10, 0)[0];
+  expect(c.lastMessageAt).toBe(300);
+  expect(c.lastMessagePreview).toBe('newest');
+});

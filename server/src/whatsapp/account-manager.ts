@@ -52,14 +52,14 @@ export class AccountManager extends EventEmitter {
       this.emit('chat_update', id, jid);
     });
 
-    conn.on('message', (m: UpsertMessage) => {
+    conn.on('message', (m: UpsertMessage, isHistory = false) => {
       this.messages.upsert(m);
       this.chats.touch(id, m.chatJid, {
         lastMessageAt: m.timestamp,
         preview: m.body ?? '',
-        incUnread: !m.fromMe,
+        incUnread: !m.fromMe && !isHistory,
       });
-      this.emit('message', id, m);
+      if (!isHistory) this.emit('message', id, m);
       this.emit('chat_update', id, m.chatJid);
     });
 

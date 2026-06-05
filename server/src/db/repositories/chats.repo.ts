@@ -29,13 +29,23 @@ export class ChatsRepo {
     o: { lastMessageAt: number; preview: string; incUnread?: boolean },
   ): void {
     this.upsert(accountId, { jid });
+    // Only advance last_message_at/preview when this message is newer than what
+    // we already have (history sync delivers messages out of order). Unread
+    // always accumulates when requested.
     this.db
       .prepare(
-        `UPDATE chats SET last_message_at=?, last_message_preview=?,
-           unread_count=unread_count + ?
+        `UPDATE chats SET
+           last_message_at = CASE WHEN ? >= COALESCE(last_message_at,0) THEN ? ELSE last_message_at END,
+           last_message_preview = CASE WHEN ? >= COALESCE(last_message_at,0) THEN ? ELSE last_message_preview END,
+           unread_count = unread_count + ?
          WHERE account_id=? AND jid=?`,
       )
-      .run(o.lastMessageAt, o.preview, o.incUnread ? 1 : 0, accountId, jid);
+      .run(
+        o.lastMessageAt, o.lastMessageAt,
+        o.lastMessageAt, o.preview,
+        o.incUnread ? 1 : 0,
+        accountId, jid,
+      );
   }
 
   clearUnread(accountId: string, jid: string): void {
