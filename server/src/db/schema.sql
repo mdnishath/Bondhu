@@ -26,3 +26,30 @@ CREATE TABLE IF NOT EXISTS auth_state (
   value TEXT NOT NULL,
   PRIMARY KEY (account_id, key)
 );
+
+CREATE TABLE IF NOT EXISTS chats (
+  account_id TEXT NOT NULL,
+  jid TEXT NOT NULL,
+  name TEXT,
+  is_group INTEGER NOT NULL DEFAULT 0,
+  last_message_at INTEGER,
+  last_message_preview TEXT,
+  unread_count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (account_id, jid)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  account_id TEXT NOT NULL,
+  msg_id TEXT NOT NULL,
+  chat_jid TEXT NOT NULL,
+  sender_jid TEXT,
+  from_me INTEGER NOT NULL DEFAULT 0,
+  type TEXT NOT NULL DEFAULT 'text',
+  body TEXT,
+  timestamp INTEGER NOT NULL,
+  ack INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (account_id, msg_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_chat
+  ON messages (account_id, chat_jid, timestamp);
