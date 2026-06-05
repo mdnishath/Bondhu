@@ -12,6 +12,16 @@ export function createDb(path: string): DB {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf8');
-  db.exec(schema);
+  // Run statement-by-statement so the idempotent `ALTER TABLE ... ADD COLUMN`
+  // (which has no IF NOT EXISTS) can be re-run on every boot without failing.
+  for (const stmt of schema.split(';')) {
+    const sql = stmt.trim();
+    if (!sql) continue;
+    try {
+      db.exec(sql);
+    } catch (e: any) {
+      if (!/duplicate column name/i.test(e.message)) throw e;
+    }
+  }
   return db;
 }

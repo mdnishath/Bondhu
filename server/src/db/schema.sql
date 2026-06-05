@@ -53,3 +53,14 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_chat
   ON messages (account_id, chat_jid, timestamp);
+
+ALTER TABLE messages ADD COLUMN raw TEXT;
+
+CREATE TABLE IF NOT EXISTS reactions (
+  account_id TEXT NOT NULL,
+  msg_id TEXT NOT NULL,
+  sender_jid TEXT NOT NULL,
+  emoji TEXT NOT NULL,
+  from_me INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (account_id, msg_id, sender_jid)
+);
