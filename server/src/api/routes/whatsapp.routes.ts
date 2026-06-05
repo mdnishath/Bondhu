@@ -81,7 +81,8 @@ export function whatsappRoutes(ctx: AppContext): Router {
     const limit = Number(req.query.limit ?? 50);
     const before = req.query.before ? Number(req.query.before) : undefined;
     const messages = ctx.messages.listByChat(accountId, req.params.chatId, limit, before);
-    res.json({ messages });
+    const reactions = ctx.manager.reactionsFor(accountId, messages.map((m) => m.msgId));
+    res.json({ messages: messages.map((m) => ({ ...m, reactions: reactions[m.msgId] ?? [] })) });
   });
 
   r.post('/send', async (req: AuthedRequest, res) => {
