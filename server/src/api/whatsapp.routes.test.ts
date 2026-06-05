@@ -38,6 +38,30 @@ test('create account, list, status, send', async () => {
   expect(ctx.manager.sendText).toHaveBeenCalledWith(accId, 'c@s.whatsapp.net', 'yo');
 });
 
+test('react, reply, delete, forward, send-image, send-recorded routes call the manager', async () => {
+  const { ctx, app, token } = await authed();
+  ctx.manager.react = vi.fn(async () => {}) as any;
+  ctx.manager.reply = vi.fn(async () => 'r1') as any;
+  ctx.manager.deleteForEveryone = vi.fn(async () => {}) as any;
+  ctx.manager.forward = vi.fn(async () => 2) as any;
+  ctx.manager.sendImage = vi.fn(async () => 'i1') as any;
+  ctx.manager.sendVoice = vi.fn(async () => 'v1') as any;
+  const created = await request(app).post('/api/accounts').set('Authorization', `Bearer ${token}`).send({});
+  const acc = created.body.accountId;
+  const H = { Authorization: `Bearer ${token}` };
+
+  expect((await request(app).post(`/api/react?account=${acc}`).set(H).send({ msgId: 'm1', emoji: '❤️' })).body.success).toBe(true);
+  expect((await request(app).post(`/api/reply?account=${acc}`).set(H).send({ chatId: 'c', msgId: 'm1', text: 'yo' })).body.success).toBe(true);
+  expect((await request(app).post(`/api/delete-message?account=${acc}`).set(H).send({ msgId: 'm1', forEveryone: true })).body.success).toBe(true);
+  expect((await request(app).post(`/api/forward?account=${acc}`).set(H).send({ msgIds: ['m1'], targetChatIds: ['c'] })).body.forwarded).toBe(2);
+
+  // a real 1x1 PNG so sharp can decode it
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  const audioB64 = Buffer.from('fake-ogg').toString('base64');
+  expect((await request(app).post(`/api/send-image?account=${acc}`).set(H).send({ chatId: 'c', imageBase64: png, mimeType: 'image/png' })).body.success).toBe(true);
+  expect((await request(app).post(`/api/send-recorded?account=${acc}`).set(H).send({ chatId: 'c', audioBase64: audioB64, mimeType: 'audio/ogg' })).body.success).toBe(true);
+});
+
 test('rejects access to another user account', async () => {
   const { app } = await authed();
   const other = await request(app).post('/api/auth/register').send({ email: 'z@z.com', password: 'secret1' });

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import sharp from 'sharp';
 import type { AppContext } from '../../app-context.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 
@@ -96,11 +97,77 @@ export function whatsappRoutes(ctx: AppContext): Router {
     }
   });
 
-  r.post('/chats/:chatId/mark-read', (req: AuthedRequest, res) => {
+  r.post('/chats/:chatId/mark-read', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res);
     if (!accountId) return;
-    ctx.chats.clearUnread(accountId, req.params.chatId);
+    await ctx.manager.markRead(accountId, req.params.chatId);
     res.json({ success: true });
+  });
+
+  r.post('/react', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { msgId, emoji } = req.body ?? {};
+    try { await ctx.manager.react(accountId, msgId, emoji ?? ''); res.json({ success: true }); }
+    catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  r.post('/reply', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { chatId, msgId, text } = req.body ?? {};
+    try { const id = await ctx.manager.reply(accountId, chatId, msgId, text); res.json({ success: true, msgId: id }); }
+    catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  r.post('/delete-message', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { msgId } = req.body ?? {};
+    try { await ctx.manager.deleteForEveryone(accountId, msgId); res.json({ success: true }); }
+    catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  r.post('/forward', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { msgIds, targetChatIds } = req.body ?? {};
+    try { const n = await ctx.manager.forward(accountId, msgIds ?? [], targetChatIds ?? []); res.json({ success: true, forwarded: n }); }
+    catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  r.post('/send-image', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { chatId, imageBase64, caption } = req.body ?? {};
+    if (!chatId || !imageBase64) return res.status(400).json({ error: 'chatId and imageBase64 required' });
+    try {
+      const input = Buffer.from(imageBase64, 'base64');
+      const jpeg = await sharp(input).resize(1280, 1280, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer();
+      const id = await ctx.manager.sendImage(accountId, chatId, jpeg, caption);
+      res.json({ success: true, msgId: id });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  r.post('/send-recorded', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { chatId, audioBase64 } = req.body ?? {};
+    if (!chatId || !audioBase64) return res.status(400).json({ error: 'chatId and audioBase64 required' });
+    try {
+      const buf = Buffer.from(audioBase64, 'base64');
+      const id = await ctx.manager.sendVoice(accountId, chatId, buf);
+      res.json({ success: true, msgId: id });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  r.get('/media/:msgId', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    try {
+      const { buffer, mime } = await ctx.manager.downloadMedia(accountId, req.params.msgId);
+      res.setHeader('Content-Type', mime);
+      res.send(buffer);
+    } catch (e: any) { res.status(404).json({ error: e.message }); }
+  });
+
+  r.get('/profile-pic', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const id = req.query.id as string;
+    res.json({ id, url: await ctx.manager.profilePic(accountId, id) });
   });
 
   return r;
