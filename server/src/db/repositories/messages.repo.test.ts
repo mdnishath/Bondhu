@@ -14,3 +14,14 @@ test('upsert is idempotent and list returns newest-first within a chat', () => {
   repo.setAck('a1', 'm2', 3);
   expect(repo.listByChat('a1', 'c@s.whatsapp.net', 10).find((m) => m.msgId === 'm2')?.ack).toBe(3);
 });
+
+test('stores raw json, getById, and markDeleted', () => {
+  const repo = new MessagesRepo(createDb(':memory:'));
+  repo.upsert({ accountId: 'a1', msgId: 'm1', chatJid: 'c', senderJid: 's', fromMe: false, type: 'image', body: '[image]', timestamp: 1, ack: 0, raw: '{"x":2}' });
+  expect(repo.getRaw('a1', 'm1')).toBe('{"x":2}');
+  expect(repo.getRaw('a1', 'missing')).toBeUndefined();
+  expect(repo.getById('a1', 'm1')?.type).toBe('image');
+  repo.markDeleted('a1', 'm1');
+  expect(repo.getById('a1', 'm1')?.type).toBe('deleted');
+  expect(repo.getById('a1', 'm1')?.body).toBe('[deleted]');
+});
