@@ -14,8 +14,11 @@ export class KeyRing {
       } catch (e: any) {
         const status = e?.status ?? e?.code;
         lastErr = e;
-        if (status === 429 || (status >= 500 && status < 600)) continue; // rotate
-        throw e; // non-retryable
+        // Rotate on quota (429), server errors (5xx), and 403 — a 403
+        // API_KEY_SERVICE_BLOCKED means this key isn't allowed to call this
+        // service, so another key (scoped to a different service) may succeed.
+        if (status === 429 || status === 403 || (status >= 500 && status < 600)) continue;
+        throw e; // non-retryable (e.g. 400 bad request)
       }
     }
     throw lastErr;
