@@ -21,3 +21,12 @@ test('messages.raw column and reactions table exist', () => {
   expect((db.prepare('SELECT raw FROM messages WHERE msg_id=?').get('m9') as any).raw).toBe('{"k":1}');
   expect((db.prepare('SELECT emoji FROM reactions WHERE msg_id=?').get('m9') as any).emoji).toBe('❤️');
 });
+
+test('ai tables exist', () => {
+  const db = createDb(':memory:');
+  db.prepare('INSERT INTO api_keys (id,user_id,key_value,created_at) VALUES (?,?,?,?)').run('k1', 'u1', 'AIzaX', 1);
+  db.prepare('INSERT INTO user_lang (user_id,lang) VALUES (?,?)').run('u1', 'bn');
+  db.prepare('INSERT INTO translations (account_id,msg_id,lang,text,created_at) VALUES (?,?,?,?,?)').run('a1', 'm1', 'bn', 'হ্যালো', 1);
+  expect((db.prepare('SELECT lang FROM user_lang WHERE user_id=?').get('u1') as any).lang).toBe('bn');
+  expect((db.prepare('SELECT text FROM translations WHERE msg_id=?').get('m1') as any).text).toBe('হ্যালো');
+});

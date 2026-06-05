@@ -64,3 +64,44 @@ CREATE TABLE IF NOT EXISTS reactions (
   from_me INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (account_id, msg_id, sender_jid)
 );
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  key_value TEXT NOT NULL,
+  label TEXT,
+  is_active INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_lang (
+  user_id TEXT PRIMARY KEY,
+  lang TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS chat_lang (
+  user_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  chat_jid TEXT NOT NULL,
+  lang TEXT NOT NULL,
+  PRIMARY KEY (user_id, account_id, chat_jid)
+);
+
+CREATE TABLE IF NOT EXISTS translations (
+  account_id TEXT NOT NULL,
+  msg_id TEXT NOT NULL,
+  lang TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (account_id, msg_id, lang)
+);
+
+CREATE TABLE IF NOT EXISTS tts_cache (
+  account_id TEXT NOT NULL,
+  msg_id TEXT NOT NULL,
+  lang TEXT NOT NULL,
+  audio_base64 TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (account_id, msg_id, lang)
+);
