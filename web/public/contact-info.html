@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bondhu — Contact info</title>
+<link rel="stylesheet" href="assets/bondhu.css" />
+<style>
+.app{grid-template-columns:72px 360px 1fr}
+.icon-btn.smol svg{width:21px;height:21px}
+
+/* info pane */
+.info-head{display:flex;align-items:center;gap:16px;padding:0 22px;height:60px;background:var(--panel);border-bottom:1px solid var(--line);z-index:2}
+.info-head .t{font-size:16px;font-weight:600}
+.info{flex:1;overflow-y:auto;min-height:0;background:var(--bg)}
+.info-inner{max-width:560px;margin:0 auto;padding:0 0 40px}
+.hero{display:flex;flex-direction:column;align-items:center;gap:8px;padding:34px 22px 26px;background:var(--panel);margin-bottom:9px}
+.hero .av{width:150px;height:150px;font-size:54px}
+.hero .hn{font-size:24px;font-weight:600;margin-top:14px}
+.hero .hp{font-size:15px;color:var(--muted)}
+.hero .hpres{font-size:13px;color:#79e6c3;margin-top:2px}
+.qa{display:flex;gap:26px;margin-top:20px}
+.qa button{display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:none;cursor:pointer;font-family:inherit;color:#4fd1ab;font-size:12.5px;font-weight:500}
+.qa .qc{width:50px;height:50px;border-radius:50%;background:rgba(0,168,132,.14);display:grid;place-items:center;transition:.15s}
+.qa button:hover .qc{background:rgba(0,168,132,.26)}
+.qa .qc svg{width:23px;height:23px}
+.block{background:var(--panel);padding:18px 22px;margin-bottom:9px}
+.block .bt{font-size:13px;font-weight:600;color:var(--teal);margin-bottom:8px}
+.block .about{font-size:15.5px;color:var(--txt);line-height:1.5}
+.block .sub{font-size:12.5px;color:var(--muted);margin-top:7px}
+.tr-card{display:flex;align-items:center;gap:14px;background:var(--panel);padding:16px 22px;margin-bottom:9px;cursor:pointer;transition:.12s}
+.tr-card:hover{background:var(--row-hover)}
+.tr-card .ti{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;background:rgba(0,168,132,.14);color:#4fd1ab}
+.tr-card .ti svg{width:21px;height:21px}
+.tr-card .body{flex:1}
+.tr-card .body .t{font-size:15px;color:var(--txt);display:block}
+.tr-card .body .s{font-size:13px;color:var(--muted);margin-top:2px;display:block}
+.media{background:var(--panel);padding:16px 22px;margin-bottom:9px}
+.media-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.media-top .mt{font-size:14px;color:var(--txt-soft)}
+.media-top a{font-size:13px;color:var(--teal);display:flex;align-items:center;gap:4px}
+.media-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.media-grid .m{aspect-ratio:1;border-radius:9px;overflow:hidden;position:relative;cursor:pointer}
+.media-grid .m.more{display:grid;place-items:center;color:#fff;font-weight:600;font-size:15px;background:rgba(0,0,0,.45)}
+.set-block{background:var(--panel);margin-bottom:9px;overflow:hidden}
+.danger-block{background:var(--panel)}
+.set-row .badge2{font-size:12px;color:var(--muted);background:var(--panel-2);border-radius:10px;padding:2px 9px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail"></nav>
+
+  <!-- chat list (context) -->
+  <aside class="col">
+    <div class="list-head">
+      <div class="list-top">
+        <div class="me">
+          <div class="av" style="background:linear-gradient(145deg,#00A884,#015c4b)">MS</div>
+          <div><div class="me-name">Maya Sengupta</div><div class="me-handle">+880 1XXX-XXXXXX</div></div>
+        </div>
+        <a class="icon-btn smol" href="new-chat.html" title="New chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+        </a>
+      </div>
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search or start new chat" />
+      </label>
+    </div>
+    <div class="filters">
+      <button class="chip on">All</button>
+      <button class="chip">Unread</button>
+      <button class="chip">Groups</button>
+      <button class="chip">Favourites</button>
+    </div>
+    <div class="rows scroll" id="rows"></div>
+  </aside>
+
+  <!-- contact info -->
+  <main class="pane">
+    <div class="info-head">
+      <a class="back icon-btn" href="Bondhu - Chat Client.html" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </a>
+      <span class="t">Contact info</span>
+    </div>
+    <div class="info scroll">
+      <div class="info-inner">
+        <div class="hero">
+          <div class="av" style="background:linear-gradient(145deg,#00A884,#017a63)">AR</div>
+          <div class="hn">Anika Rahman</div>
+          <div class="hp">+880 1819-220044</div>
+          <div class="hpres">online</div>
+          <div class="qa">
+            <a href="Bondhu - Chat Client.html"><span class="qc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Message</a>
+            <button onclick="showTip('Calling Anika…')"><span class="qc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.9 2.3z"/></svg></span>Audio</button>
+            <button onclick="showTip('Starting video call…')"><span class="qc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m23 7-7 5 7 5z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>Video</button>
+            <button onclick="showTip('Search in this chat')"><span class="qc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>Search</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="bt">About</div>
+          <div class="about">Designing across languages 🌏</div>
+          <div class="sub">Available · Speaks Bengali, English</div>
+        </div>
+
+        <a class="tr-card" href="translation-settings.html">
+          <span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg></span>
+          <span class="body"><span class="t">Auto-translate this chat</span><span class="s">Incoming → Bengali · tap to change</span></span>
+          <span class="toggle"><input type="checkbox" checked /><span class="track"></span><span class="thumb"></span></span>
+        </a>
+
+        <div class="media">
+          <div class="media-top">
+            <span class="mt">Media, links and docs</span>
+            <a href="#">142 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></a>
+          </div>
+          <div class="media-grid">
+            <div class="m" style="background:linear-gradient(135deg,#0d3b34,#0a5a4a)"></div>
+            <div class="m" style="background:linear-gradient(135deg,#3a2f6b,#7c5cff)"></div>
+            <div class="m" style="background:linear-gradient(135deg,#6b3a2f,#f0883e)"></div>
+            <div class="m" style="background:linear-gradient(135deg,#2f4a6b,#3aa0ff)"></div>
+            <div class="m" style="background:linear-gradient(135deg,#6b2f55,#e0479e)"></div>
+            <div class="m more" style="background:linear-gradient(135deg,#0a5a4a,#0d3b34)">+137</div>
+          </div>
+        </div>
+
+        <div class="set-block">
+          <button class="set-row">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 15 9l7 .5-5.3 4.6L18.5 21 12 17l-6.5 4 1.8-6.9L2 9.5 9 9z"/></svg></span>
+            <span class="body"><span class="t">Starred messages</span></span>
+            <span class="badge2">8</span>
+            <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+          </button>
+          <div class="divider"></div>
+          <div class="set-row" style="cursor:default">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+            <span class="body"><span class="t">Mute notifications</span></span>
+            <span class="toggle"><input type="checkbox" /><span class="track"></span><span class="thumb"></span></span>
+          </div>
+          <div class="divider"></div>
+          <button class="set-row">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <span class="body"><span class="t">Disappearing messages</span><span class="s">Off</span></span>
+            <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+          </button>
+          <div class="divider"></div>
+          <button class="set-row">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
+            <span class="body"><span class="t">Encryption</span><span class="s">Messages are end-to-end encrypted. Tap to verify.</span></span>
+            <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+          </button>
+        </div>
+
+        <div class="danger-block">
+          <button class="set-row danger" onclick="showTip('Anika Rahman blocked')">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></span>
+            <span class="body"><span class="t">Block Anika Rahman</span></span>
+          </button>
+          <div class="divider"></div>
+          <button class="set-row danger" onclick="showTip('Report sent to Bondhu')">
+            <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6 14 4H5v17M5 14h9l.7 2H21V6z"/></svg></span>
+            <span class="body"><span class="t">Report contact</span></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/shell.js"></script>
+<script>
+renderRail();
+renderChatList(document.getElementById('rows'), 'Anika Rahman');
+</script>
+</body>
+</html>

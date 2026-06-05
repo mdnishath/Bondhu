@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bondhu — Link a device</title>
+<link rel="stylesheet" href="assets/bondhu.css" />
+<style>
+.auth{height:100vh;width:100vw;display:flex;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden}
+.auth::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(80% 60% at 50% -5%,rgba(0,168,132,.12),transparent 60%)}
+.auth::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:radial-gradient(rgba(255,255,255,.022) 1px,transparent 1px);background-size:26px 26px}
+.brandbar{position:absolute;top:34px;left:44px;display:flex;align-items:center;gap:13px;z-index:2}
+.brandbar .logo{width:40px;height:40px;border-radius:12px;margin:0}
+.brandbar .logo svg{width:23px;height:23px}
+.brandbar span{font-size:19px;font-weight:700}
+
+.card{position:relative;z-index:1;width:880px;max-width:92vw;background:var(--panel);border:1px solid var(--line);
+  border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.5);display:grid;grid-template-columns:1.15fr 1fr;overflow:hidden}
+.left{padding:46px 46px 40px}
+.kicker{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin-bottom:12px}
+.left h1{font-size:30px;font-weight:700;letter-spacing:-.01em;line-height:1.18;margin-bottom:28px}
+.steps{display:flex;flex-direction:column;gap:22px;margin-bottom:30px}
+.step{display:flex;gap:16px;align-items:flex-start}
+.step .n{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:rgba(0,168,132,.16);color:#4fd1ab;font-weight:700;font-size:14px}
+.step .st{font-size:15px;color:var(--txt-soft);line-height:1.5;padding-top:3px}
+.step .st b{color:var(--txt);font-weight:600}
+.step .st .pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel-2);border-radius:7px;
+  padding:2px 9px;font-size:13.5px;color:var(--txt);vertical-align:middle}
+.step .st .pill svg{width:14px;height:14px;color:var(--muted)}
+.stay2{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--panel-2);border-radius:12px;cursor:pointer}
+.stay2 .t{font-size:14px;color:var(--txt-soft)}
+.stay2 .s{font-size:12.5px;color:var(--muted);margin-top:2px}
+.alt2{margin-top:24px;font-size:14px;color:var(--muted)}
+
+.right{background:linear-gradient(160deg,#0e2a26,#0c1c22);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;padding:40px;border-left:1px solid var(--line)}
+.qr-frame{position:relative;background:#fff;border-radius:18px;padding:16px;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.qr{display:grid;width:230px;height:230px}
+.qr i{background:#0B141A}
+.qr i.off{background:transparent}
+.qr-logo{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50px;height:50px;border-radius:13px;
+  background:linear-gradient(145deg,#25D366,#00A884);display:grid;place-items:center;border:4px solid #fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.qr-logo svg{width:26px;height:26px}
+.scanline{position:absolute;left:16px;right:16px;height:36px;border-radius:8px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(37,211,102,0),rgba(37,211,102,.35));
+  box-shadow:0 0 16px rgba(37,211,102,.5);animation:scan 2.6s ease-in-out infinite}
+@keyframes scan{0%,100%{top:16px;opacity:.0}10%{opacity:1}50%{top:194px;opacity:1}90%{opacity:1}}
+.qr-status{display:flex;align-items:center;gap:9px;color:#cfe9e2;font-size:13.5px}
+.qr-status .blink{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.35}}
+.reload{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer;margin-top:2px}
+.reload:hover{color:var(--txt-soft)}
+.reload svg{width:15px;height:15px}
+@media (max-width:820px){.card{grid-template-columns:1fr}.right{border-left:none;border-top:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<div class="auth">
+  <div class="brandbar">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v3A2.5 2.5 0 0 1 13.5 12H8l-4 3z" fill="#fff" opacity=".95"/><path d="M11 13.5A2.5 2.5 0 0 1 13.5 11H18a2.5 2.5 0 0 1 2.5 2.5v3A2.5 2.5 0 0 1 18 19v2l-2.5-2.2H13.5A2.5 2.5 0 0 1 11 16.3z" fill="#06291f" opacity=".55"/></svg></div>
+    <span>Bondhu</span>
+  </div>
+
+  <div class="card">
+    <div class="left">
+      <div class="kicker">Bondhu Web</div>
+      <h1>Use Bondhu on your computer</h1>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><span class="st">Open <b>Bondhu</b> on your phone</span></div>
+        <div class="step"><span class="n">2</span><span class="st">Tap <b>Menu</b> <span class="pill"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span> then <b>Linked devices</b></span></div>
+        <div class="step"><span class="n">3</span><span class="st">Tap <b>Link a device</b> and point your phone at this screen to capture the code</span></div>
+      </div>
+      <label class="stay2">
+        <span class="toggle"><input type="checkbox" checked /><span class="track"></span><span class="thumb"></span></span>
+        <span><span class="t">Stay logged in on this browser</span><br /><span class="s">Don't ask again on this device</span></span>
+      </label>
+      <div class="alt2">Can't scan? <a class="link" href="login.html">Link with phone number</a></div>
+    </div>
+
+    <div class="right">
+      <div class="qr-frame">
+        <div class="qr" id="qr"></div>
+        <div class="qr-logo"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v3A2.5 2.5 0 0 1 13.5 12H8l-4 3z" fill="#fff" opacity=".95"/><path d="M11 13.5A2.5 2.5 0 0 1 13.5 11H18a2.5 2.5 0 0 1 2.5 2.5v3A2.5 2.5 0 0 1 18 19v2l-2.5-2.2H13.5A2.5 2.5 0 0 1 11 16.3z" fill="#06291f" opacity=".7"/></svg></div>
+        <div class="scanline"></div>
+      </div>
+      <div class="qr-status"><span class="blink"></span> Waiting for your phone…</div>
+      <div class="reload" id="reload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg> Reload code</div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/shell.js"></script>
+<script>
+/* deterministic QR-like pattern */
+const N = 29;
+function buildQR(seed){
+  const qr = document.getElementById('qr');
+  qr.style.gridTemplate = `repeat(${N},1fr)/repeat(${N},1fr)`;
+  let s = seed;
+  const rnd = ()=>{ s = (s*1103515245 + 12345) & 0x7fffffff; return (s>>8)/0x7fffff % 1; };
+  const finder = (r,c)=> (r<7&&c<7) || (r<7&&c>=N-7) || (r>=N-7&&c<7);
+  function drawFinder(cells){
+    const corners=[[0,0],[0,N-7],[N-7,0]];
+    corners.forEach(([R,C])=>{
+      for(let r=0;r<7;r++)for(let c=0;c<7;c++){
+        const edge = r===0||r===6||c===0||c===6;
+        const core = r>=2&&r<=4&&c>=2&&c<=4;
+        cells[(R+r)*N+(C+c)] = (edge||core);
+      }
+    });
+  }
+  const cells = new Array(N*N).fill(false);
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(finder(r,c)) continue;
+    // clear center for logo
+    if(r>=11&&r<=17&&c>=11&&c<=17) continue;
+    cells[r*N+c] = rnd() > 0.5;
+  }
+  drawFinder(cells);
+  qr.innerHTML = cells.map(v=>`<i class="${v?'':'off'}"></i>`).join('');
+}
+buildQR(20260605);
+document.getElementById('reload').addEventListener('click', ()=>{
+  buildQR(Math.floor(Math.random()*1e8));
+  showTip('🔄 New code generated');
+});
+</script>
+</body>
+</html>

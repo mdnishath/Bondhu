@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bondhu — Chat Client</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0B141A;
+  --panel:#111B21;
+  --panel-2:#1A242C;
+  --row-hover:#202C33;
+  --row-active:#2A3942;
+  --bub-in:#202C33;
+  --bub-out:#005C4B;
+  --teal:#00A884;
+  --green:#25D366;
+  --blue:#53BDEB;
+  --txt:#E9EDEF;
+  --txt-soft:#D1D7DB;
+  --muted:#8696A0;
+  --muted-2:#667781;
+  --line:#222E35;
+  --shadow:0 1px 1px rgba(11,20,26,.4), 0 1px 2px rgba(11,20,26,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:#000;
+  color:var(--txt);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow:hidden;
+}
+.bn{font-family:'Noto Sans Bengali','Inter',sans-serif;}
+svg{display:block}
+::selection{background:rgba(0,168,132,.35)}
+
+/* scrollbars */
+.scroll{scrollbar-width:thin;scrollbar-color:#374550 transparent;}
+.scroll::-webkit-scrollbar{width:6px;height:6px}
+.scroll::-webkit-scrollbar-thumb{background:#2c3b44;border-radius:6px}
+.scroll::-webkit-scrollbar-thumb:hover{background:#3a4a54}
+.scroll::-webkit-scrollbar-track{background:transparent}
+
+.app{
+  height:100vh;width:100vw;display:grid;
+  grid-template-columns:72px 360px 1fr;
+  background:var(--bg);
+}
+
+/* ============ LEFT RAIL ============ */
+.rail{
+  background:var(--panel);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;
+  padding:14px 0 16px;gap:6px;
+}
+.logo{
+  width:42px;height:42px;border-radius:13px;
+  background:linear-gradient(145deg,#25D366,#00A884 60%,#017561);
+  display:grid;place-items:center;margin-bottom:8px;
+  box-shadow:0 4px 14px rgba(0,168,132,.35);
+}
+.logo svg{width:24px;height:24px}
+.rail-sep{width:34px;height:1px;background:var(--line);margin:6px 0}
+.accounts{display:flex;flex-direction:column;align-items:center;gap:14px;padding:4px 0}
+.acct{position:relative;cursor:pointer;border-radius:50%}
+.acct .av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
+  font-weight:600;font-size:15px;color:#fff;transition:transform .15s ease}
+.acct:hover .av{transform:translateY(-1px)}
+.acct.active{padding:3px;background:transparent;
+  box-shadow:0 0 0 2px var(--teal);}
+.acct.active .av{width:40px;height:40px}
+.dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;
+  border:2.5px solid var(--panel)}
+.dot.on{background:var(--green)}
+.dot.off{background:var(--muted-2)}
+.add-acct{width:42px;height:42px;border-radius:50%;border:1.6px dashed #3a4a54;
+  background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;
+  transition:.15s}
+.add-acct:hover{color:var(--teal);border-color:var(--teal);background:rgba(0,168,132,.08)}
+.add-acct svg{width:20px;height:20px}
+.rail-spacer{flex:1}
+.rail-btn{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  color:var(--muted);cursor:pointer;background:transparent;border:none;transition:.15s}
+.rail-btn:hover{color:var(--txt);background:var(--row-hover)}
+.rail-btn svg{width:22px;height:22px}
+
+/* ============ CHAT LIST ============ */
+.list{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.list-head{padding:10px 14px 6px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid transparent}
+.list-top{display:flex;align-items:center;justify-content:space-between}
+.me{display:flex;align-items:center;gap:11px}
+.me .av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;font-size:15px}
+.me-name{font-size:15px;font-weight:600;color:var(--txt)}
+.me-handle{font-size:12px;color:var(--muted)}
+.icon-btn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--muted);
+  background:transparent;border:none;cursor:pointer;transition:.15s}
+.icon-btn:hover{color:var(--txt);background:var(--row-hover)}
+.icon-btn svg{width:21px;height:21px}
+.search{display:flex;align-items:center;gap:10px;background:var(--panel-2);border-radius:10px;
+  padding:8px 13px;border:1px solid transparent;transition:.15s}
+.search:focus-within{border-color:rgba(0,168,132,.5);background:#1d2a31}
+.search svg{width:17px;height:17px;color:var(--muted);flex:none}
+.search input{flex:1;background:none;border:none;outline:none;color:var(--txt);font-size:13.5px;
+  font-family:inherit}
+.search input::placeholder{color:var(--muted)}
+
+.filters{display:flex;gap:8px;padding:8px 14px 4px}
+.chip{font-size:12.5px;padding:5px 13px;border-radius:16px;background:var(--panel-2);color:var(--muted);
+  cursor:pointer;border:none;font-family:inherit;transition:.15s}
+.chip:hover{background:var(--row-hover);color:var(--txt-soft)}
+.chip.on{background:rgba(0,168,132,.16);color:#4fd1ab}
+
+.rows{flex:1;overflow-y:auto;min-height:0;padding:2px 0 8px}
+.row{display:flex;gap:13px;padding:10px 14px;cursor:pointer;position:relative;transition:background .12s}
+.row:hover{background:var(--row-hover)}
+.row.sel{background:var(--row-active)}
+.row .av{width:49px;height:49px;border-radius:50%;flex:none;display:grid;place-items:center;
+  color:#fff;font-weight:600;font-size:18px;position:relative}
+.row .av .pres{position:absolute;right:0;bottom:1px;width:12px;height:12px;border-radius:50%;
+  background:var(--green);border:2.5px solid var(--panel)}
+.row.sel .av .pres{border-color:var(--row-active)}
+.row-main{flex:1;min-width:0;border-top:1px solid var(--line);padding-top:10px;margin-top:-2px}
+.row:first-child .row-main{border-top:none}
+.row.sel .row-main,.row:hover .row-main{border-color:transparent}
+.row-l1{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.row-name{font-size:15.5px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-time{font-size:11.5px;color:var(--muted);flex:none}
+.row.unread .row-time{color:var(--green)}
+.row-l2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:3px}
+.row-prev{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:flex;align-items:center;gap:5px;min-width:0}
+.row-prev .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-prev.typing{color:var(--green);font-style:italic}
+.badge{flex:none;min-width:20px;height:20px;padding:0 6px;border-radius:11px;background:var(--green);
+  color:#0B141A;font-size:11.5px;font-weight:700;display:grid;place-items:center}
+.tick{flex:none}
+.tick.gray{color:var(--muted)}
+.tick.blue{color:var(--blue)}
+.muted-tag{color:var(--muted)}
+
+/* ============ CHAT VIEW ============ */
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative;background:var(--bg)}
+.chat-head{display:flex;align-items:center;gap:13px;padding:9px 18px;background:var(--panel);
+  border-bottom:1px solid var(--line);z-index:3}
+.chat-head .av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:#fff;
+  font-weight:600;font-size:16px;cursor:pointer}
+.ch-info{flex:1;min-width:0}
+.ch-name{font-size:15.5px;font-weight:600;color:var(--txt)}
+.ch-pres{font-size:12.5px;color:var(--muted);height:16px;display:flex;align-items:center;gap:5px}
+.ch-pres.online{color:#79e6c3}
+.typing-dots{display:inline-flex;gap:3px;align-items:center}
+.typing-dots i{width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;
+  animation:tdot 1.2s infinite ease-in-out}
+.typing-dots i:nth-child(2){animation-delay:.2s}
+.typing-dots i:nth-child(3){animation-delay:.4s}
+@keyframes tdot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-2px)}}
+.ch-actions{display:flex;align-items:center;gap:2px}
+
+/* wallpaper */
+.thread{flex:1;overflow-y:auto;min-height:0;padding:22px 7% 14px;position:relative}
+.thread::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-color:var(--bg);
+  background-image:radial-gradient(rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:24px 24px;
+  opacity:1;z-index:0;}
+.thread::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(120% 80% at 70% 0%,rgba(0,168,132,.05),transparent 60%);}
+.thread-inner{position:relative;z-index:1;display:flex;flex-direction:column;gap:9px;max-width:1020px;margin:0 auto}
+
+.daysep{align-self:center;margin:6px 0 10px}
+.daysep span{background:#1d282f;color:var(--txt-soft);font-size:12px;font-weight:500;
+  padding:6px 14px;border-radius:9px;box-shadow:var(--shadow)}
+.notice{align-self:center;background:rgba(29,40,47,.92);color:#e9d9a8;font-size:12px;
+  padding:7px 16px;border-radius:9px;margin:2px 0 8px;box-shadow:var(--shadow);text-align:center;max-width:520px}
+
+.msg{display:flex;max-width:62%;flex-direction:column}
+.msg.in{align-self:flex-start}
+.msg.out{align-self:flex-end;align-items:flex-end}
+.bubble{position:relative;padding:7px 10px 8px;border-radius:14px;box-shadow:var(--shadow);
+  font-size:14.3px;line-height:1.4;color:var(--txt);max-width:100%}
+.msg.in .bubble{background:var(--bub-in);border-top-left-radius:5px}
+.msg.out .bubble{background:var(--bub-out);border-top-right-radius:5px}
+.btext{white-space:pre-wrap;word-wrap:break-word;padding-right:54px}
+.meta{float:right;display:flex;align-items:center;gap:4px;margin:6px 0 -3px 8px;
+  font-size:11px;color:rgba(233,237,239,.55);user-select:none}
+.msg.out .meta{color:rgba(233,237,239,.6)}
+.meta .tick{margin-left:1px}
+
+/* tails */
+.msg.in .bubble::before,.msg.out .bubble::before{content:"";position:absolute;top:0;width:9px;height:13px;}
+.msg.in .bubble::before{left:-8px;background:var(--bub-in);
+  clip-path:polygon(100% 0,100% 100%,0 0)}
+.msg.out .bubble::before{right:-8px;background:var(--bub-out);
+  clip-path:polygon(0 0,100% 0,0 100%)}
+
+/* translation bubble */
+.translate{margin-top:2px}
+.orig{font-size:14.3px}
+.trans-row{display:flex;align-items:center;gap:8px;margin-top:6px;padding-top:6px;
+  border-top:1px solid rgba(255,255,255,.07)}
+.trans{flex:1;font-size:13px;font-style:italic;color:var(--muted);line-height:1.45}
+.speak{flex:none;width:26px;height:26px;border-radius:50%;background:rgba(0,168,132,.16);
+  display:grid;place-items:center;color:#4fd1ab;cursor:pointer;border:none;transition:.15s}
+.speak:hover{background:rgba(0,168,132,.28)}
+.speak svg{width:14px;height:14px}
+.speak.playing{background:var(--teal);color:#06291f}
+.trans-tag{font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--muted-2);
+  text-transform:uppercase;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.trans-tag svg{width:12px;height:12px}
+
+/* reply quote */
+.quote{display:flex;gap:8px;background:rgba(0,0,0,.20);border-radius:7px;overflow:hidden;
+  margin-bottom:5px;cursor:pointer}
+.msg.out .quote{background:rgba(0,0,0,.16)}
+.quote .bar{width:3.5px;background:var(--green);flex:none}
+.quote.alt .bar{background:#7aa6ff}
+.quote .qc{padding:5px 4px 6px 0;min-width:0}
+.quote .qn{font-size:12.5px;font-weight:600;color:#4fd1ab;margin-bottom:1px}
+.quote.alt .qn{color:#9db8ff}
+.quote .qt{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+
+/* image bubble */
+.bubble.media{padding:4px 4px 6px;width:266px}
+.photo{width:258px;height:172px;border-radius:11px;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,#0d3b34,#0a5a4a 45%,#0e2a3a);}
+.photo .ph-art{position:absolute;inset:0;
+  background:
+    radial-gradient(60% 70% at 25% 20%,rgba(37,211,102,.55),transparent 55%),
+    radial-gradient(70% 60% at 85% 85%,rgba(83,189,235,.45),transparent 55%),
+    linear-gradient(120deg,#06403a,#0a2f44);}
+.photo .ph-grid{position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);
+  background-size:26px 26px;mask:linear-gradient(180deg,transparent,#000 40%)}
+.photo .ph-label{position:absolute;left:14px;bottom:12px;color:#fff;z-index:2}
+.photo .ph-label .t{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.photo .ph-label .s{font-size:11px;opacity:.8;margin-top:1px}
+.photo .ph-time{position:absolute;right:8px;bottom:7px;z-index:2;display:flex;align-items:center;gap:4px;
+  background:rgba(0,0,0,.4);border-radius:8px;padding:3px 7px;font-size:11px;color:#e9edef}
+.caption{padding:7px 6px 1px;font-size:14px;color:var(--txt)}
+.caption .meta{margin-top:4px}
+
+/* voice note */
+.voice{display:flex;align-items:center;gap:11px;padding-top:2px;min-width:240px}
+.v-av{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:600;position:relative}
+.v-mic{position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border-radius:50%;background:var(--teal);
+  display:grid;place-items:center;border:2px solid var(--bub-in)}
+.v-mic svg{width:9px;height:9px;color:#06291f}
+.v-play{width:34px;height:34px;border-radius:50%;flex:none;background:#cfe9e2;color:#054b3f;border:none;
+  display:grid;place-items:center;cursor:pointer;transition:.15s}
+.v-play:hover{background:#fff}
+.v-play svg{width:16px;height:16px}
+.wave{flex:1;display:flex;align-items:center;gap:2.5px;height:30px;cursor:pointer}
+.wave i{width:2.5px;border-radius:2px;background:#5a6b73;transition:background .2s}
+.wave i.played{background:#9fb0b8}
+.voice.playing .wave i.played{background:#4fd1ab}
+.v-dur{font-size:11.5px;color:var(--muted);margin-top:5px}
+.v-trans{font-size:12.5px;font-style:italic;color:var(--muted);margin-top:7px;padding-top:6px;
+  border-top:1px solid rgba(255,255,255,.07);display:flex;gap:6px}
+.v-trans b{font-style:normal;color:var(--muted-2);font-weight:600;flex:none}
+
+/* reactions */
+.msg{position:relative}
+.reacts{display:flex;gap:3px;position:absolute;bottom:-13px;background:#1d282f;
+  border:1.5px solid var(--bg);border-radius:14px;padding:2px 6px;box-shadow:var(--shadow);z-index:2}
+.msg.in .reacts{left:12px}
+.msg.out .reacts{right:12px}
+.reacts span{font-size:13px;line-height:1.2}
+.reacts .cnt{font-size:11px;color:var(--muted);font-family:'Inter';align-self:center;font-weight:500;margin-left:1px}
+.msg.has-react{margin-bottom:9px}
+
+/* composer */
+.composer{display:flex;align-items:flex-end;gap:9px;padding:10px 18px 14px;background:var(--panel);
+  border-top:1px solid var(--line);z-index:3}
+.comp-btn{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:var(--muted);
+  background:transparent;border:none;cursor:pointer;flex:none;transition:.15s}
+.comp-btn:hover{color:var(--txt);background:var(--row-hover)}
+.comp-btn svg{width:23px;height:23px}
+.comp-field{flex:1;display:flex;align-items:center;gap:9px;background:var(--panel-2);border-radius:13px;
+  padding:6px 8px 6px 16px;min-height:44px;border:1px solid transparent;transition:.15s}
+.comp-field:focus-within{border-color:rgba(0,168,132,.4)}
+.comp-field input{flex:1;background:none;border:none;outline:none;color:var(--txt);font-size:14.5px;
+  font-family:inherit;padding:6px 0}
+.comp-field input::placeholder{color:var(--muted)}
+.lang-chip{display:flex;align-items:center;gap:5px;background:rgba(0,168,132,.16);color:#4fd1ab;
+  font-size:12px;font-weight:700;padding:5px 10px;border-radius:9px;cursor:pointer;border:none;
+  font-family:inherit;flex:none;transition:.15s}
+.lang-chip:hover{background:rgba(0,168,132,.26)}
+.lang-chip svg{width:13px;height:13px}
+.send{width:48px;height:48px;border-radius:50%;flex:none;border:none;cursor:pointer;
+  background:linear-gradient(145deg,#25D366,#00A884);color:#06291f;display:grid;place-items:center;
+  box-shadow:0 3px 10px rgba(0,168,132,.35);transition:.15s}
+.send:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.send:active{transform:translateY(0)}
+.send svg{width:23px;height:23px}
+
+.tip{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#1d282f;color:var(--txt-soft);
+  font-size:12.5px;padding:8px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:30;
+  opacity:0;transition:opacity .3s;pointer-events:none}
+.tip.show{opacity:1}
+@media (max-width:980px){.app{grid-template-columns:72px 320px 1fr}.msg{max-width:78%}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ LEFT RAIL ============ -->
+  <nav class="rail">
+    <div class="logo" title="Bondhu">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v3A2.5 2.5 0 0 1 13.5 12H8l-4 3z" fill="#fff" opacity=".95"/>
+        <path d="M11 13.5A2.5 2.5 0 0 1 13.5 11H18a2.5 2.5 0 0 1 2.5 2.5v3A2.5 2.5 0 0 1 18 19v2l-2.5-2.2H13.5A2.5 2.5 0 0 1 11 16.3z" fill="#06291f" opacity=".55"/>
+      </svg>
+    </div>
+    <div class="rail-sep"></div>
+
+    <div class="accounts" id="accounts">
+      <div class="acct active" data-i="0" title="Maya Sengupta · connected">
+        <div class="av" style="background:linear-gradient(145deg,#00A884,#015c4b)">MS</div>
+        <span class="dot on"></span>
+      </div>
+      <div class="acct" data-i="1" title="Work · connected">
+        <div class="av" style="background:linear-gradient(145deg,#7c5cff,#4b2fb0)">W</div>
+        <span class="dot on"></span>
+      </div>
+      <div class="acct" data-i="2" title="Studio · disconnected">
+        <div class="av" style="background:linear-gradient(145deg,#f0883e,#b85c1f)">St</div>
+        <span class="dot off"></span>
+      </div>
+      <div class="acct" data-i="3" title="Family · connected">
+        <div class="av" style="background:linear-gradient(145deg,#ec4d8e,#a02360)">F</div>
+        <span class="dot on"></span>
+      </div>
+    </div>
+    <a class="add-acct" href="login.html" title="Add account">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </a>
+
+    <div class="rail-spacer"></div>
+
+    <a class="rail-btn" href="settings.html" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </a>
+    <a class="rail-btn" href="login.html" title="Log out">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+    </a>
+  </nav>
+
+  <!-- ============ CHAT LIST ============ -->
+  <aside class="list">
+    <div class="list-head">
+      <div class="list-top">
+        <div class="me">
+          <div class="av" style="background:linear-gradient(145deg,#00A884,#015c4b)">MS</div>
+          <div>
+            <div class="me-name">Maya Sengupta</div>
+            <div class="me-handle">+880 1XXX-XXXXXX</div>
+          </div>
+        </div>
+        <a class="icon-btn" href="new-chat.html" title="New chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+        </a>
+      </div>
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" placeholder="Search or start new chat" />
+      </label>
+    </div>
+    <div class="filters">
+      <button class="chip on">All</button>
+      <button class="chip">Unread</button>
+      <button class="chip">Groups</button>
+      <button class="chip">Favourites</button>
+    </div>
+
+    <div class="rows scroll" id="rows">
+      <!-- rows injected -->
+    </div>
+  </aside>
+
+  <!-- ============ CHAT VIEW ============ -->
+  <main class="chat">
+    <header class="chat-head">
+      <a class="av" href="contact-info.html" style="background:linear-gradient(145deg,#00A884,#017a63);text-decoration:none" title="Contact info">AR</a>
+      <a class="ch-info" href="contact-info.html" style="cursor:pointer;text-decoration:none;color:inherit">
+        <div class="ch-name">Anika Rahman</div>
+        <div class="ch-pres online">online</div>
+      </a>
+      <div class="ch-actions">
+        <button class="icon-btn" title="Search in chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
+        <button class="icon-btn" id="globeBtn" title="Auto-translate: Bengali">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        </button>
+        <button class="icon-btn" title="Menu">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="thread scroll" id="thread">
+      <div class="thread-inner" id="threadInner">
+
+        <div class="daysep"><span>Today</span></div>
+        <div class="notice">🔒 Messages are end-to-end encrypted. No one outside this chat can read them.</div>
+
+        <!-- (a) translation bubble -->
+        <div class="msg in">
+          <div class="bubble translate">
+            <div class="orig">How are you? It's been a while 🙂</div>
+            <div class="trans-tag">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg>
+              Translated · Bengali
+            </div>
+            <div class="trans-row">
+              <div class="trans bn">তুমি কেমন আছো? অনেক দিন হয়ে গেল 🙂</div>
+              <button class="speak" title="Listen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              </button>
+            </div>
+            <span class="meta">12:02</span>
+          </div>
+        </div>
+
+        <!-- outgoing single gray tick -->
+        <div class="msg out">
+          <div class="bubble">
+            <span class="btext">I'm good! Just finished the deck 🎉</span>
+            <span class="meta">12:05 <svg class="tick gray" width="15" height="11" viewBox="0 0 15 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 6 4.5 9 13 1.5"/></svg></span>
+          </div>
+        </div>
+
+        <!-- (d) reply / quoted bubble -->
+        <div class="msg in">
+          <div class="bubble">
+            <div class="quote">
+              <div class="bar"></div>
+              <div class="qc">
+                <div class="qn">You</div>
+                <div class="qt">I'm good! Just finished the deck 🎉</div>
+              </div>
+            </div>
+            <span class="btext">Amazing — can I finally see it? 👀</span>
+            <span class="meta">12:06</span>
+          </div>
+        </div>
+
+        <!-- (c) image bubble + double blue tick -->
+        <div class="msg out">
+          <div class="bubble media">
+            <div class="photo">
+              <div class="ph-art"></div>
+              <div class="ph-grid"></div>
+              <div class="ph-label"><div class="t">Aurora</div><div class="s">Brand deck · cover</div></div>
+              <div class="ph-time">12:08</div>
+            </div>
+            <div class="caption">
+              First draft of the cover — what do you think?
+              <span class="meta">12:08 <svg class="tick blue" width="18" height="11" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6 4 9 11.5 1.5M6.5 9 13 9.2 16.8 1.5" /></svg></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- (b) voice note -->
+        <div class="msg in">
+          <div class="bubble">
+            <div class="voice" data-dur="0:14">
+              <div class="v-av" style="background:linear-gradient(145deg,#00A884,#017a63)">AR
+                <span class="v-mic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4"/></svg></span>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:11px">
+                  <button class="v-play" title="Play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+                  <div class="wave"></div>
+                </div>
+                <div class="v-dur">0:14</div>
+              </div>
+            </div>
+            <div class="v-trans"><b>Transcript</b> <span class="">"Wow, this looks really clean — I love the colour palette you went with."</span></div>
+            <span class="meta" style="margin-top:2px">12:11</span>
+          </div>
+        </div>
+
+        <!-- (e) reaction heart + double blue -->
+        <div class="msg out has-react">
+          <div class="bubble">
+            <span class="btext">Thank you 🙏 took a few tries to nail it</span>
+            <span class="meta">12:12 <svg class="tick blue" width="18" height="11" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6 4 9 11.5 1.5M6.5 9 13 9.2 16.8 1.5"/></svg></span>
+          </div>
+          <div class="reacts"><span>❤️</span></div>
+        </div>
+
+        <!-- (e) reaction thumbs-up -->
+        <div class="msg in has-react">
+          <div class="bubble">
+            <span class="btext">Let's ship it this week 🚀</span>
+            <span class="meta">12:13</span>
+          </div>
+          <div class="reacts"><span>👍</span><span class="cnt">2</span></div>
+        </div>
+
+        <!-- outgoing double gray tick -->
+        <div class="msg out">
+          <div class="bubble">
+            <span class="btext">On it. Sending the final files tonight</span>
+            <span class="meta">12:14 <svg class="tick gray" width="18" height="11" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6 4 9 11.5 1.5M6.5 9 13 9.2 16.8 1.5"/></svg></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer class="composer">
+      <button class="comp-btn" title="Emoji">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.5 2 3.5 2 3.5-2 3.5-2" stroke-linecap="round"/><circle cx="9" cy="9.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="9.5" r="1.1" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="comp-btn" title="Attach">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05 12.25 20.24a5 5 0 0 1-7.07-7.07l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95L10.6 17.65a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </button>
+      <div class="comp-field">
+        <input type="text" id="msgInput" placeholder="Type a message" autocomplete="off" />
+        <button class="lang-chip" title="Translate outgoing to Bengali">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg>
+          BN
+        </button>
+      </div>
+      <button class="comp-btn" id="micBtn" title="Voice message">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3M8 22h8"/></svg>
+      </button>
+      <button class="send" id="sendBtn" title="Send">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12 2-12 2z"/></svg>
+      </button>
+    </footer>
+
+    <div class="tip" id="tip"></div>
+  </main>
+</div>
+
+<script>
+/* ---------- chat list data ---------- */
+const CHATS = [
+  {n:"Anika Rahman", av:"AR", g:"linear-gradient(145deg,#00A884,#017a63)", t:"12:14",
+   prev:"On it. Sending the final files tonight", tick:"gray2", sel:true, online:true},
+  {n:"Design Team", av:"DT", g:"linear-gradient(145deg,#7c5cff,#4b2fb0)", t:"12:31",
+   prev:"Rafael: let's sync at 3 📌", unread:5, group:true},
+  {n:"Rafael Mendes", av:"RM", g:"linear-gradient(145deg,#f0883e,#b85c1f)", t:"11:57",
+   prev:"Perfect, thanks!", tick:"blue2", pre:"You: "},
+  {n:"Mom ❤️", av:"M", g:"linear-gradient(145deg,#ec4d8e,#a02360)", t:"11:02",
+   prev:"Call me when you're free 🌸", unread:2},
+  {n:"Yuki Tanaka", av:"YT", g:"linear-gradient(145deg,#3aa0ff,#1a5fb4)", t:"10:45",
+   prev:"ありがとう！ See you soon", tick:"gray2", pre:"You: "},
+  {n:"Priya Sharma", av:"PS", g:"linear-gradient(145deg,#e0479e,#8e1e63)", t:"09:30",
+   prev:"typing…", typing:true, online:true},
+  {n:"Tomás Herrera", av:"TH", g:"linear-gradient(145deg,#2bb3a3,#0c6e62)", t:"Yesterday",
+   prev:"¿Nos vemos mañana? 🌮"},
+  {n:"Aisha Khan", av:"AK", g:"linear-gradient(145deg,#f6b73c,#c2861a)", t:"Yesterday",
+   prev:"Sent the invoice 📄", tick:"blue2", pre:"You: "},
+  {n:"Daniel O'Brien", av:"DO", g:"linear-gradient(145deg,#39c46e,#15803d)", t:"Yesterday",
+   prev:"Haha that's hilarious 😂"},
+  {n:"Lena Müller", av:"LM", g:"linear-gradient(145deg,#6c7cff,#3b3fb0)", t:"Tuesday",
+   prev:"Danke schön! 🙏"},
+];
+
+const tickSVG = (kind) => {
+  if(!kind) return "";
+  const cls = kind.startsWith("blue") ? "blue" : "gray";
+  const dbl = kind.endsWith("2");
+  const p = dbl ? '<path d="M1 6 4 9 11.5 1.5M6.5 9 13 9.2 16.8 1.5"/>' : '<path d="M1.5 6 4.5 9 13 1.5"/>';
+  const w = dbl ? 18 : 15, vb = dbl ? "0 0 18 11" : "0 0 15 11";
+  return `<svg class="tick ${cls}" width="${w}" height="11" viewBox="${vb}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+};
+
+const rowsEl = document.getElementById('rows');
+rowsEl.innerHTML = CHATS.map((c,i)=>`
+  <div class="row ${c.sel?'sel':''} ${c.unread?'unread':''}" data-i="${i}">
+    <div class="av" style="background:${c.g}">${c.av}${c.online?'<span class="pres"></span>':''}</div>
+    <div class="row-main">
+      <div class="row-l1">
+        <div class="row-name">${c.n}</div>
+        <div class="row-time">${c.t}</div>
+      </div>
+      <div class="row-l2">
+        <div class="row-prev ${c.typing?'typing':''}">
+          ${c.tick?tickSVG(c.tick):''}
+          ${c.pre&&!c.tick?`<span class="muted-tag">${c.pre}</span>`:''}
+          <span class="txt">${c.prev}</span>
+        </div>
+        ${c.unread?`<span class="badge">${c.unread}</span>`:''}
+      </div>
+    </div>
+  </div>`).join('');
+
+/* row selection */
+rowsEl.addEventListener('click', e=>{
+  const r = e.target.closest('.row'); if(!r) return;
+  rowsEl.querySelectorAll('.row').forEach(x=>x.classList.remove('sel'));
+  r.classList.add('sel');
+});
+
+/* account switch */
+document.getElementById('accounts').addEventListener('click', e=>{
+  const a = e.target.closest('.acct'); if(!a) return;
+  document.querySelectorAll('.acct').forEach(x=>x.classList.remove('active'));
+  a.classList.add('active');
+});
+
+/* ---------- voice note waveform ---------- */
+document.querySelectorAll('.wave').forEach(w=>{
+  const heights = [6,10,16,22,14,8,18,26,20,12,7,15,24,18,10,14,28,16,9,13,20,11,6,17,22,12,8,14,19,9,12,7];
+  w.innerHTML = heights.map((h,i)=>`<i style="height:${h}px" data-i="${i}"></i>`).join('');
+});
+
+function playWave(voice, playBtn){
+  const bars = voice.querySelectorAll('.wave i');
+  const total = bars.length;
+  let step = 0;
+  voice.classList.add('playing');
+  playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+  const durEl = voice.parentElement.parentElement.querySelector('.v-dur') || voice.querySelector('.v-dur');
+  const timer = setInterval(()=>{
+    bars.forEach((b,i)=> b.classList.toggle('played', i<=step));
+    step++;
+    if(step>total){
+      clearInterval(timer);
+      voice.classList.remove('playing');
+      bars.forEach(b=>b.classList.remove('played'));
+      playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+    }
+  }, 380);
+  voice._timer = timer;
+}
+document.querySelectorAll('.v-play').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const voice = btn.closest('.voice');
+    if(voice.classList.contains('playing')){
+      clearInterval(voice._timer);
+      voice.classList.remove('playing');
+      voice.querySelectorAll('.wave i').forEach(b=>b.classList.remove('played'));
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+    } else {
+      playWave(voice, btn);
+    }
+  });
+});
+
+/* speaker (translation TTS) */
+document.querySelectorAll('.speak').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.speak').forEach(b=>b.classList.remove('playing'));
+    btn.classList.add('playing');
+    showTip('🔊 Playing Bengali audio…');
+    setTimeout(()=>btn.classList.remove('playing'), 1800);
+  });
+});
+
+/* ---------- composer send ---------- */
+const input = document.getElementById('msgInput');
+const thread = document.getElementById('thread');
+const threadInner = document.getElementById('threadInner');
+
+function nowTime(){
+  const d = new Date();
+  let h = d.getHours(), m = d.getMinutes();
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function send(){
+  const v = input.value.trim();
+  if(!v) return;
+  const div = document.createElement('div');
+  div.className = 'msg out';
+  div.innerHTML = `<div class="bubble"><span class="btext">${escapeHtml(v)}</span>
+    <span class="meta">${nowTime()} ${tickSVG('gray')}</span></div>`;
+  threadInner.appendChild(div);
+  input.value = '';
+  thread.scrollTop = thread.scrollHeight;
+  // simulate delivery -> read
+  const meta = div.querySelector('.meta');
+  setTimeout(()=>{ meta.innerHTML = `${meta.textContent.trim().slice(0,5)} ${tickSVG('gray2')}`; }, 900);
+  setTimeout(()=>{ meta.innerHTML = `${meta.textContent.trim().slice(0,5)} ${tickSVG('blue2')}`; }, 2200);
+}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+document.getElementById('sendBtn').addEventListener('click', send);
+input.addEventListener('keydown', e=>{ if(e.key==='Enter') send(); });
+
+/* globe + lang chip + mic feedback */
+document.getElementById('globeBtn').addEventListener('click', ()=>{ location.href='translation-settings.html'; });
+document.querySelector('.lang-chip').addEventListener('click', ()=>showTip('Outgoing messages will be sent in Bengali'));
+document.getElementById('micBtn').addEventListener('click', ()=>showTip('🎙️ Hold to record a voice message'));
+
+let tipTimer;
+function showTip(msg){
+  const tip = document.getElementById('tip');
+  tip.textContent = msg; tip.classList.add('show');
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(()=>tip.classList.remove('show'), 1900);
+}
+
+thread.scrollTop = thread.scrollHeight;
+</script>
+</body>
+</html>

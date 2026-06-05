@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bondhu — Translation &amp; language</title>
+<link rel="stylesheet" href="assets/bondhu.css" />
+<style>
+.app{grid-template-columns:72px 380px 1fr}
+.subnav{flex:1;overflow-y:auto;padding:6px 0}
+.subnav-item{display:flex;align-items:center;gap:14px;padding:13px 22px;cursor:pointer;transition:.12s;
+  border:none;background:transparent;width:100%;text-align:left;font-family:inherit;border-left:3px solid transparent}
+.subnav-item:hover{background:var(--row-hover)}
+.subnav-item.on{background:rgba(0,168,132,.10);border-left-color:var(--teal)}
+.subnav-item .ic{width:22px;height:22px;color:var(--muted);flex:none}
+.subnav-item.on .ic{color:#4fd1ab}
+.subnav-item .ic svg{width:22px;height:22px}
+.subnav-item .t{font-size:15px;color:var(--txt)}
+.subnav-item.on .t{color:#4fd1ab;font-weight:600}
+.intro{padding:18px 22px 8px}
+.intro .h{font-size:14px;color:var(--txt-soft);line-height:1.55}
+.intro .lang-now{display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:rgba(0,168,132,.14);
+  color:#4fd1ab;font-size:13px;font-weight:600;padding:6px 12px;border-radius:9px}
+
+/* detail */
+.detail{flex:1;overflow-y:auto;min-height:0;background:var(--bg);position:relative;z-index:1}
+.detail-inner{max-width:620px;margin:0 auto;padding:30px 24px 60px}
+.grp{margin-bottom:30px}
+.grp-title{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);margin-bottom:12px;padding-left:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.opt{display:flex;align-items:center;gap:16px;padding:16px 18px}
+.opt + .opt{border-top:1px solid var(--line)}
+.opt .body{flex:1;min-width:0}
+.opt .body .t{font-size:15px;color:var(--txt)}
+.opt .body .s{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.45}
+.opt .sel{width:170px;flex:none}
+.opt .sel .input{padding:10px 13px;font-size:14px}
+.radio-card .radio-row{padding:15px 18px}
+.radio-card .radio-row + .radio-row{border-top:1px solid var(--line)}
+.radio-row .body{display:block}
+.radio-row .body .t{font-size:15px;color:var(--txt);display:block}
+.radio-row .body .s{font-size:12.5px;color:var(--muted);margin-top:2px;display:block}
+.preview{margin:14px 0 0;background:var(--bub-in);border-radius:12px;border-top-left-radius:5px;padding:9px 12px;max-width:300px;box-shadow:var(--shadow)}
+.preview .o{font-size:14px}
+.preview .tr{font-size:12.5px;font-style:italic;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.07)}
+.dl-row{display:flex;align-items:center;gap:14px;padding:14px 18px}
+.dl-row + .dl-row{border-top:1px solid var(--line)}
+.dl-row .body{flex:1}
+.dl-row .body .t{font-size:15px;color:var(--txt)}
+.dl-row .body .s{font-size:12.5px;color:var(--muted);margin-top:2px}
+.dl-btn{flex:none;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;border-radius:8px;padding:7px 14px;transition:.15s}
+.dl-btn.get{background:rgba(0,168,132,.16);color:#4fd1ab}
+.dl-btn.get:hover{background:rgba(0,168,132,.28)}
+.dl-done{display:flex;align-items:center;gap:6px;color:var(--green);font-size:13px;font-weight:600}
+.dl-done svg{width:17px;height:17px}
+.percta{display:flex;align-items:center;gap:14px;padding:16px 18px}
+.percta .av{width:42px;height:42px;font-size:15px;flex:none}
+.percta .body{flex:1}
+.percta .body .t{font-size:15px;color:var(--txt)}
+.percta .lng{font-size:13px;color:#4fd1ab;font-weight:600}
+.detail-head{display:flex;align-items:center;gap:14px;padding:0 22px;height:60px;background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:2}
+.detail-head .t{font-size:16px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail"></nav>
+
+  <!-- sub-nav column -->
+  <aside class="col">
+    <div class="col-head">
+      <a class="back icon-btn" href="settings.html" title="Back to Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </a>
+      <div><div class="col-title">Translation</div><div class="col-sub">&amp; language</div></div>
+    </div>
+    <div class="intro">
+      <div class="h">Control how Bondhu translates messages, transcribes voice notes, and which languages are available offline.</div>
+      <div class="lang-now"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg> Translating to Bengali</div>
+    </div>
+    <div class="divider"></div>
+    <div class="subnav" id="subnav">
+      <button class="subnav-item on" data-s="g-incoming"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m4 4 7 16 2.5-6.5L20 11z"/></svg></span><span class="t">Incoming messages</span></button>
+      <button class="subnav-item" data-s="g-display"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8"/></svg></span><span class="t">Display style</span></button>
+      <button class="subnav-item" data-s="g-outgoing"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></span><span class="t">Outgoing messages</span></button>
+      <button class="subnav-item" data-s="g-voice"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4"/></svg></span><span class="t">Voice &amp; speech</span></button>
+      <button class="subnav-item" data-s="g-perchat"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><span class="t">Per-chat overrides</span></button>
+      <button class="subnav-item" data-s="g-offline"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span><span class="t">Offline languages</span></button>
+    </div>
+  </aside>
+
+  <!-- detail -->
+  <main class="pane">
+    <div class="detail-head"><span class="t">Translation &amp; language</span></div>
+    <div class="detail scroll" id="detail">
+      <div class="detail-inner">
+
+        <div class="grp" id="g-incoming">
+          <div class="grp-title">Incoming messages</div>
+          <div class="card">
+            <div class="opt">
+              <div class="body"><div class="t">Auto-translate incoming messages</div><div class="s">Automatically translate messages you receive in other languages.</div></div>
+              <span class="toggle"><input type="checkbox" checked /><span class="track"></span><span class="thumb"></span></span>
+            </div>
+            <div class="opt">
+              <div class="body"><div class="t">Translate to</div><div class="s">Your preferred reading language</div></div>
+              <span class="sel"><select class="input"><option selected>Bengali — বাংলা</option><option>English</option><option>Hindi — हिन्दी</option><option>Spanish — Español</option><option>Japanese — 日本語</option><option>Arabic — العربية</option></select></span>
+            </div>
+            <div class="opt">
+              <div class="body"><div class="t">Detect language automatically</div><div class="s">Recognise the sender's language before translating.</div></div>
+              <span class="toggle"><input type="checkbox" checked /><span class="track"></span><span class="thumb"></span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp" id="g-display">
+          <div class="grp-title">Display style</div>
+          <div class="card radio-card" id="displayRadios">
+            <div class="radio-row on" data-v="both"><span class="radio"></span><span class="body"><span class="t">Original + translation</span><span class="s">Show the original message with the translation beneath it.</span></span></div>
+            <div class="radio-row" data-v="trans"><span class="radio"></span><span class="body"><span class="t">Translation only</span><span class="s">Replace the message with its translation.</span></span></div>
+            <div class="radio-row" data-v="tap"><span class="radio"></span><span class="body"><span class="t">Original only — tap to translate</span><span class="s">Keep the original; translate on demand.</span></span></div>
+          </div>
+          <div class="preview">
+            <div class="o">How are you? It's been a while 🙂</div>
+            <div class="tr bn">তুমি কেমন আছো? অনেক দিন হয়ে গেল 🙂</div>
+          </div>
+        </div>
+
+        <div class="grp" id="g-outgoing">
+          <div class="grp-title">Outgoing messages</div>
+          <div class="card">
+            <div class="opt">
+              <div class="body"><div class="t">Translate my messages before sending</div><div class="s">Type in your language; Bondhu sends it in the recipient's language.</div></div>
+              <span class="toggle"><input type="checkbox" /><span class="track"></span><span class="thumb"></span></span>
+            </div>
+            <div class="opt">
+              <div class="body"><div class="t">Send in</div><div class="s">Target language for outgoing translation</div></div>
+              <span class="sel"><select class="input"><option selected>Match recipient</option><option>English</option><option>Bengali — বাংলা</option><option>Spanish — Español</option></select></span>
+            </div>
+            <div class="opt">
+              <div class="body"><div class="t">Show original to recipient</div><div class="s">Include your original text below the translation.</div></div>
+              <span class="toggle"><input type="checkbox" checked /><span class="track"></span><span class="thumb"></span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp" id="g-voice">
+          <div class="grp-title">Voice &amp; speech</div>
+          <div class="card">
+            <div class="opt">
+              <div class="body"><div class="t">Transcribe voice notes</div><div class="s">Show a text transcript beneath every voice message.</div></div>
+              <span class="toggle"><input type="checkbox" checked /><span class="track"></span><span class="thumb"></span></span>
+            </div>
+            <div class="opt">
+              <div class="body"><div class="t">Translate transcripts</div><div class="s">Also translate voice-note transcripts to Bengali.</div></div>
+              <span class="toggle"><input type="checkbox" checked /><span class="track"></span><span class="thumb"></span></span>
+            </div>
+            <div class="opt">
+              <div class="body"><div class="t">Read translations aloud</div><div class="s">Tap the speaker on a translated message to hear it.</div></div>
+              <span class="toggle"><input type="checkbox" checked /><span class="track"></span><span class="thumb"></span></span>
+            </div>
+            <div class="opt">
+              <div class="body"><div class="t">Text-to-speech voice</div><div class="s">Voice used for spoken translations</div></div>
+              <span class="sel"><select class="input"><option selected>Bengali · Tara (warm)</option><option>Bengali · Arif (clear)</option><option>Neutral</option></select></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grp" id="g-perchat">
+          <div class="grp-title">Per-chat overrides</div>
+          <div class="card">
+            <div class="percta"><div class="av" style="background:linear-gradient(145deg,#3aa0ff,#1a5fb4)">YT</div><div class="body"><div class="t">Yuki Tanaka</div></div><span class="lng">Japanese → Bengali</span></div>
+            <div class="divider"></div>
+            <div class="percta"><div class="av" style="background:linear-gradient(145deg,#2bb3a3,#0c6e62)">TH</div><div class="body"><div class="t">Tomás Herrera</div></div><span class="lng">Spanish → Bengali</span></div>
+            <div class="divider"></div>
+            <div class="percta"><div class="av" style="background:linear-gradient(145deg,#6c7cff,#3b3fb0)">LM</div><div class="body"><div class="t">Lena Müller</div></div><span class="lng">German → English</span></div>
+          </div>
+        </div>
+
+        <div class="grp" id="g-offline">
+          <div class="grp-title">Offline languages</div>
+          <div class="card" id="dlCard">
+            <div class="dl-row"><div class="body"><div class="t">Bengali — বাংলা</div><div class="s">38 MB · default</div></div><span class="dl-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Installed</span></div>
+            <div class="dl-row"><div class="body"><div class="t">English</div><div class="s">31 MB</div></div><span class="dl-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Installed</span></div>
+            <div class="dl-row"><div class="body"><div class="t">Hindi — हिन्दी</div><div class="s">36 MB</div></div><button class="dl-btn get">Download</button></div>
+            <div class="dl-row"><div class="body"><div class="t">Spanish — Español</div><div class="s">33 MB</div></div><button class="dl-btn get">Download</button></div>
+            <div class="dl-row"><div class="body"><div class="t">Japanese — 日本語</div><div class="s">42 MB</div></div><button class="dl-btn get">Download</button></div>
+            <div class="dl-row"><div class="body"><div class="t">Arabic — العربية</div><div class="s">35 MB</div></div><button class="dl-btn get">Download</button></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="grp-title">App language</div>
+          <div class="card">
+            <div class="opt">
+              <div class="body"><div class="t">Bondhu interface language</div><div class="s">Language used across menus and buttons.</div></div>
+              <span class="sel"><select class="input"><option selected>English</option><option>Bengali — বাংলা</option><option>Hindi — हिन्दी</option></select></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/shell.js"></script>
+<script>
+renderRail('settings');
+
+/* display-style radios */
+document.querySelectorAll('#displayRadios .radio-row').forEach(r=>{
+  r.addEventListener('click', ()=>{
+    document.querySelectorAll('#displayRadios .radio-row').forEach(x=>x.classList.remove('on'));
+    r.classList.add('on');
+    const v = r.dataset.v;
+    const pv = document.querySelector('.preview');
+    pv.querySelector('.o').style.display = (v==='trans') ? 'none' : '';
+    pv.querySelector('.tr').style.display = (v==='both'||v==='trans') ? '' : 'none';
+  });
+});
+
+/* offline downloads */
+document.querySelectorAll('.dl-btn.get').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    btn.textContent = 'Downloading…'; btn.style.opacity='.7';
+    setTimeout(()=>{
+      const done = document.createElement('span');
+      done.className='dl-done';
+      done.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Installed';
+      btn.replaceWith(done);
+    }, 1200);
+  });
+});
+
+/* subnav -> scroll detail to section */
+const detail = document.getElementById('detail');
+document.querySelectorAll('.subnav-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.subnav-item').forEach(x=>x.classList.remove('on'));
+    item.classList.add('on');
+    const target = document.getElementById(item.dataset.s);
+    if(target) detail.scrollTo({top: target.offsetTop - 24, behavior:'smooth'});
+  });
+});
+/* highlight subnav on scroll */
+detail.addEventListener('scroll', ()=>{
+  const groups = [...document.querySelectorAll('.detail-inner .grp[id]')];
+  let cur = groups[0];
+  for(const g of groups){ if(g.offsetTop - 80 <= detail.scrollTop) cur = g; }
+  if(cur){
+    document.querySelectorAll('.subnav-item').forEach(x=>x.classList.toggle('on', x.dataset.s===cur.id));
+  }
+});
+</script>
+</body>
+</html>
