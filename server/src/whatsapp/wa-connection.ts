@@ -22,6 +22,7 @@ export class WaConnection extends EventEmitter {
   private sock?: WASocket;
   private _status: WaStatus = 'disconnected';
   private _qr: string | null = null;
+  private _pairingCode: string | null = null;
   private _stopping = false;
   private pairPhone?: string;
 
@@ -34,6 +35,9 @@ export class WaConnection extends EventEmitter {
   }
   get qr(): string | null {
     return this._qr;
+  }
+  get pairingCode(): string | null {
+    return this._pairingCode;
   }
 
   /** Pass a phone number to request a pairing code instead of QR. */
@@ -59,6 +63,8 @@ export class WaConnection extends EventEmitter {
         if (this.pairPhone && !sock.authState.creds.registered) {
           try {
             const code = await sock.requestPairingCode(this.pairPhone);
+            this._pairingCode = code;
+            process.stderr.write(`[Wa:${this.accountId}] pairing code: ${code}\n`);
             this.emit('pairing', code);
           } catch (e: any) {
             process.stderr.write(`[Wa:${this.accountId}] pairing code error: ${e?.message}\n`);
@@ -73,6 +79,7 @@ export class WaConnection extends EventEmitter {
 
       if (connection === 'open') {
         this._qr = null;
+        this._pairingCode = null;
         this._status = 'connected';
         const phone = sock.user?.id?.split(':')[0]?.split('@')[0];
         if (phone) this.emit('phone', phone);

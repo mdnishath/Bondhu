@@ -57,7 +57,13 @@ export function whatsappRoutes(ctx: AppContext): Router {
     if (!accountId) return;
     const acc = ctx.accounts.findById(accountId)!;
     const conn = ctx.manager.get(accountId);
-    res.json({ connected: acc.status === 'connected', state: acc.status, phoneNumber: acc.phone, qr: conn?.qr ?? null });
+    res.json({
+      connected: acc.status === 'connected',
+      state: acc.status,
+      phoneNumber: acc.phone,
+      qr: conn?.qr ?? null,
+      pairingCode: conn?.pairingCode ?? null,
+    });
   });
 
   r.get('/chats', (req: AuthedRequest, res) => {
