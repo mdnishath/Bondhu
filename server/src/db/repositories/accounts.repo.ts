@@ -42,6 +42,13 @@ export class AccountsRepo {
     this.db.prepare('UPDATE accounts SET status=? WHERE id=?').run(status, id);
   }
 
+  /** Set the revealed phone number WITHOUT changing the primary id.
+   *  Keeping the id stable avoids an auth_state migration race while the
+   *  socket is live (renaming mid-connection split creds across ids). */
+  setPhone(id: string, phone: string): void {
+    this.db.prepare('UPDATE accounts SET phone=? WHERE id=?').run(phone, id);
+  }
+
   /** Rename ephemeral id -> phone-based id once WhatsApp reveals the number. */
   rename(oldId: string, newId: string, phone: string): void {
     const tx = this.db.transaction(() => {

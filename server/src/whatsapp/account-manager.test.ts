@@ -51,12 +51,14 @@ test('start persists incoming message + chat and re-emits', async () => {
   expect(events).toHaveLength(1);
 });
 
-test('phone event renames account', async () => {
+test('phone event records phone on the stable account id', async () => {
   const { mgr, accounts, conns } = makeManager();
   const acc = accounts.create({ userId: 'u1' });
   await mgr.start(acc.id);
   conns[0].emit('phone', '8801711111111');
-  expect(accounts.findById('8801711111111')?.phone).toBe('8801711111111');
+  // id stays stable; only the phone column is set
+  expect(accounts.findById(acc.id)?.phone).toBe('8801711111111');
+  expect(conns[0].accountId).toBe(acc.id);
 });
 
 test('sendText stores an outgoing message', async () => {

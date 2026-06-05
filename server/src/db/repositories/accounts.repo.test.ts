@@ -17,6 +17,13 @@ test('create, list by user, update status, rename, delete', () => {
   expect(repo.listByUser('u1')).toHaveLength(0);
 });
 
+test('setPhone records phone without changing the id', () => {
+  const repo = new AccountsRepo(createDb(':memory:'));
+  const acc = repo.create({ userId: 'u1' });
+  repo.setPhone(acc.id, '8801799999999');
+  expect(repo.findById(acc.id)?.phone).toBe('8801799999999');
+});
+
 test('isOwnedByUser guards ownership', () => {
   const repo = new AccountsRepo(createDb(':memory:'));
   const acc = repo.create({ userId: 'u1' });

@@ -69,13 +69,10 @@ export class AccountManager extends EventEmitter {
     });
 
     conn.on('phone', (phone: string) => {
-      const current = conn.accountId;
-      if (current !== phone && this.accounts.findById(current)) {
-        this.accounts.rename(current, phone, phone);
-        conn.accountId = phone;
-        this.conns.delete(current);
-        this.conns.set(phone, conn);
-      }
+      // Keep the stable account id; just record the revealed phone number.
+      // (Renaming the id mid-connection raced the auth-state migration and
+      //  left creds split across ids, stalling reconnects in 'authenticating'.)
+      this.accounts.setPhone(conn.accountId, phone);
     });
 
     conn.on('logged_out', () => {
