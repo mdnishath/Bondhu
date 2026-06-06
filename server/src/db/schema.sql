@@ -105,3 +105,13 @@ CREATE TABLE IF NOT EXISTS tts_cache (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (account_id, msg_id, lang)
 );
+
+CREATE TABLE IF NOT EXISTS profile_pics (
+  account_id TEXT NOT NULL,
+  jid TEXT NOT NULL,
+  mime TEXT,
+  data BLOB,
+  ok INTEGER NOT NULL DEFAULT 0,
+  fetched_at INTEGER NOT NULL,
+  PRIMARY KEY (account_id, jid)
+);

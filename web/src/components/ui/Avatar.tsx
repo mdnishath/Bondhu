@@ -2,27 +2,30 @@ import { useEffect, useState } from 'react';
 import { avatarGradient, initials } from '../../lib/format';
 
 export function Avatar({ name, seed, size = 42, src }: { name: string; seed: string; size?: number; src?: string }) {
-  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   // reset when the photo source changes (e.g. switching chats)
-  useEffect(() => setFailed(false), [src]);
+  useEffect(() => setLoaded(false), [src]);
 
-  if (src && !failed) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        onError={() => setFailed(true)}
-        className="rounded-full object-cover flex-none bg-panel2"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
   return (
-    <div
-      className="rounded-full grid place-items-center text-white font-semibold flex-none"
-      style={{ width: size, height: size, background: avatarGradient(seed), fontSize: size * 0.36 }}
-    >
-      {initials(name)}
+    <div className="relative rounded-full overflow-hidden flex-none" style={{ width: size, height: size }}>
+      {/* initials always render underneath, so the avatar is never blank/black
+          while the photo loads or when there is no photo (404) */}
+      <div
+        className="absolute inset-0 grid place-items-center text-white font-semibold"
+        style={{ background: avatarGradient(seed), fontSize: size * 0.36 }}
+      >
+        {initials(name)}
+      </div>
+      {src && (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+          style={{ opacity: loaded ? 1 : 0 }}
+        />
+      )}
     </div>
   );
 }

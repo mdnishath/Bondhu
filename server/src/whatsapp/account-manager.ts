@@ -199,6 +199,31 @@ export class AccountManager extends EventEmitter {
     return conn ? conn.profilePicUrl(jid) : null;
   }
 
+  /** Cached profile photo bytes. Avoids hitting WhatsApp on every avatar render
+   *  (the chat list would otherwise fire one slow Baileys call per row). Caches
+   *  hits for 24h and misses (no photo / privacy) for 6h as a negative cache. */
+  async profilePicBytes(accountId: string, jid: string): Promise<{ mime: string; data: Buffer } | null> {
+    const OK_TTL = 24 * 3600 * 1000;
+    const NEG_TTL = 6 * 3600 * 1000;
+    const now = Date.now();
+    const row = this.db.prepare('SELECT mime, data, ok, fetched_at FROM profile_pics WHERE account_id=? AND jid=?')
+      .get(accountId, jid) as any;
+    if (row && now - row.fetched_at < (row.ok ? OK_TTL : NEG_TTL)) {
+      return row.ok ? { mime: row.mime, data: row.data as Buffer } : null;
+    }
+    let result: { mime: string; data: Buffer } | null = null;
+    try {
+      const url = await this.profilePic(accountId, jid);
+      if (url) {
+        const up = await fetch(url);
+        if (up.ok) result = { mime: up.headers.get('content-type') || 'image/jpeg', data: Buffer.from(await up.arrayBuffer()) };
+      }
+    } catch { /* ignore — store as negative */ }
+    this.db.prepare('INSERT OR REPLACE INTO profile_pics (account_id,jid,mime,data,ok,fetched_at) VALUES (?,?,?,?,?,?)')
+      .run(accountId, jid, result?.mime ?? null, result?.data ?? null, result ? 1 : 0, now);
+    return result;
+  }
+
   async stop(accountId: string): Promise<void> {
     const conn = this.conns.get(accountId);
     if (conn) {

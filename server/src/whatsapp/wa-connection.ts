@@ -220,7 +220,10 @@ export class WaConnection extends EventEmitter {
   async profilePicUrl(jid: string): Promise<string | null> {
     if (!this.sock) return null;
     try {
-      return (await this.sock.profilePictureUrl(jid, 'image')) ?? null;
+      // profilePictureUrl can hang; cap it so it never blocks the request pipeline.
+      const p = this.sock.profilePictureUrl(jid, 'image').catch(() => null);
+      const url = await Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), 6000))]);
+      return url ?? null;
     } catch {
       return null;
     }

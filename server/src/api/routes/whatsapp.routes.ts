@@ -191,15 +191,11 @@ export function whatsappRoutes(ctx: AppContext): Router {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const id = req.query.id as string;
     if (!id) return res.status(400).end();
-    try {
-      const url = await ctx.manager.profilePic(accountId, id);
-      if (!url) return res.status(404).end();
-      const up = await fetch(url);
-      if (!up.ok) return res.status(404).end();
-      res.setHeader('Content-Type', up.headers.get('content-type') || 'image/jpeg');
-      res.setHeader('Cache-Control', 'private, max-age=3600');
-      res.send(Buffer.from(await up.arrayBuffer()));
-    } catch { res.status(404).end(); }
+    const pic = await ctx.manager.profilePicBytes(accountId, id);
+    if (!pic) return res.status(404).end();
+    res.setHeader('Content-Type', pic.mime);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.send(pic.data);
   });
 
   return r;
