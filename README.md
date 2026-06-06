@@ -39,9 +39,22 @@ REST + Socket.IO (app also uses FCM push).
 2. **web/** and **android/** in parallel — design the UI with Claude design using
    each `DESIGN.md` (component trees + structure are specified), then wire to the API.
 
+## Running locally
+
+```bash
+# 1. Backend (API + WhatsApp + AI)
+cd server && npm install && npm run build   # or: npm run dev
+# 2. Web client (React SPA) — build once so the backend can serve it
+cd ../web && npm install && npm run build
+# 3. Start the server (serves the built web client + API on :3050)
+cd ../server && npm run dev
+# open http://localhost:3050
+```
+Web dev mode with hot reload: `cd web && npm run dev` (proxies /api to :3050).
+
 ## Status
 
 - [x] Design specs written (Core, Web, App)
-- [ ] server/ implementation
-- [ ] web/ UI design + implementation
-- [ ] android/ UI design + implementation
+- [x] **server/** — Foundation+Auth, WhatsApp Core (Baileys), Rich Messaging, AI (translate/TTS/STT) — 48 tests, live-verified
+- [x] **web/** — React SPA (Vite + TS + Tailwind), modular, wired to the API
+- [ ] android/ — Compose implementation (design done)
