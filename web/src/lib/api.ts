@@ -79,6 +79,7 @@ export const api = {
       { chatId, message, translateTo },
     ),
   mediaUrl: (acc: string, msgId: string) => `/api/media/${enc(msgId)}?account=${enc(acc)}&token=${auth.token()}`,
+  profilePic: (acc: string, jid: string) => `/api/profile-pic?account=${enc(acc)}&id=${enc(jid)}&token=${auth.token()}`,
 
   // settings
   keys: () => get<{ keys: ApiKeyView[] }>('/api/settings/keys'),

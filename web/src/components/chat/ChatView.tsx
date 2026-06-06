@@ -150,7 +150,7 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
   return (
     <main className="flex flex-col min-h-0 chat-wall">
       <header className="flex items-center gap-3 px-4 py-2.5 bg-panel border-b border-line flex-none">
-        <Avatar name={name} seed={jid} size={40} />
+        <Avatar name={name} seed={jid} size={40} src={api.profilePic(accountId, jid)} />
         <div className="flex-1 min-w-0">
           <div className="text-[16px] font-medium text-txt truncate">{name}</div>
           <div className="text-[12.5px] text-muted">{chat?.isGroup ? 'group' : ''}</div>

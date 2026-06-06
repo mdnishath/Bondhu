@@ -1,6 +1,22 @@
+import { useEffect, useState } from 'react';
 import { avatarGradient, initials } from '../../lib/format';
 
-export function Avatar({ name, seed, size = 42 }: { name: string; seed: string; size?: number }) {
+export function Avatar({ name, seed, size = 42, src }: { name: string; seed: string; size?: number; src?: string }) {
+  const [failed, setFailed] = useState(false);
+  // reset when the photo source changes (e.g. switching chats)
+  useEffect(() => setFailed(false), [src]);
+
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        onError={() => setFailed(true)}
+        className="rounded-full object-cover flex-none bg-panel2"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <div
       className="rounded-full grid place-items-center text-white font-semibold flex-none"

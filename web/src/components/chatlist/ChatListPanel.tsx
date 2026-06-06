@@ -103,11 +103,11 @@ export function ChatListPanel({
   );
 }
 
-function ChatRow({ chat, active, onClick }: { chat: Chat; active: boolean; onClick: () => void; accountId: string }) {
+function ChatRow({ chat, active, onClick, accountId }: { chat: Chat; active: boolean; onClick: () => void; accountId: string }) {
   const nm = displayName(chat.jid, chat.name);
   return (
     <button onClick={onClick} className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition ${active ? 'bg-rowactive' : 'hover:bg-rowhover'}`}>
-      <Avatar name={nm} seed={chat.jid} size={48} />
+      <Avatar name={nm} seed={chat.jid} size={48} src={accountId ? api.profilePic(accountId, chat.jid) : undefined} />
       <div className="flex-1 min-w-0 border-b border-line/60 pb-2.5 -mb-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="text-[15.5px] text-txt truncate">{nm}</div>
