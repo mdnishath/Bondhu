@@ -79,11 +79,13 @@ export function aiRoutes(ctx: AppContext): Router {
     const { chatId, message, translateTo } = req.body ?? {};
     if (!chatId || !message) return res.status(400).json({ error: 'chatId and message required' });
     try {
-      const lang = isSupportedLang(translateTo) ? translateTo : ctx.langs.getGlobal(req.userId!);
-      const sentText = (translateTo && typeof translateTo === 'string')
+      const willTranslate = isSupportedLang(translateTo);
+      const lang = willTranslate ? translateTo : ctx.langs.getGlobal(req.userId!);
+      const sentText = willTranslate
         ? await ctx.translation.translateOutgoing(req.userId!, message, translateTo)
         : message;
-      const tts = await ctx.tts.synthesize(req.userId!, acc, `tts-out-${chatId}-${sentText.length}`, sentText, lang);
+      const ttsKey = `tts-out-${chatId}-${Buffer.from(sentText).toString('base64url')}`;
+      const tts = await ctx.tts.synthesize(req.userId!, acc, ttsKey, sentText, lang);
       const ogg = await wavToOpus(Buffer.from(tts.audioBase64, 'base64'));
       const voiceMsgId = await ctx.manager.sendVoice(acc, chatId, ogg);
       const textMsgId = await ctx.manager.sendText(acc, chatId, sentText);
