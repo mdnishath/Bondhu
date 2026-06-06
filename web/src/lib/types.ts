@@ -39,6 +39,7 @@ export interface Message {
   ack: number;
   reactions?: Reaction[];
   translated?: string | null;
+  original?: string; // for outgoing messages translated before sending
 }
 
 export interface ApiKeyView {

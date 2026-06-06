@@ -76,6 +76,9 @@ function renderContent(msg: Message, accountId: string, lang: string) {
   return (
     <div>
       <span className="text-txt break-words">{msg.body}</span>
+      {msg.fromMe && msg.original && (
+        <div className="text-[11px] text-white/45 mt-1 italic">you wrote: {msg.original}</div>
+      )}
       <Meta msg={msg} />
     </div>
   );

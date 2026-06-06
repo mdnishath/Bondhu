@@ -64,8 +64,11 @@ export const api = {
   chats: (acc: string) => get<{ chats: Chat[] }>(`/api/chats?account=${enc(acc)}&limit=100`),
   messages: (acc: string, jid: string) =>
     get<{ lang: string; messages: Message[] }>(`/api/messages/${enc(jid)}?account=${enc(acc)}&limit=50`),
-  send: (acc: string, chatId: string, message: string) =>
-    post<{ success: boolean; msgId: string | null }>(`/api/send?account=${enc(acc)}`, { chatId, message }),
+  send: (acc: string, chatId: string, message: string, translateTo?: string) =>
+    post<{ success: boolean; msgId: string | null; sentText?: string; original?: string }>(
+      `/api/send?account=${enc(acc)}`,
+      { chatId, message, translateTo },
+    ),
   markRead: (acc: string, jid: string) => post(`/api/chats/${enc(jid)}/mark-read?account=${enc(acc)}`),
   react: (acc: string, msgId: string, emoji: string) => post(`/api/react?account=${enc(acc)}`, { msgId, emoji }),
   tts: (acc: string, msgId: string, text: string, lang: string) =>

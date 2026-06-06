@@ -22,12 +22,10 @@ export class TranslationService {
       .run(accountId, msgId, lang, text, Date.now());
   }
 
-  async translate(userId: string, accountId: string, msgId: string, body: string, lang: string): Promise<string> {
-    const cached = this.cacheGet(accountId, msgId, lang);
-    if (cached) return cached;
-    const target = langName(lang);
-    const prompt = `Translate the following message into ${target}. Output ONLY the translation, no quotes or notes.\n\n${body}`;
-    const text = await this.keys.run(userId, async (key) => {
+  /** Low-level Gemini translate of arbitrary text into the named target language. */
+  private async callGemini(userId: string, body: string, targetName: string): Promise<string> {
+    const prompt = `Translate the following message into ${targetName}. Output ONLY the translation, no quotes or notes.\n\n${body}`;
+    return this.keys.run(userId, async (key) => {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
       const resp = await this.fetchFn(url, {
         method: 'POST',
@@ -40,7 +38,20 @@ export class TranslationService {
       if (!out) throw new Error('empty translation');
       return out as string;
     });
+  }
+
+  /** Incoming message translation, cached per (accountId, msgId, lang). */
+  async translate(userId: string, accountId: string, msgId: string, body: string, lang: string): Promise<string> {
+    const cached = this.cacheGet(accountId, msgId, lang);
+    if (cached) return cached;
+    const text = await this.callGemini(userId, body, langName(lang));
     this.cacheSet(accountId, msgId, lang, text);
     return text;
+  }
+
+  /** Outgoing translation: translate the user's own text into the recipient's
+   *  language right before sending. Not message-cached (no msgId yet). */
+  async translateOutgoing(userId: string, text: string, lang: string): Promise<string> {
+    return this.callGemini(userId, text, langName(lang));
   }
 }

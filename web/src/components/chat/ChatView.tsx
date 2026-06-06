@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
-import type { Chat, Message } from '../../lib/types';
+import type { Chat, LangOption, Message } from '../../lib/types';
 import { displayName } from '../../lib/format';
 import { Avatar } from '../ui/Avatar';
 import { GlobeIcon, SearchIcon, DotsIcon } from '../ui/icons';
@@ -13,10 +13,27 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
   const nav = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [lang, setLang] = useState('bn');
+  const [langs, setLangs] = useState<LangOption[]>([]);
+  const [outLang, setOutLang] = useState<string>(localStorage.getItem('bondhu_out_' + jid) || '');
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const name = chat ? displayName(jid, chat.name) : displayName(jid);
+
+  // load supported languages once for the outgoing-language selector
+  useEffect(() => {
+    api.language().then((r) => setLangs(r.supported)).catch(() => {});
+  }, []);
+
+  // remember the outgoing language per chat
+  useEffect(() => {
+    setOutLang(localStorage.getItem('bondhu_out_' + jid) || '');
+  }, [jid]);
+  function changeOutLang(code: string) {
+    setOutLang(code);
+    if (code) localStorage.setItem('bondhu_out_' + jid, code);
+    else localStorage.removeItem('bondhu_out_' + jid);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -59,13 +76,21 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
   }, [messages]);
 
   async function send(text: string) {
-    const tmp: Message = { msgId: 'tmp' + Date.now(), chatJid: jid, senderJid: null, fromMe: true, type: 'text', body: text, timestamp: Date.now(), ack: 1, reactions: [] };
+    const id = 'tmp' + Date.now();
+    const tmp: Message = {
+      msgId: id, chatJid: jid, senderJid: null, fromMe: true, type: 'text',
+      body: outLang ? '…translating…' : text, timestamp: Date.now(), ack: 1, reactions: [],
+      original: outLang ? text : undefined,
+    };
     setMessages((prev) => [...prev, tmp]);
     try {
-      await api.send(accountId, jid, text);
+      const res = await api.send(accountId, jid, text, outLang || undefined);
+      if (res.sentText) {
+        setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, body: res.sentText!, original: res.original } : m)));
+      }
       onChatBump();
     } catch {
-      /* ignore */
+      setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, body: text, original: undefined } : m)));
     }
   }
 
@@ -92,7 +117,7 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
         )}
       </div>
 
-      <Composer onSend={send} lang={lang} />
+      <Composer onSend={send} langs={langs} outLang={outLang} onOutLangChange={changeOutLang} />
     </main>
   );
 }

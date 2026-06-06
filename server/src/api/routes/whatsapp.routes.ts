@@ -96,11 +96,19 @@ export function whatsappRoutes(ctx: AppContext): Router {
   r.post('/send', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res);
     if (!accountId) return;
-    const { chatId, message } = req.body ?? {};
+    const { chatId, message, translateTo } = req.body ?? {};
     if (!chatId || !message) return res.status(400).json({ error: 'chatId and message required' });
     try {
-      const msgId = await ctx.manager.sendText(accountId, chatId, message);
-      res.json({ success: true, msgId });
+      // Outgoing translation: rewrite the user's text into the recipient's
+      // language before sending (e.g. type in Banglish, send in French).
+      let outText = message as string;
+      let original: string | undefined;
+      if (translateTo && typeof translateTo === 'string') {
+        original = message;
+        outText = await ctx.translation.translateOutgoing(req.userId!, message, translateTo);
+      }
+      const msgId = await ctx.manager.sendText(accountId, chatId, outText);
+      res.json({ success: true, msgId, sentText: outText, original });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
