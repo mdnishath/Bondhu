@@ -152,16 +152,38 @@
   </main>
 </div>
 
+<script src="assets/api.js"></script>
 <script src="assets/shell.js"></script>
 <script>
-renderRail('settings');
+if (!API.requireAuth()) { /* redirected */ }
+
+(async ()=>{
+  await Shell.boot('settings');
+  try {
+    const me = await API.me();
+    const nm = me.name || me.email;
+    document.querySelectorAll('.pc-name').forEach(e=> e.textContent = nm);
+    document.querySelectorAll('.prof-hero .av').forEach(e=>{ e.firstChild && (e.firstChild.textContent = initials(nm)); });
+    const nameInput = document.querySelector('.fieldset input');
+    if (nameInput) nameInput.value = nm;
+    const pc = document.getElementById('profileCard');
+    if (pc) { const av = pc.querySelector('.av'); if (av){ av.textContent = initials(nm); av.style.background = avatarGradient(me.id||nm); } }
+  } catch(e){}
+  // phone + connected count from accounts
+  const acc = Shell.accounts.find(a=>a.id===API.account());
+  const phoneVal = document.querySelectorAll('.editrow .val')[2];
+  if (phoneVal && acc && acc.phone) phoneVal.textContent = '+' + acc.phone;
+  const connVal = document.querySelectorAll('.editrow .val')[3];
+  if (connVal) connVal.firstChild && (connVal.firstChild.textContent = Shell.accounts.length + ' active ');
+})();
+
 document.querySelectorAll('.set-list .set-row[data-d]').forEach(r=>{
-  r.addEventListener('click', ()=>{
-    document.querySelectorAll('.set-row').forEach(x=>x.style.background='');
-    r.style.background='var(--row-active)';
-    showTip(r.querySelector('.t').textContent + ' — coming soon');
-  });
+  r.addEventListener('click', ()=> showTip(r.querySelector('.t').textContent + ' — coming soon'));
 });
+
+// Log out (clear token then go to login)
+const logoutBtn = document.querySelector('.set-row.danger');
+if (logoutBtn) logoutBtn.addEventListener('click', (e)=>{ e.preventDefault(); API.logout(); location.href='login.html'; });
 </script>
 </body>
 </html>
