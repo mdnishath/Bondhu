@@ -15,6 +15,7 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
   const [lang, setLang] = useState('bn');
   const [langs, setLangs] = useState<LangOption[]>([]);
   const [outLang, setOutLang] = useState<string>(localStorage.getItem('bondhu_out_' + jid) || '');
+  const [sendMode, setSendMode] = useState<'text' | 'voice'>(() => (localStorage.getItem('bondhu_mode_' + jid) as 'text' | 'voice') || 'text');
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -25,14 +26,19 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
     api.language().then((r) => setLangs(r.supported)).catch(() => {});
   }, []);
 
-  // remember the outgoing language per chat
+  // remember the outgoing language and send mode per chat
   useEffect(() => {
     setOutLang(localStorage.getItem('bondhu_out_' + jid) || '');
+    setSendMode((localStorage.getItem('bondhu_mode_' + jid) as 'text' | 'voice') || 'text');
   }, [jid]);
   function changeOutLang(code: string) {
     setOutLang(code);
     if (code) localStorage.setItem('bondhu_out_' + jid, code);
     else localStorage.removeItem('bondhu_out_' + jid);
+  }
+  function changeSendMode(mode: 'text' | 'voice') {
+    setSendMode(mode);
+    localStorage.setItem('bondhu_mode_' + jid, mode);
   }
 
   useEffect(() => {
@@ -75,22 +81,56 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  const outName = langs.find((l) => l.code === outLang)?.name ?? outLang;
+
   async function send(text: string) {
     const id = 'tmp' + Date.now();
+
+    // Voice mode: translated voice note + translated text
+    if (sendMode === 'voice' && outLang) {
+      const tmp: Message = {
+        msgId: id, chatJid: jid, senderJid: null, fromMe: true, type: 'text',
+        body: '', timestamp: Date.now(), ack: 1, reactions: [],
+        translating: `Translating + generating ${outName} voice 🔊`,
+      };
+      setMessages((prev) => [...prev, tmp]);
+      try {
+        const res = await api.sendVoiceTranslated(accountId, jid, text, outLang);
+        const voiceMsg: Message = {
+          msgId: res.voiceMsgId || id + 'v', chatJid: jid, senderJid: null, fromMe: true, type: 'ptt',
+          body: '[voice]', timestamp: Date.now(), ack: 1, reactions: [],
+          localAudio: 'data:' + res.mime + ';base64,' + res.audioBase64,
+        };
+        const textMsg: Message = {
+          msgId: res.textMsgId || id + 't', chatJid: jid, senderJid: null, fromMe: true, type: 'text',
+          body: res.sentText, timestamp: Date.now() + 1, ack: 1, reactions: [], original: res.original,
+        };
+        setMessages((prev) => prev.filter((m) => m.msgId !== id).concat(voiceMsg, textMsg));
+        onChatBump();
+      } catch {
+        setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, translating: undefined, body: text } : m)));
+      }
+      return;
+    }
+
+    // Text mode (translate-and-send, or send as typed)
     const tmp: Message = {
       msgId: id, chatJid: jid, senderJid: null, fromMe: true, type: 'text',
-      body: outLang ? '…translating…' : text, timestamp: Date.now(), ack: 1, reactions: [],
+      body: outLang ? '' : text, timestamp: Date.now(), ack: 1, reactions: [],
+      translating: outLang ? `Translating → ${outName}` : undefined,
       original: outLang ? text : undefined,
     };
     setMessages((prev) => [...prev, tmp]);
     try {
       const res = await api.send(accountId, jid, text, outLang || undefined);
       if (res.sentText) {
-        setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, body: res.sentText!, original: res.original } : m)));
+        setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, body: res.sentText!, original: res.original, translating: undefined } : m)));
+      } else {
+        setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, translating: undefined } : m)));
       }
       onChatBump();
     } catch {
-      setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, body: text, original: undefined } : m)));
+      setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, body: text, original: undefined, translating: undefined } : m)));
     }
   }
 
@@ -117,7 +157,7 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
         )}
       </div>
 
-      <Composer onSend={send} langs={langs} outLang={outLang} onOutLangChange={changeOutLang} />
+      <Composer onSend={send} langs={langs} outLang={outLang} onOutLangChange={changeOutLang} sendMode={sendMode} onSendModeChange={changeSendMode} />
     </main>
   );
 }
