@@ -87,47 +87,85 @@
         <div class="qr-logo"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v3A2.5 2.5 0 0 1 13.5 12H8l-4 3z" fill="#fff" opacity=".95"/><path d="M11 13.5A2.5 2.5 0 0 1 13.5 11H18a2.5 2.5 0 0 1 2.5 2.5v3A2.5 2.5 0 0 1 18 19v2l-2.5-2.2H13.5A2.5 2.5 0 0 1 11 16.3z" fill="#06291f" opacity=".7"/></svg></div>
         <div class="scanline"></div>
       </div>
-      <div class="qr-status"><span class="blink"></span> Waiting for your phone…</div>
+      <div class="qr-status" id="status"><span class="blink"></span> Starting…</div>
       <div class="reload" id="reload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg> Reload code</div>
+
+      <div style="width:100%;max-width:260px;margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,.08)">
+        <div style="font-size:12.5px;color:#cfe9e2;margin-bottom:8px;text-align:center">Or link with your phone number</div>
+        <div style="display:flex;gap:8px">
+          <input class="input" id="phone" type="tel" inputmode="numeric" placeholder="8801XXXXXXXXX" style="flex:1" />
+          <button class="btn btn-primary" id="pairBtn" type="button" style="padding:0 14px">Get code</button>
+        </div>
+        <div id="pairCode" style="display:none;margin-top:12px;text-align:center">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Enter this code in WhatsApp → Linked devices → Link with phone number</div>
+          <div id="pairCodeVal" style="font-size:26px;font-weight:700;letter-spacing:3px;color:#4fd1ab"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="assets/api.js"></script>
 <script src="assets/shell.js"></script>
 <script>
-/* deterministic QR-like pattern */
-const N = 29;
-function buildQR(seed){
-  const qr = document.getElementById('qr');
-  qr.style.gridTemplate = `repeat(${N},1fr)/repeat(${N},1fr)`;
-  let s = seed;
-  const rnd = ()=>{ s = (s*1103515245 + 12345) & 0x7fffffff; return (s>>8)/0x7fffff % 1; };
-  const finder = (r,c)=> (r<7&&c<7) || (r<7&&c>=N-7) || (r>=N-7&&c<7);
-  function drawFinder(cells){
-    const corners=[[0,0],[0,N-7],[N-7,0]];
-    corners.forEach(([R,C])=>{
-      for(let r=0;r<7;r++)for(let c=0;c<7;c++){
-        const edge = r===0||r===6||c===0||c===6;
-        const core = r>=2&&r<=4&&c>=2&&c<=4;
-        cells[(R+r)*N+(C+c)] = (edge||core);
-      }
-    });
-  }
-  const cells = new Array(N*N).fill(false);
-  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
-    if(finder(r,c)) continue;
-    // clear center for logo
-    if(r>=11&&r<=17&&c>=11&&c<=17) continue;
-    cells[r*N+c] = rnd() > 0.5;
-  }
-  drawFinder(cells);
-  qr.innerHTML = cells.map(v=>`<i class="${v?'':'off'}"></i>`).join('');
+if (!API.requireAuth()) { /* redirected */ }
+
+let accountId = null;
+let qrObj = null;
+let pollTimer = null;
+const statusEl = document.getElementById('status');
+const qrEl = document.getElementById('qr');
+
+function setStatus(txt){ statusEl.innerHTML = `<span class="blink"></span> ${txt}`; }
+
+function renderQR(text){
+  qrEl.innerHTML = '';
+  qrEl.style.gridTemplate = '';
+  qrObj = new QRCode(qrEl, { text, width: 230, height: 230, colorDark: '#0B141A', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.L });
 }
-buildQR(20260605);
-document.getElementById('reload').addEventListener('click', ()=>{
-  buildQR(Math.floor(Math.random()*1e8));
-  showTip('🔄 New code generated');
+
+async function startLink(){
+  try {
+    const res = await API.addAccount('');
+    accountId = res.accountId;
+    setStatus('Waiting for QR…');
+    poll();
+  } catch (e) { setStatus(e.message); }
+}
+
+async function poll(){
+  if (pollTimer) clearTimeout(pollTimer);
+  try {
+    const s = await API.status(accountId);
+    if (s.state === 'connected') {
+      API.setAccount(accountId);
+      setStatus('Connected ✓ — opening Bondhu…');
+      setTimeout(()=> location.href = HOME, 900);
+      return;
+    }
+    if (s.pairingCode) {
+      document.getElementById('pairCode').style.display = '';
+      document.getElementById('pairCodeVal').textContent = s.pairingCode.replace(/(.{4})(.{4})/, '$1-$2');
+      setStatus('Enter the code shown below on your phone');
+    } else if (s.qr) {
+      renderQR(s.qr);
+      setStatus('Scan the QR with WhatsApp → Linked devices');
+    }
+  } catch (e) { setStatus(e.message); }
+  pollTimer = setTimeout(poll, 2500);
+}
+
+document.getElementById('reload').addEventListener('click', ()=> showTip('Refreshing…'));
+document.getElementById('pairBtn').addEventListener('click', async ()=>{
+  const phone = document.getElementById('phone').value.replace(/[^0-9]/g, '');
+  if (!phone) { showTip('Enter your phone number'); return; }
+  if (!accountId) { await startLink(); }
+  try { await API.pair(accountId, phone); setStatus('Generating pairing code…'); }
+  catch (e) { showTip(e.message); }
 });
+
+startLink();
 </script>
 </body>
 </html>
