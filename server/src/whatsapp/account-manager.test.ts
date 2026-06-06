@@ -85,6 +85,27 @@ test('incoming @lid message auto-heals an earlier split phone chat', async () =>
   expect(list[0].jid).toBe(LID);
 });
 
+test('incoming @lid message backfills the saved contact name from the phone jid', async () => {
+  const { mgr, accounts, chats, conns } = makeManager();
+  const acc = accounts.create({ userId: 'u1' });
+  await mgr.start(acc.id);
+  const conn = conns[0];
+  const BARE = '33749092805@s.whatsapp.net';
+  const LID = '90881944195224@lid';
+  conn.resolvePhoneJid = vi.fn(async (j: string) => (j === LID ? '33749092805:0@s.whatsapp.net' : j));
+  // saved name only known under the phone jid (as WhatsApp delivers it).
+  chats.setContact(acc.id, BARE, 'Expérience Prod');
+
+  conn.emit('message', {
+    accountId: acc.id, msgId: 'r1', chatJid: LID, senderJid: LID,
+    fromMe: false, type: 'text', body: 'bonjour', timestamp: 3000, ack: 0,
+  });
+  await new Promise((r) => setImmediate(r));
+
+  expect(chats.contactName(acc.id, LID)).toBe('Expérience Prod');
+  expect(chats.list(acc.id, 10, 0)[0].name).toBe('Expérience Prod');
+});
+
 test('phone event records phone on the stable account id', async () => {
   const { mgr, accounts, conns } = makeManager();
   const acc = accounts.create({ userId: 'u1' });

@@ -87,3 +87,16 @@ test('mergeChat is a no-op when source equals target', () => {
   const chats = new ChatsRepo(db);
   expect(chats.mergeChat('a1', 'x@lid', 'x@lid')).toBe(0);
 });
+
+test('chatsMissingContactName lists chats with no saved name', () => {
+  const db = createDb(':memory:');
+  const chats = new ChatsRepo(db);
+  chats.upsert('a1', { jid: 'named@lid' });
+  chats.upsert('a1', { jid: 'unnamed@lid' });
+  chats.upsert('a1', { jid: 'group@g.us' });
+  chats.setContact('a1', 'named@lid', 'Alice');
+  const missing = chats.chatsMissingContactName('a1');
+  expect(missing).toContain('unnamed@lid');
+  expect(missing).toContain('group@g.us');
+  expect(missing).not.toContain('named@lid');
+});

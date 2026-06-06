@@ -53,12 +53,27 @@ export class WaConnection extends EventEmitter {
     this.sock = sock;
 
     // Address-book contact names: prefer saved name, then business, then pushName.
-    const onContacts = (contacts: any[]) => {
+    // WhatsApp delivers contacts keyed by the PHONE jid, but our chats are keyed
+    // by `@lid` (see canonicalJid) — so also mirror the name onto the canonical
+    // key, else the chat list join misses it and shows "WhatsApp user".
+    const onContacts = async (contacts: any[]) => {
       for (const c of contacts ?? []) {
         const jid = c?.id;
         if (!jid || String(jid).endsWith('@g.us')) continue;
         const name = c.name || c.verifiedName || c.notify;
-        if (name) this.emit('contact', String(jid), String(name));
+        if (!name) continue;
+        const j = String(jid);
+        this.emit('contact', j, String(name));
+        try {
+          if (j.endsWith('@s.whatsapp.net')) {
+            const lid = await this.canonicalJid(j);
+            if (lid !== j) this.emit('contact', lid, String(name));
+          } else if (j.endsWith('@lid')) {
+            const pn = await this.resolvePhoneJid(j);
+            const bare = pn ? pn.replace(/:\d+@/, '@') : null;
+            if (bare && bare !== j) this.emit('contact', bare, String(name));
+          }
+        } catch { /* mapping not known yet — raw-jid name still stored */ }
       }
     };
 
@@ -156,7 +171,7 @@ export class WaConnection extends EventEmitter {
     // their past messages here (NOT via messages.upsert). Mark messages as
     // history so unread counts are not inflated by the back-fill.
     sock.ev.on('messaging-history.set', ({ chats, contacts, messages }) => {
-      onContacts(contacts as any[]);
+      void onContacts(contacts as any[]);
       for (const c of chats) {
         const jid = (c as any).id;
         if (!jid) continue;
@@ -178,8 +193,8 @@ export class WaConnection extends EventEmitter {
       }
     });
 
-    sock.ev.on('contacts.upsert', (contacts) => onContacts(contacts as any[]));
-    sock.ev.on('contacts.update', (updates) => onContacts(updates as any[]));
+    sock.ev.on('contacts.upsert', (contacts) => void onContacts(contacts as any[]));
+    sock.ev.on('contacts.update', (updates) => void onContacts(updates as any[]));
 
     sock.ev.on('presence.update', ({ id, presences }: any) => {
       const p = presences && (presences[id] || Object.values(presences)[0]);

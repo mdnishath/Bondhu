@@ -82,6 +82,12 @@ export class AccountManager extends EventEmitter {
           if (bare && bare.endsWith('@s.whatsapp.net') && bare !== m.chatJid) {
             const moved = this.chats.mergeChat(id, bare, m.chatJid);
             if (moved) this.emit('chat_update', id, m.chatJid);
+            // Saved name is usually stored under the phone jid; mirror it onto the
+            // @lid chat so the list shows the real name, not "WhatsApp user".
+            if (!this.chats.contactName(id, m.chatJid)) {
+              const nm = this.chats.contactName(id, bare);
+              if (nm) { this.chats.setContact(id, m.chatJid, nm); this.emit('chat_update', id, m.chatJid); }
+            }
           }
         } catch { /* best-effort */ }
       }

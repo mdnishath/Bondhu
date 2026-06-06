@@ -24,11 +24,19 @@ for (const a of accounts) {
     body: '{}',
   });
   const body = await res.json().catch(() => ({}));
-  console.log(`   endpoint ${res.status}: scanned=${body.scanned} merged=${body.count}`);
+  console.log(`   merge ${res.status}: scanned=${body.scanned} merged=${body.count}`);
   if (body.merged?.length) {
     for (const m of body.merged.slice(0, 5)) console.log(`     ${m.from}  ->  ${m.to}  (${m.moved} msgs)`);
     if (body.merged.length > 5) console.log(`     ...and ${body.merged.length - 5} more`);
   }
+  // Backfill saved contact names onto @lid chats (phone-keyed names -> @lid).
+  const nres = await fetch(`http://localhost:3050/api/backfill-contact-names?account=${a.id}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  const nbody = await nres.json().catch(() => ({}));
+  console.log(`   names ${nres.status}: scanned=${nbody.scanned} filled=${nbody.filled}`);
 }
 
 // Re-open fresh to see committed after-state.

@@ -132,6 +132,20 @@ export class ChatsRepo {
     return r?.name ?? null;
   }
 
+  /** Chats with no saved contact name yet — used to backfill names onto `@lid`
+   *  chats whose saved name is only known under the contact's phone jid. */
+  chatsMissingContactName(accountId: string): string[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT chats.jid FROM chats LEFT JOIN contacts ct
+             ON ct.account_id = chats.account_id AND ct.jid = chats.jid
+           WHERE chats.account_id = ? AND (ct.name IS NULL OR ct.name = '')`,
+        )
+        .all(accountId) as any[]
+    ).map((r) => r.jid as string);
+  }
+
   list(accountId: string, limit: number, offset: number): Chat[] {
     return (
       this.db

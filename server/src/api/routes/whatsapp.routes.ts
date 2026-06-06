@@ -273,6 +273,28 @@ export function whatsappRoutes(ctx: AppContext): Router {
     res.json({ merged, count: merged.length, scanned: phoneChats.length });
   });
 
+  // Backfill saved contact names onto `@lid` chats: WhatsApp delivers names
+  // keyed by the phone jid, but chats are keyed by `@lid`, so the list shows
+  // "WhatsApp user". For each unnamed @lid chat, resolve its phone and copy the
+  // saved name across. New messages auto-backfill; this fixes existing chats.
+  r.post('/backfill-contact-names', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const conn: any = ctx.manager.get(accountId);
+    if (!conn) return res.status(409).json({ error: 'account not connected' });
+    const jids = ctx.chats.chatsMissingContactName(accountId);
+    let filled = 0;
+    for (const jid of jids) {
+      if (!jid.endsWith('@lid')) continue;
+      let pn: string | null;
+      try { pn = await conn.resolvePhoneJid(jid); } catch { continue; }
+      const bare = pn ? pn.replace(/:\d+@/, '@') : null;
+      if (!bare || !bare.endsWith('@s.whatsapp.net')) continue;
+      const name = ctx.chats.contactName(accountId, bare);
+      if (name) { ctx.chats.setContact(accountId, jid, name); ctx.manager.emit('chat_update', accountId, jid); filled++; }
+    }
+    res.json({ scanned: jids.length, filled });
+  });
+
   r.get('/profile-pic', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const id = req.query.id as string;
