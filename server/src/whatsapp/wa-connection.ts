@@ -243,6 +243,19 @@ export class WaConnection extends EventEmitter {
     }
   }
 
+  /** The contact's "about" / status text, or null (privacy / unavailable). */
+  async fetchAbout(jid: string): Promise<string | null> {
+    if (!this.sock) return null;
+    try {
+      const p = (this.sock.fetchStatus(jid) as Promise<any>).catch(() => null);
+      const r = await Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), 6000))]);
+      const s = Array.isArray(r) ? r[0]?.status : r;
+      return s?.status ?? (typeof s === 'string' ? s : null);
+    } catch {
+      return null;
+    }
+  }
+
   async stop(): Promise<void> {
     this._stopping = true;
     try {

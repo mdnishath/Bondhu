@@ -187,6 +187,13 @@ export function whatsappRoutes(ctx: AppContext): Router {
     }
   });
 
+  r.get('/profile', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const id = req.query.id as string;
+    if (!id) return res.status(400).json({ error: 'id required' });
+    res.json({ jid: id, about: await ctx.manager.profileAbout(accountId, id) });
+  });
+
   r.get('/profile-pic', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const id = req.query.id as string;

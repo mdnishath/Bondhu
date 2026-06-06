@@ -204,6 +204,11 @@ export class AccountManager extends EventEmitter {
     return conn ? conn.profilePicUrl(jid) : null;
   }
 
+  async profileAbout(accountId: string, jid: string): Promise<string | null> {
+    const conn = this.conns.get(accountId);
+    return conn ? conn.fetchAbout(jid) : null;
+  }
+
   /** Cached profile photo bytes. Avoids hitting WhatsApp on every avatar render
    *  (the chat list would otherwise fire one slow Baileys call per row). Caches
    *  hits for 24h and misses (no photo / privacy) for 6h as a negative cache. */
