@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import type { Message } from '../../lib/types';
 import { clockTime } from '../../lib/format';
@@ -114,28 +114,64 @@ function Speaker({ text, msgId, accountId, lang }: { text: string; msgId: string
   );
 }
 
+function fmtDur(s: number): string {
+  if (!s || !isFinite(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
 function VoicePlayer({ src }: { src: string }) {
   const [audio] = useState(() => new Audio(src));
   const [playing, setPlaying] = useState(false);
-  function toggle() {
-    if (playing) {
+  const [dur, setDur] = useState(0);
+  const [cur, setCur] = useState(0);
+
+  useEffect(() => {
+    const onMeta = () => setDur(isFinite(audio.duration) ? audio.duration : 0);
+    const onTime = () => setCur(audio.currentTime);
+    const onEnd = () => { setPlaying(false); setCur(0); };
+    audio.addEventListener('loadedmetadata', onMeta);
+    audio.addEventListener('durationchange', onMeta);
+    audio.addEventListener('timeupdate', onTime);
+    audio.addEventListener('ended', onEnd);
+    return () => {
       audio.pause();
-      setPlaying(false);
-    } else {
-      audio.play();
-      setPlaying(true);
-      audio.onended = () => setPlaying(false);
-    }
+      audio.removeEventListener('loadedmetadata', onMeta);
+      audio.removeEventListener('durationchange', onMeta);
+      audio.removeEventListener('timeupdate', onTime);
+      audio.removeEventListener('ended', onEnd);
+    };
+  }, [audio]);
+
+  function toggle() {
+    if (playing) { audio.pause(); setPlaying(false); }
+    else { audio.play().catch(() => {}); setPlaying(true); }
   }
+  function seek(e: React.MouseEvent<HTMLDivElement>) {
+    if (!dur) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    audio.currentTime = ratio * dur;
+    setCur(audio.currentTime);
+  }
+
+  const pct = dur ? Math.min(1, cur / dur) : 0;
+  const label = playing || cur > 0 ? cur : dur; // total when idle, elapsed while playing
+
   return (
-    <div className="flex items-center gap-3 min-w-[180px]">
+    <div className="flex items-center gap-3 min-w-[210px]">
       <button onClick={toggle} className="w-9 h-9 rounded-full grid place-items-center bg-teal/20 text-teal flex-none">
         {playing ? <span className="text-xs">❚❚</span> : <PlayIcon className="w-5 h-5" />}
       </button>
-      <div className="flex-1 h-7 flex items-center gap-0.5">
-        {Array.from({ length: 22 }).map((_, i) => (
-          <span key={i} className="bg-muted/60 rounded-full" style={{ width: 2, height: 6 + ((i * 7) % 18) }} />
-        ))}
+      <div className="flex-1">
+        <div className="h-7 flex items-center gap-0.5 cursor-pointer" onClick={seek}>
+          {Array.from({ length: 26 }).map((_, i) => {
+            const filled = i / 26 <= pct;
+            return <span key={i} className="rounded-full flex-1 max-w-[3px]" style={{ height: 6 + ((i * 7) % 18), background: filled ? '#4fd1ab' : 'rgba(255,255,255,.28)' }} />;
+          })}
+        </div>
+        <div className="text-[11px] text-muted mt-0.5 tabular-nums">{fmtDur(label)}</div>
       </div>
     </div>
   );
