@@ -23,7 +23,10 @@ export function ChatPage() {
     if (!s) return;
     const onUpd = () => bump();
     s.on('chat_update', onUpd);
-    return () => { s.off('chat_update', onUpd); };
+    // Re-sync after a (re)connect — socket.io doesn't replay events missed while
+    // disconnected (e.g. a server restart), so refetch the chat list on connect.
+    s.on('connect', onUpd);
+    return () => { s.off('chat_update', onUpd); s.off('connect', onUpd); };
   }, [activeAccount, bump]);
 
   function select(jid: string) {

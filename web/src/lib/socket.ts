@@ -5,10 +5,12 @@ let socket: Socket | null = null;
 
 export function getSocket(): Socket | null {
   if (!auth.isAuthed()) return null;
-  if (socket && socket.connected) return socket;
-  if (!socket) {
-    socket = io('/', { auth: { token: auth.token() }, transports: ['websocket', 'polling'] });
-  }
+  if (socket) return socket;
+  socket = io('/', { auth: { token: auth.token() }, transports: ['websocket', 'polling'] });
+  // Lightweight diagnostics — visible in the browser console (F12).
+  socket.on('connect', () => console.log('[socket] connected', socket?.id));
+  socket.on('disconnect', (r) => console.log('[socket] disconnected:', r));
+  socket.on('connect_error', (e) => console.log('[socket] connect_error:', (e as Error).message));
   return socket;
 }
 

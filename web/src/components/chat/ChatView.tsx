@@ -141,12 +141,16 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
         presenceTimer.current = setTimeout(() => setPresence('online'), 5000);
       }
     };
+    // Re-sync messages after a (re)connect (socket.io drops events missed while
+    // disconnected, e.g. on a server restart).
+    const onConnect = () => setMsgReload((n) => n + 1);
     s.on('message', onMsg);
     s.on('message_reaction', onReaction);
     s.on('message_ack', onAck);
     s.on('message_delete', onDel);
     s.on('message_edit', onEdit);
     s.on('presence', onPresence);
+    s.on('connect', onConnect);
     return () => {
       s.off('message', onMsg);
       s.off('message_reaction', onReaction);
@@ -154,6 +158,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       s.off('message_delete', onDel);
       s.off('message_edit', onEdit);
       s.off('presence', onPresence);
+      s.off('connect', onConnect);
     };
   }, [accountId, jid, onChatBump]);
 
