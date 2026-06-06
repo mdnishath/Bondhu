@@ -65,7 +65,7 @@ export function Composer({
               type="button"
               disabled={!outLang}
               onClick={() => onSendModeChange('voice')}
-              title={outLang ? `Send as voice in ${outName}` : 'Pick a language first'}
+              title={outLang ? `Send as voice in ${outName ?? outLang}` : 'Pick a language first'}
               className={`px-1.5 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${voice ? 'bg-teal/20 text-teal' : 'text-muted'} ${!outLang ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
               <span>{flag}</span><MicIcon className="w-3 h-3" />

@@ -33,8 +33,13 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
   }, [jid]);
   function changeOutLang(code: string) {
     setOutLang(code);
-    if (code) localStorage.setItem('bondhu_out_' + jid, code);
-    else localStorage.removeItem('bondhu_out_' + jid);
+    if (code) {
+      localStorage.setItem('bondhu_out_' + jid, code);
+    } else {
+      localStorage.removeItem('bondhu_out_' + jid);
+      // Clearing the language makes voice mode meaningless — reset to text.
+      changeSendMode('text');
+    }
   }
   function changeSendMode(mode: 'text' | 'voice') {
     setSendMode(mode);
