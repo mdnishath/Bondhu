@@ -75,39 +75,34 @@
 
   <!-- form panel -->
   <section class="form-wrap">
-    <form class="form" id="form" onsubmit="return signIn(event)">
-      <h2>Sign in to Bondhu</h2>
-      <p class="lede">Enter your phone number. We'll send a one-time code to verify it's you.</p>
+    <form class="form" id="form" onsubmit="return submitAuth(event)">
+      <h2 id="title">Sign in to Bondhu</h2>
+      <p class="lede" id="lede">Welcome back. Log in to your Bondhu account.</p>
 
-      <div class="field">
-        <label for="cc">Country / region</label>
-        <div class="phone-row">
-          <select class="input cc" id="cc">
-            <option value="+880">🇧🇩 +880</option>
-            <option value="+91">🇮🇳 +91</option>
-            <option value="+1">🇺🇸 +1</option>
-            <option value="+44">🇬🇧 +44</option>
-            <option value="+81">🇯🇵 +81</option>
-            <option value="+49">🇩🇪 +49</option>
-          </select>
-          <input class="input num" id="num" type="tel" inputmode="numeric" placeholder="1XXX-XXXXXX" autocomplete="off" />
-        </div>
+      <div class="field" id="nameField" style="display:none">
+        <label for="name">Your name</label>
+        <input class="input" id="name" type="text" placeholder="e.g. Maya Sengupta" autocomplete="name" />
       </div>
 
-      <label class="stay">
-        <span class="toggle"><input type="checkbox" id="stay" checked /><span class="track"></span><span class="thumb"></span></span>
-        <span><span class="t">Keep me signed in</span><br /><span class="s">Stay logged in on this computer</span></span>
-      </label>
+      <div class="field">
+        <label for="email">Email</label>
+        <input class="input" id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+      </div>
 
-      <button class="btn btn-primary full" type="submit" id="next">
-        Send code
+      <div class="field" style="margin-top:18px">
+        <label for="pass">Password</label>
+        <input class="input" id="pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+
+      <button class="btn btn-primary full" type="submit" id="go" style="margin-top:24px">
+        <span id="goText">Log in</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </button>
 
       <div class="alt">
-        Prefer not to type your number?
+        <span id="toggleHint">New to Bondhu?</span>
         <br />
-        <a href="link-device.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3M20 14v.01M14 20v.01M17 17h.01M20 17v3M17 20h3" stroke-linecap="round"/></svg> Link with QR code instead</a>
+        <a href="#" onclick="return toggleMode(event)"><span id="toggleText">Create an account</span></a>
       </div>
 
       <p class="legal">By continuing you agree to Bondhu's <a href="#">Terms</a> &amp; <a href="#">Privacy Policy</a>.</p>
@@ -115,16 +110,42 @@
   </section>
 </div>
 
+<script src="assets/api.js"></script>
 <script src="assets/shell.js"></script>
 <script>
-function signIn(e){
+if (API.token()) location.href = HOME;
+
+let mode = 'login';
+function toggleMode(e){
+  if (e) e.preventDefault();
+  mode = mode === 'login' ? 'register' : 'login';
+  const reg = mode === 'register';
+  byId('nameField').style.display = reg ? '' : 'none';
+  byId('title').textContent = reg ? 'Create your Bondhu account' : 'Sign in to Bondhu';
+  byId('lede').textContent = reg ? 'Sign up with your email to get started.' : 'Welcome back. Log in to your Bondhu account.';
+  byId('goText').textContent = reg ? 'Create account' : 'Log in';
+  byId('toggleHint').textContent = reg ? 'Already have an account?' : 'New to Bondhu?';
+  byId('toggleText').textContent = reg ? 'Log in instead' : 'Create an account';
+  byId('pass').setAttribute('autocomplete', reg ? 'new-password' : 'current-password');
+  return false;
+}
+
+async function submitAuth(e){
   e.preventDefault();
-  const num = document.getElementById('num').value.trim();
-  if(!num){ document.getElementById('num').focus(); showTip('Enter your phone number'); return false; }
-  const btn = document.getElementById('next');
-  btn.disabled = true; btn.textContent = 'Verifying…';
-  showTip('📲 Code sent — signing you in…');
-  setTimeout(()=>{ location.href = HOME; }, 1300);
+  const email = byId('email').value.trim();
+  const pass = byId('pass').value;
+  const name = byId('name').value.trim();
+  if (!email || !pass) { showTip('Enter email and password'); return false; }
+  if (mode === 'register' && pass.length < 6) { showTip('Password must be at least 6 characters'); return false; }
+  const btn = byId('go'); btn.disabled = true; byId('goText').textContent = 'Please wait…';
+  try {
+    const res = mode === 'login' ? await API.login(email, pass) : await API.register(email, pass, name);
+    API.setToken(res.token);
+    location.href = HOME;
+  } catch (err) {
+    showTip(err.message || 'Something went wrong');
+    btn.disabled = false; byId('goText').textContent = mode === 'login' ? 'Log in' : 'Create account';
+  }
   return false;
 }
 </script>
