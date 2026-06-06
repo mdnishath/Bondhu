@@ -52,4 +52,5 @@ export interface ApiKeyView {
 export interface LangOption {
   code: string;
   name: string;
+  flag: string;
 }

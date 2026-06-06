@@ -20,7 +20,7 @@ export function aiRoutes(ctx: AppContext): Router {
 
   // --- Language ---
   r.get('/settings/language', (req: AuthedRequest, res) =>
-    res.json({ lang: ctx.langs.getGlobal(req.userId!), supported: SUPPORTED_LANGS.map((l) => ({ code: l.code, name: l.name })) }));
+    res.json({ lang: ctx.langs.getGlobal(req.userId!), supported: SUPPORTED_LANGS.map((l) => ({ code: l.code, name: l.name, flag: l.flag })) }));
   r.post('/settings/language', (req: AuthedRequest, res) => {
     const { lang } = req.body ?? {};
     if (!isSupportedLang(lang)) return res.status(400).json({ error: 'unsupported lang' });

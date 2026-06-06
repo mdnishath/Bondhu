@@ -7,3 +7,7 @@ test('supported langs include bn + en and validate', () => {
   expect(isSupportedLang('xx')).toBe(false);
   expect(langName('bn')).toBe('Bengali');
 });
+
+test('every supported lang has a flag emoji', () => {
+  for (const l of SUPPORTED_LANGS) expect(l.flag, l.code).toBeTruthy();
+});
