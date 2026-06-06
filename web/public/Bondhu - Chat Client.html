@@ -544,166 +544,137 @@ svg{display:block}
   </main>
 </div>
 
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/shell.js"></script>
 <script>
+/* ---------- DISABLED MOCK (replaced by wired logic below) ---------- */
+const _MOCK_DISABLED = true;
 /* ---------- chat list data ---------- */
-const CHATS = [
-  {n:"Anika Rahman", av:"AR", g:"linear-gradient(145deg,#00A884,#017a63)", t:"12:14",
-   prev:"On it. Sending the final files tonight", tick:"gray2", sel:true, online:true},
-  {n:"Design Team", av:"DT", g:"linear-gradient(145deg,#7c5cff,#4b2fb0)", t:"12:31",
-   prev:"Rafael: let's sync at 3 📌", unread:5, group:true},
-  {n:"Rafael Mendes", av:"RM", g:"linear-gradient(145deg,#f0883e,#b85c1f)", t:"11:57",
-   prev:"Perfect, thanks!", tick:"blue2", pre:"You: "},
-  {n:"Mom ❤️", av:"M", g:"linear-gradient(145deg,#ec4d8e,#a02360)", t:"11:02",
-   prev:"Call me when you're free 🌸", unread:2},
-  {n:"Yuki Tanaka", av:"YT", g:"linear-gradient(145deg,#3aa0ff,#1a5fb4)", t:"10:45",
-   prev:"ありがとう！ See you soon", tick:"gray2", pre:"You: "},
-  {n:"Priya Sharma", av:"PS", g:"linear-gradient(145deg,#e0479e,#8e1e63)", t:"09:30",
-   prev:"typing…", typing:true, online:true},
-  {n:"Tomás Herrera", av:"TH", g:"linear-gradient(145deg,#2bb3a3,#0c6e62)", t:"Yesterday",
-   prev:"¿Nos vemos mañana? 🌮"},
-  {n:"Aisha Khan", av:"AK", g:"linear-gradient(145deg,#f6b73c,#c2861a)", t:"Yesterday",
-   prev:"Sent the invoice 📄", tick:"blue2", pre:"You: "},
-  {n:"Daniel O'Brien", av:"DO", g:"linear-gradient(145deg,#39c46e,#15803d)", t:"Yesterday",
-   prev:"Haha that's hilarious 😂"},
-  {n:"Lena Müller", av:"LM", g:"linear-gradient(145deg,#6c7cff,#3b3fb0)", t:"Tuesday",
-   prev:"Danke schön! 🙏"},
-];
-
-const tickSVG = (kind) => {
-  if(!kind) return "";
-  const cls = kind.startsWith("blue") ? "blue" : "gray";
-  const dbl = kind.endsWith("2");
-  const p = dbl ? '<path d="M1 6 4 9 11.5 1.5M6.5 9 13 9.2 16.8 1.5"/>' : '<path d="M1.5 6 4.5 9 13 1.5"/>';
-  const w = dbl ? 18 : 15, vb = dbl ? "0 0 18 11" : "0 0 15 11";
-  return `<svg class="tick ${cls}" width="${w}" height="11" viewBox="${vb}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
-};
-
-const rowsEl = document.getElementById('rows');
-rowsEl.innerHTML = CHATS.map((c,i)=>`
-  <div class="row ${c.sel?'sel':''} ${c.unread?'unread':''}" data-i="${i}">
-    <div class="av" style="background:${c.g}">${c.av}${c.online?'<span class="pres"></span>':''}</div>
-    <div class="row-main">
-      <div class="row-l1">
-        <div class="row-name">${c.n}</div>
-        <div class="row-time">${c.t}</div>
-      </div>
-      <div class="row-l2">
-        <div class="row-prev ${c.typing?'typing':''}">
-          ${c.tick?tickSVG(c.tick):''}
-          ${c.pre&&!c.tick?`<span class="muted-tag">${c.pre}</span>`:''}
-          <span class="txt">${c.prev}</span>
-        </div>
-        ${c.unread?`<span class="badge">${c.unread}</span>`:''}
-      </div>
-    </div>
-  </div>`).join('');
-
-/* row selection */
-rowsEl.addEventListener('click', e=>{
-  const r = e.target.closest('.row'); if(!r) return;
-  rowsEl.querySelectorAll('.row').forEach(x=>x.classList.remove('sel'));
-  r.classList.add('sel');
-});
-
-/* account switch */
-document.getElementById('accounts').addEventListener('click', e=>{
-  const a = e.target.closest('.acct'); if(!a) return;
-  document.querySelectorAll('.acct').forEach(x=>x.classList.remove('active'));
-  a.classList.add('active');
-});
-
-/* ---------- voice note waveform ---------- */
-document.querySelectorAll('.wave').forEach(w=>{
-  const heights = [6,10,16,22,14,8,18,26,20,12,7,15,24,18,10,14,28,16,9,13,20,11,6,17,22,12,8,14,19,9,12,7];
-  w.innerHTML = heights.map((h,i)=>`<i style="height:${h}px" data-i="${i}"></i>`).join('');
-});
-
-function playWave(voice, playBtn){
-  const bars = voice.querySelectorAll('.wave i');
-  const total = bars.length;
-  let step = 0;
-  voice.classList.add('playing');
-  playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
-  const durEl = voice.parentElement.parentElement.querySelector('.v-dur') || voice.querySelector('.v-dur');
-  const timer = setInterval(()=>{
-    bars.forEach((b,i)=> b.classList.toggle('played', i<=step));
-    step++;
-    if(step>total){
-      clearInterval(timer);
-      voice.classList.remove('playing');
-      bars.forEach(b=>b.classList.remove('played'));
-      playBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-    }
-  }, 380);
-  voice._timer = timer;
-}
-document.querySelectorAll('.v-play').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const voice = btn.closest('.voice');
-    if(voice.classList.contains('playing')){
-      clearInterval(voice._timer);
-      voice.classList.remove('playing');
-      voice.querySelectorAll('.wave i').forEach(b=>b.classList.remove('played'));
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-    } else {
-      playWave(voice, btn);
-    }
-  });
-});
-
-/* speaker (translation TTS) */
-document.querySelectorAll('.speak').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.speak').forEach(b=>b.classList.remove('playing'));
-    btn.classList.add('playing');
-    showTip('🔊 Playing Bengali audio…');
-    setTimeout(()=>btn.classList.remove('playing'), 1800);
-  });
-});
-
-/* ---------- composer send ---------- */
-const input = document.getElementById('msgInput');
+/* ===== WIRED chat client (real API + Socket.IO) ===== */
 const thread = document.getElementById('thread');
 const threadInner = document.getElementById('threadInner');
+const input = document.getElementById('msgInput');
+const chName = document.querySelector('.ch-name');
+const chPres = document.querySelector('.ch-pres');
+const chAv = document.querySelector('.chat-head .av');
+let currentJid = API.selectedChat();
+let currentLang = 'bn';
 
-function nowTime(){
-  const d = new Date();
-  let h = d.getHours(), m = d.getMinutes();
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+function metaTime(ts){ try { return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } catch(e){ return ''; } }
+
+function bubbleHtml(m){
+  const out = !!m.fromMe;
+  const tick = out ? tickSVG(ackTick(m.ack)) : '';
+  let inner;
+  if (m.type === 'image') {
+    const url = `${API.base}/api/media/${encodeURIComponent(m.msgId)}?account=${encodeURIComponent(API.account())}&token=${API.token()}`;
+    inner = `<div class="bubble media"><div class="photo"><img src="${url}" loading="lazy" style="width:100%;display:block;border-radius:8px" onerror="this.parentElement.innerHTML='[image]'"/></div>
+      <div class="caption">${escapeHtml(m.body||'')}<span class="meta">${metaTime(m.timestamp)} ${tick}</span></div></div>`;
+  } else if (m.type === 'ptt' || m.type === 'audio') {
+    inner = `<div class="bubble"><div class="voice"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:11px">
+      <button class="v-play" data-msg="${m.msgId}" title="Play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><div class="wave"></div></div></div></div>
+      <span class="meta">${metaTime(m.timestamp)} ${tick}</span></div>`;
+  } else if (m.translated && !out) {
+    inner = `<div class="bubble translate"><div class="orig">${escapeHtml(m.body||'')}</div>
+      <div class="trans-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/></svg> Translated</div>
+      <div class="trans-row"><div class="trans bn">${escapeHtml(m.translated)}</div>
+      <button class="speak" data-text="${escapeHtml(m.translated)}" data-msg="${m.msgId}" title="Listen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button></div>
+      <span class="meta">${metaTime(m.timestamp)}</span></div>`;
+  } else {
+    inner = `<div class="bubble"><span class="btext">${escapeHtml(m.body||'')}</span><span class="meta">${metaTime(m.timestamp)} ${tick}</span></div>`;
+  }
+  const reacts = (m.reactions && m.reactions.length)
+    ? `<div class="reacts">${m.reactions.slice(0,3).map(r=>`<span>${r.emoji}</span>`).join('')}</div>` : '';
+  return `<div class="msg ${out?'out':'in'} ${reacts?'has-react':''}" data-msg="${m.msgId}">${inner}${reacts}</div>`;
 }
-function send(){
-  const v = input.value.trim();
-  if(!v) return;
-  const div = document.createElement('div');
-  div.className = 'msg out';
-  div.innerHTML = `<div class="bubble"><span class="btext">${escapeHtml(v)}</span>
-    <span class="meta">${nowTime()} ${tickSVG('gray')}</span></div>`;
-  threadInner.appendChild(div);
-  input.value = '';
+
+function wireThread(){
+  threadInner.querySelectorAll('.wave').forEach(w=>{ if(w.children.length) return;
+    const hs=[6,10,16,22,14,8,18,26,20,12,7,15,24,18,10,14,28,16,9,13]; w.innerHTML=hs.map(h=>`<i style="height:${h}px"></i>`).join(''); });
+  threadInner.querySelectorAll('.speak').forEach(btn=>{
+    if (btn._wired) return; btn._wired = true;
+    btn.addEventListener('click', async ()=>{
+      btn.classList.add('playing'); showTip('🔊 Generating audio…');
+      try {
+        const r = await API.tts(API.account(), btn.getAttribute('data-msg'), btn.getAttribute('data-text'), currentLang);
+        new Audio('data:'+r.mime+';base64,'+r.audioBase64).play();
+      } catch(e){ showTip(e.message); }
+      setTimeout(()=>btn.classList.remove('playing'), 1400);
+    });
+  });
+  threadInner.querySelectorAll('.v-play').forEach(btn=>{
+    if (btn._wired) return; btn._wired = true;
+    btn.addEventListener('click', ()=>{
+      const url = `${API.base}/api/media/${encodeURIComponent(btn.getAttribute('data-msg'))}?account=${encodeURIComponent(API.account())}&token=${API.token()}`;
+      try { new Audio(url).play(); } catch(e){ showTip('Cannot play'); }
+    });
+  });
+}
+
+function markRowSel(jid){ document.querySelectorAll('#rows .row').forEach(r=>r.classList.toggle('sel', r.getAttribute('data-jid')===jid)); }
+
+async function openChat(jid){
+  currentJid = jid;
+  if (!jid) { threadInner.innerHTML = `<div style="height:100%;display:grid;place-items:center;color:var(--muted);text-align:center;padding:40px"><div><div style="font-size:17px;margin-bottom:8px">Select a chat to start messaging</div><div style="font-size:13px">Your conversations appear here.</div></div></div>`; return; }
+  const acc = API.account();
+  const chat = (Shell.chats||[]).find(c=>c.jid===jid);
+  const nm = chat ? displayName(jid, chat.name) : displayName(jid);
+  if (chName) chName.textContent = nm;
+  if (chPres) chPres.textContent = '';
+  if (chAv) { chAv.textContent = initials(nm); chAv.style.background = avatarGradient(jid); }
+  threadInner.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">Loading…</div>';
+  try {
+    const res = await API.messages(acc, jid);
+    currentLang = res.lang || 'bn';
+    const msgs = (res.messages||[]).slice().reverse();
+    threadInner.innerHTML = `<div class="daysep"><span>Messages</span></div>` + msgs.map(bubbleHtml).join('');
+    wireThread();
+    thread.scrollTop = thread.scrollHeight;
+    API.markRead(acc, jid).catch(()=>{});
+  } catch(e){ threadInner.innerHTML = `<div style="padding:30px;text-align:center;color:var(--muted)">${escapeHtml(e.message)}</div>`; }
+}
+
+window.onChatSelected = (jid)=>{ API.setSelectedChat(jid); markRowSel(jid); openChat(jid); };
+
+async function sendMsg(){
+  const v = input.value.trim(); if(!v || !currentJid) return;
+  input.value='';
+  threadInner.insertAdjacentHTML('beforeend', bubbleHtml({ msgId:'tmp'+Date.now(), fromMe:true, type:'text', body:v, timestamp:Date.now(), ack:1, reactions:[] }));
   thread.scrollTop = thread.scrollHeight;
-  // simulate delivery -> read
-  const meta = div.querySelector('.meta');
-  setTimeout(()=>{ meta.innerHTML = `${meta.textContent.trim().slice(0,5)} ${tickSVG('gray2')}`; }, 900);
-  setTimeout(()=>{ meta.innerHTML = `${meta.textContent.trim().slice(0,5)} ${tickSVG('blue2')}`; }, 2200);
+  try { await API.send(API.account(), currentJid, v); } catch(e){ showTip(e.message); }
 }
-function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-document.getElementById('sendBtn').addEventListener('click', send);
-input.addEventListener('keydown', e=>{ if(e.key==='Enter') send(); });
+document.getElementById('sendBtn').addEventListener('click', sendMsg);
+input.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMsg(); });
+document.getElementById('globeBtn').addEventListener('click', ()=> location.href='translation-settings.html');
+document.getElementById('micBtn').addEventListener('click', ()=> showTip('🎙️ Voice recording coming soon'));
+const langChip = document.querySelector('.lang-chip'); if (langChip) langChip.addEventListener('click', ()=> location.href='translation-settings.html');
 
-/* globe + lang chip + mic feedback */
-document.getElementById('globeBtn').addEventListener('click', ()=>{ location.href='translation-settings.html'; });
-document.querySelector('.lang-chip').addEventListener('click', ()=>showTip('Outgoing messages will be sent in Bengali'));
-document.getElementById('micBtn').addEventListener('click', ()=>showTip('🎙️ Hold to record a voice message'));
-
-let tipTimer;
-function showTip(msg){
-  const tip = document.getElementById('tip');
-  tip.textContent = msg; tip.classList.add('show');
-  clearTimeout(tipTimer);
-  tipTimer = setTimeout(()=>tip.classList.remove('show'), 1900);
+function setupSocket(){
+  const s = API.connect(); if(!s) return;
+  s.on('message', (m)=>{
+    if (m.accountId===API.account() && m.chatJid===currentJid){
+      threadInner.insertAdjacentHTML('beforeend', bubbleHtml(m)); wireThread();
+      thread.scrollTop = thread.scrollHeight; API.markRead(API.account(), currentJid).catch(()=>{});
+    }
+    Shell.loadChats();
+  });
+  s.on('chat_update', ()=> Shell.loadChats());
 }
 
-thread.scrollTop = thread.scrollHeight;
+(async ()=>{
+  if (!API.requireAuth()) return;
+  await Shell.boot();
+  try { const me = await API.me(); const mn = document.querySelector('.me-name'); if (mn) mn.textContent = me.name || me.email; } catch(e){}
+  const acc = Shell.accounts.find(a=>a.id===API.account());
+  const mh = document.querySelector('.me-handle'); if (mh) mh.textContent = acc && acc.phone ? ('+'+acc.phone) : 'not linked';
+  if (!Shell.accounts.length){
+    threadInner.innerHTML = `<div style="height:100%;display:grid;place-items:center;color:var(--muted);text-align:center;padding:40px"><div><div style="font-size:17px;margin-bottom:10px">No WhatsApp account linked yet</div><a href="link-device.html" style="color:var(--teal);font-weight:600">+ Link an account</a></div></div>`;
+    return;
+  }
+  setupSocket();
+  if (currentJid){ openChat(currentJid); markRowSel(currentJid); } else openChat('');
+})();
 </script>
 </body>
 </html>
