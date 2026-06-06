@@ -43,3 +43,25 @@ test('extracts extended text and falls back to placeholder for media', () => {
 test('returns null for messages without a key id', () => {
   expect(normalizeMessage('a1', { message: { conversation: 'x' } } as any)).toBeNull();
 });
+
+test('keeps a text that ALSO carries messageContextInfo (multi-device / @lid)', () => {
+  // Modern WhatsApp attaches messageContextInfo (deviceListMetadata) to ordinary
+  // incoming texts — these must NOT be dropped.
+  const n = normalizeMessage('a1', {
+    key: { id: 'M', remoteJid: '77859804709099@lid', fromMe: false },
+    messageTimestamp: 1700,
+    message: { conversation: 'How are you ?', messageContextInfo: { deviceListMetadata: {} } },
+  });
+  expect(n).not.toBeNull();
+  expect(n!.body).toBe('How are you ?');
+  expect(n!.type).toBe('text');
+
+  // ...but a pure metadata message (messageContextInfo only) is still skipped.
+  expect(
+    normalizeMessage('a1', {
+      key: { id: 'N', remoteJid: 'c@s.whatsapp.net', fromMe: false },
+      messageTimestamp: 1,
+      message: { messageContextInfo: { deviceListMetadata: {} } },
+    }),
+  ).toBeNull();
+});

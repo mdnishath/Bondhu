@@ -15,11 +15,14 @@ export function normalizeMessage(accountId: string, m: any): UpsertMessage | nul
   //    ephemeral timer changes, history sync, app-state sync, etc.
   //  - reactionMessage: handled via the dedicated messages.reaction event.
   //  - senderKeyDistributionMessage / messageContextInfo: signal-layer plumbing.
+  // NOTE: do NOT skip on a bare `content.messageContextInfo` — modern WhatsApp
+  // (multi-device / @lid) attaches messageContextInfo (deviceListMetadata) to
+  // ordinary text messages, so skipping on its mere presence drops real incoming
+  // messages. Only skip when it's the SOLE field (a pure metadata message).
   if (
     content.protocolMessage ||
     content.reactionMessage ||
     content.senderKeyDistributionMessage ||
-    content.messageContextInfo ||
     content.pollUpdateMessage ||
     (Object.keys(content).length === 1 && content.messageContextInfo)
   ) {
