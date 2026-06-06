@@ -178,7 +178,13 @@ export function whatsappRoutes(ctx: AppContext): Router {
       const { buffer, mime } = await ctx.manager.downloadMedia(accountId, req.params.msgId);
       res.setHeader('Content-Type', mime);
       res.send(buffer);
-    } catch (e: any) { res.status(404).json({ error: e.message }); }
+    } catch (e: any) {
+      // Own sent voice notes aren't downloadable from WhatsApp — serve the
+      // TTS audio we stored at send time so the sender can replay them.
+      const own = ctx.tts.getForMsg(accountId, req.params.msgId);
+      if (own) { res.setHeader('Content-Type', own.mime); return res.send(Buffer.from(own.audioBase64, 'base64')); }
+      res.status(404).json({ error: e.message });
+    }
   });
 
   r.get('/profile-pic', async (req: AuthedRequest, res) => {

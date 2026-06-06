@@ -46,6 +46,20 @@ export class TtsService {
       .run(accountId, msgId, lang, r.audioBase64, r.mime, Date.now());
   }
 
+  /** Store synthesized audio under a real (sent) message id so the sender can
+   *  replay their OWN voice note via /media even after a page reload (own
+   *  outgoing media isn't downloadable from WhatsApp). */
+  putForMsg(accountId: string, msgId: string, r: TtsResult): void {
+    this.cacheSet(accountId, msgId, '_self', r);
+  }
+
+  /** Retrieve stored own-voice audio for a message id (lang-agnostic). */
+  getForMsg(accountId: string, msgId: string): TtsResult | undefined {
+    const r = this.db.prepare('SELECT audio_base64, mime FROM tts_cache WHERE account_id=? AND msg_id=? LIMIT 1')
+      .get(accountId, msgId) as any;
+    return r ? { audioBase64: r.audio_base64, mime: r.mime } : undefined;
+  }
+
   async synthesize(userId: string, accountId: string, msgId: string, text: string, lang: string): Promise<TtsResult> {
     const cached = this.cacheGet(accountId, msgId, lang);
     if (cached) return cached;

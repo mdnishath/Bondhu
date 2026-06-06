@@ -91,6 +91,9 @@ export function aiRoutes(ctx: AppContext): Router {
       // don't fail the whole request (that would make the client retry and
       // double-send the voice) — report the voice id with textMsgId: null.
       const voiceMsgId = await ctx.manager.sendVoice(acc, chatId, ogg);
+      // Keep the audio under the real message id so the sender can replay their
+      // own voice note via /media (own outgoing media isn't fetchable from WA).
+      if (voiceMsgId) ctx.tts.putForMsg(acc, voiceMsgId, { audioBase64: tts.audioBase64, mime: tts.mime });
       let textMsgId: string | null = null;
       try { textMsgId = await ctx.manager.sendText(acc, chatId, sentText); }
       catch { /* voice already delivered; report partial success */ }

@@ -27,3 +27,16 @@ test('synthesizes Gemini TTS audio (wraps PCM in WAV) and caches', async () => {
   expect(fetchMock).toHaveBeenCalledTimes(1); // cached
   expect(a2.audioBase64).toBe(a1.audioBase64);
 });
+
+test('putForMsg / getForMsg store and retrieve own-voice audio by message id', async () => {
+  const db = createDb(':memory:');
+  const keys = new ApiKeysRepo(db); keys.add('u1', 'KEY');
+  const svc = new TtsService(db, new KeyRing(keys), (async () => { throw new Error('no network'); }) as any);
+
+  expect(svc.getForMsg('acc1', 'WAMSG1')).toBeUndefined();
+  svc.putForMsg('acc1', 'WAMSG1', { audioBase64: 'QUJD', mime: 'audio/wav' });
+  const got = svc.getForMsg('acc1', 'WAMSG1');
+  expect(got).toEqual({ audioBase64: 'QUJD', mime: 'audio/wav' });
+  // scoped per account
+  expect(svc.getForMsg('other', 'WAMSG1')).toBeUndefined();
+});
