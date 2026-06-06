@@ -26,17 +26,17 @@ docs/design-reference/ bondhu-html = the original Claude Design vanilla export (
 ```
 
 ## Status
-- [x] **server/** — Plan 1 Foundation+Auth, Plan 2 WhatsApp Core (Baileys), Plan 3a Rich Messaging, Plan 3b AI (translate/TTS/STT). **48 tests, tsc clean, live-verified.**
-- [x] **web/** — Plan 4 React SPA: Login, ChatPage (rail+list+chat+composer+bubbles), LinkDevice (QR+pairing), Settings (API keys+language). Two-way translation working.
-- [ ] **android/** — design done (`android/DESIGN.md`), Compose implementation NOT started. **This is the main remaining work.**
-- [ ] Deferred web polish: voice recording send, forward dialog, per-chat language dialog (per-chat OUTGOING lang already works via composer).
-- [ ] Live full browser test still needs a WhatsApp account linked (blocked on device-limit — see secrets file).
+- [x] **server/** — Foundation+Auth, WhatsApp Core (Baileys), Rich Messaging, AI (translate/TTS/STT). **53 tests, tsc clean, live-verified.**
+- [x] **web/** — React SPA: Login, ChatPage, LinkDevice (QR+pairing), Settings. Full **two-way translation + outgoing voice**. Rich messaging: reply, forward (dialog), edit, delete, reactions, image lightbox, per-message action menu. **Profile photos + saved contact names + profile view** (incl. `@lid` phone resolution). New-chat compose, account remove (sidebar ×). **Mic recording → transcribe (Gemini) → translated voice/text**. Perf: cached profile pics + lazy avatars. Mobile back nav.
+- [ ] **android/** — design done (`android/DESIGN.md`), Compose NOT started. **Main remaining work.**
+- [ ] **Deploy** to VPS not done yet.
+- WhatsApp account is linked (`nishatbd3388`, +8801767591988) and used for live verification; API keys are in the DB for that user.
 
 ## Run / build / test
 ```bash
 # backend (serves API + built web SPA on http://localhost:3050)
 cd "E:/New Whatsapp/server" && npm run dev          # tsx watch
-cd "E:/New Whatsapp/server" && npm test             # vitest, 48 tests
+cd "E:/New Whatsapp/server" && npm test             # vitest, 53 tests (ffmpeg-static used; transcode test runs)
 # web SPA — rebuild after any web/src change so backend serves it
 cd "E:/New Whatsapp/web" && npm run build           # -> web/dist
 cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, proxies /api to :3050
@@ -44,9 +44,9 @@ cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, prox
 - DB file `server/bondhu.db` is gitignored and contains live WhatsApp creds; delete it for a clean slate. After editing server files, tsx watch restarts; if it hits `EADDRINUSE` on :3050, kill the stale node via PowerShell `Get-NetTCPConnection -LocalPort 3050 | Stop-Process` then restart.
 
 ## Architecture quick map (backend)
-- `db/` SQLite (better-sqlite3, WAL). Tables: users, accounts, auth_state, chats, messages, reactions, api_keys, user_lang, chat_lang, translations, tts_cache. Schema runs statement-by-statement so the idempotent `ALTER TABLE ADD COLUMN raw` is tolerated.
-- `whatsapp/` `WaConnection` (1 Baileys socket/account) → `AccountManager` (owns sockets, persists events, re-emits) → `EventBridge` logic inside the manager. `auth-state.ts` = SQLite Baileys auth.
-- `ai/` `KeyRing` (rotates keys on 429/5xx/**403**), `TranslationService` (Gemini; `translate` incoming cached, `translateOutgoing` not cached), `TtsService` (Google Cloud TTS), `TranscriptionService` (Google STT), `langs.ts`.
+- `db/` SQLite (better-sqlite3, WAL). Tables: users, accounts, auth_state, chats, messages, reactions, api_keys, user_lang, chat_lang, translations, tts_cache, **profile_pics** (cached avatar bytes), **contacts** (saved names). Schema runs statement-by-statement so idempotent `ALTER TABLE ADD COLUMN` is tolerated.
+- `whatsapp/` `WaConnection` (1 Baileys socket/account) → `AccountManager` (owns sockets, persists events, re-emits). `auth-state.ts` = SQLite Baileys auth. `transcode.ts` = ffmpeg (via **ffmpeg-static**) WAV→OGG/Opus.
+- `ai/` `KeyRing` (rotates keys on 429/5xx/**403**), `TranslationService` (Gemini), `TtsService` (**Gemini Developer API** TTS → WAV), `TranscriptionService` (**Gemini** audio→text, not Google STT), `langs.ts` (18 langs + flags).
 - `api/` Express routes + `socket-gateway.ts` (per-user rooms; auto-translates incoming text before relay when the user has a key).
 
 ## Hard-won gotchas (do not relearn these)
@@ -57,6 +57,12 @@ cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, prox
 5. **Pairing code** is exposed in `/api/status` (`pairingCode`) and via the `pairing` socket event. WhatsApp allows max **4 linked devices** per number — repeated test pairings exhaust slots; remove old "Bondhu" devices from the phone or use another number.
 6. **sharp** in `/api/send-image` needs a real decodable image (tests use a 1×1 PNG base64).
 7. Web `MessageBubble` media `<img>` uses `/api/media/:msgId?account=&token=` (JWT in query — the media route accepts `?token=`).
+8. **Voice = Gemini TTS, NOT Cloud TTS.** `generativelanguage…/models/gemini-3.1-flash-tts-preview:generateContent` (voice "Achernar"), same key as translation. Cloud TTS's Gemini-TTS routes through **Vertex AI which rejects API keys** (`aiplatform.endpoints.predict denied`); the Developer API doesn't. Returns L16 PCM → wrap in WAV.
+9. **ffmpeg is bundled via `ffmpeg-static`** (`transcode.ts` defaults to its path; `FFMPEG_PATH` env overrides). Voice notes need OGG/Opus, so `wavToOpus` transcodes. Do NOT rely on system-PATH ffmpeg (was a recurring "spawn ffmpeg ENOENT" source).
+10. **Transcription = Gemini, NOT Google STT.** Google STT returns garbage for Bengali ("For."); Gemini (`gemini-2.5-flash` generateContent + audio inlineData) is accurate and uses the primary Gemini key. `/transcribe` transcodes the browser **webm→ogg** first. Flow: record (any lang) → transcript in box → send translates to the chosen target (e.g. Bangla voice → English to clients).
+11. **Dedupe sent messages.** WhatsApp echoes our own sent messages back via `messages.upsert`; web `ChatView` dedupes by msgId and the optimistic bubble adopts the real id, so text doesn't double.
+12. **Profile pics cached** (`profile_pics`, 24h hit / 6h negative) + `loading="lazy"` avatars + 6s timeout on `profilePictureUrl` — else the chat list fires one slow Baileys call per row. Avatar shows initials behind the photo (never black). Own sent voice isn't downloadable from WhatsApp → `/send-voice` stores its TTS audio (by real msgId) and `/media` serves it for replay.
+13. **Contact names** from `messaging-history.set`/`contacts.upsert` → `contacts` table; chat list `COALESCE`s saved name over pushName. `@lid` privacy jids have no phone — resolved via Baileys lid mapping in `/profile`.
 
 ## Conventions (how we work here)
 - Backend: **TDD** (test → fail → impl → pass → commit), one commit per plan task.
@@ -68,14 +74,15 @@ cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, prox
 
 ## Key product features built
 - Multi-account link (QR + pairing code), 1300+ chat history sync, send/receive.
-- Rich: image, voice, reactions, reply, forward, delete, read receipts, profile pics.
-- **AI two-way translation:** incoming auto-translate to user's lang; **outgoing** translate before send (composer "Send in <lang>" selector, per-chat persisted, returns `sentText`+`original`). TTS playback, voice transcription. Per-user keys with rotation, 18 languages.
+- Rich messaging: image (+lightbox), voice (player w/ duration+seek), reactions, reply, forward (dialog), edit, delete, read receipts, profile photos, saved contact names, profile view.
+- **AI two-way translation:** incoming auto-translate to user's lang; **outgoing** translate before send (composer text/voice **mode toggle** + per-chat language, returns `sentText`+`original`).
+- **Voice:** outgoing Gemini-TTS voice notes (mode toggle); own-voice replay; **mic recording → Gemini transcribe → translated voice/text** (key use case: Bangla speech → English to US clients).
+- Composer: send-mode toggle (flag + Aa/🎙️), language picker (flags), mic record. Sidebar: account remove, new-chat compose. Per-user keys w/ rotation, 18 languages.
 
 ## Next steps (in priority order)
 1. **Android app** — implement `android/DESIGN.md` in Kotlin/Compose against the same backend API (MVVM + Hilt + Retrofit + Socket.IO + ExoPlayer). Biggest remaining piece.
-2. **Live browser test** — link a WhatsApp account (needs a number with a free device slot) to see real chats + translation end-to-end.
-3. Optional web polish: voice recording send, forward dialog.
-4. **Deploy** Bondhu to the VPS (build server + web, pm2, nginx) when ready.
+2. **Deploy** Bondhu to the VPS (build server + web, pm2, nginx) when ready.
+3. Web polish as needed (per-chat language dialog, group handling, search).
 
 ## User context
 - Replies in **Bengali/Banglish**; wants concise, result-first answers.
