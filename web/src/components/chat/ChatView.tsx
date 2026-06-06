@@ -174,7 +174,7 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
         )}
       </div>
 
-      <Composer onSend={send} langs={langs} outLang={outLang} onOutLangChange={changeOutLang} sendMode={sendMode} onSendModeChange={changeSendMode} />
+      <Composer onSend={send} langs={langs} outLang={outLang} onOutLangChange={changeOutLang} sendMode={sendMode} onSendModeChange={changeSendMode} accountId={accountId} />
 
       {showProfile && (
         <ProfilePanel accountId={accountId} jid={jid} name={name} isGroup={!!chat?.isGroup} onClose={() => setShowProfile(false)} />

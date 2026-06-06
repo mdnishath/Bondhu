@@ -1,6 +1,16 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { api } from '../../lib/api';
 import type { LangOption } from '../../lib/types';
 import { SendIcon, MicIcon, GlobeIcon } from '../ui/icons';
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onloadend = () => resolve(String(r.result).split(',')[1] || '');
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
 
 export function Composer({
   onSend,
@@ -9,6 +19,7 @@ export function Composer({
   onOutLangChange,
   sendMode,
   onSendModeChange,
+  accountId,
 }: {
   onSend: (text: string) => void;
   langs: LangOption[];
@@ -16,8 +27,13 @@ export function Composer({
   onOutLangChange: (code: string) => void;
   sendMode: 'text' | 'voice';
   onSendModeChange: (mode: 'text' | 'voice') => void;
+  accountId: string;
 }) {
   const [text, setText] = useState('');
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   function submit() {
     const v = text.trim();
@@ -26,10 +42,51 @@ export function Composer({
     setText('');
   }
 
+  async function startRec() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const mime = rec.mimeType || 'audio/webm';
+        const blob = new Blob(chunksRef.current, { type: mime });
+        if (!blob.size) return;
+        setTranscribing(true);
+        try {
+          const b64 = await blobToBase64(blob);
+          const { transcript } = await api.transcribe(accountId, b64, mime);
+          if (transcript) setText((t) => (t ? t.trim() + ' ' : '') + transcript);
+        } catch { /* STT failed — leave text as-is */ }
+        setTranscribing(false);
+      };
+      recRef.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch {
+      alert('Microphone access is needed to record voice.');
+    }
+  }
+  function stopRec() {
+    recRef.current?.stop();
+    setRecording(false);
+  }
+  function toggleRec() {
+    if (recording) stopRec(); else startRec();
+  }
+
   const selLang = langs.find((l) => l.code === outLang);
   const outName = selLang?.name;
   const flag = selLang?.flag ?? '🌐';
   const voice = sendMode === 'voice' && !!outLang;
+  const placeholder = recording
+    ? '● Recording… tap the mic to stop'
+    : transcribing
+      ? 'Transcribing…'
+      : outLang
+        ? (voice ? `Type / record — sent as ${outName} voice 🔊` : `Type / record — sent in ${outName}`)
+        : 'Type a message';
 
   return (
     <footer className="flex flex-col bg-panel border-t border-line">
@@ -47,7 +104,7 @@ export function Composer({
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder={outLang ? (voice ? `Type — sent as ${outName} voice 🔊` : `Type in any language — sent in ${outName}`) : 'Type a message'}
+            placeholder={placeholder}
             className="flex-1 bg-transparent border-none outline-none text-txt text-[14.5px]"
           />
 
@@ -91,8 +148,19 @@ export function Composer({
             <GlobeIcon className={`w-3 h-3 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none ${outLang ? 'text-teal' : 'text-muted'}`} />
           </div>
         </div>
+
+        {/* record voice -> transcribe into the box (then send via the chosen mode) */}
+        <button
+          onClick={toggleRec}
+          disabled={transcribing}
+          title={recording ? 'Stop recording' : 'Record voice'}
+          className={`icon-btn flex-none ${recording ? 'text-[#ff5d5d] animate-pulse' : transcribing ? 'text-teal animate-pulse' : 'text-muted'}`}
+        >
+          <MicIcon className="w-[22px] h-[22px]" />
+        </button>
+
         <button onClick={submit} className="w-[46px] h-[46px] rounded-full grid place-items-center text-[#06291f] flex-none" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }} title="Send">
-          {voice ? <MicIcon className="w-6 h-6" /> : <SendIcon className="w-6 h-6" />}
+          <SendIcon className="w-6 h-6" />
         </button>
       </div>
     </footer>

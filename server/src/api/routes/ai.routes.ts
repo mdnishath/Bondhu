@@ -62,6 +62,17 @@ export function aiRoutes(ctx: AppContext): Router {
     catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
+  // --- Transcribe a freshly recorded clip (mic) to text ---
+  r.post('/transcribe', async (req: AuthedRequest, res) => {
+    const acc = account(req, res); if (!acc) return;
+    const { audioBase64, mimeType } = req.body ?? {};
+    if (!audioBase64) return res.status(400).json({ error: 'audioBase64 required' });
+    try {
+      const transcript = await ctx.transcription.transcribe(req.userId!, audioBase64, mimeType || 'audio/webm');
+      res.json({ transcript });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   // --- Re-transcribe an incoming voice note ---
   r.post('/retranscribe', async (req: AuthedRequest, res) => {
     const acc = account(req, res); if (!acc) return;

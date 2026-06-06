@@ -81,6 +81,8 @@ export const api = {
   mediaUrl: (acc: string, msgId: string) => `/api/media/${enc(msgId)}?account=${enc(acc)}&token=${auth.token()}`,
   profilePic: (acc: string, jid: string) => `/api/profile-pic?account=${enc(acc)}&id=${enc(jid)}&token=${auth.token()}`,
   profile: (acc: string, jid: string) => get<{ jid: string; about: string | null }>(`/api/profile?account=${enc(acc)}&id=${enc(jid)}`),
+  transcribe: (acc: string, audioBase64: string, mimeType: string) =>
+    post<{ transcript: string }>(`/api/transcribe?account=${enc(acc)}`, { audioBase64, mimeType }),
 
   // settings
   keys: () => get<{ keys: ApiKeyView[] }>('/api/settings/keys'),
