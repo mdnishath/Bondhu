@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ReplyIcon, ForwardIcon, TrashIcon, CopyIcon, PencilIcon, SmileIcon } from '../ui/icons';
 
 const QUICK_EMOJI = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
@@ -25,6 +25,17 @@ export function MessageActions({
   const ref = useRef<HTMLDivElement>(null);
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState('');
+  // Flip the menu upward when there isn't enough room below (last messages would
+  // otherwise open down into / behind the composer and be unclickable).
+  const [dropUp, setDropUp] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    // ~72px reserves the composer; if the menu's bottom runs past it, drop up.
+    setDropUp(r.bottom > window.innerHeight - 72 && r.top - r.height > 8);
+  }, [customOpen]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -44,7 +55,9 @@ export function MessageActions({
   return (
     <div
       ref={ref}
-      className="absolute z-30 mt-1 right-0 bg-panel2 border border-line rounded-xl shadow-xl text-[13.5px] min-w-[180px] overflow-hidden"
+      className={`absolute z-30 right-0 bg-panel2 border border-line rounded-xl shadow-xl text-[13.5px] min-w-[180px] overflow-hidden ${
+        dropUp ? 'bottom-full mb-1' : 'top-full mt-1'
+      }`}
     >
       <div className="flex items-center justify-between gap-1 px-2 py-1.5 border-b border-line">
         {QUICK_EMOJI.map((e) => (
