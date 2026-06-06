@@ -17,14 +17,20 @@ export function wavToOpus(input: Buffer): Promise<Buffer> {
     ]);
     const out: Buffer[] = [];
     const err: Buffer[] = [];
+    let settled = false;
+    const done = (e?: Error, val?: Buffer) => {
+      if (settled) return;
+      settled = true;
+      if (e) reject(e); else resolve(val!);
+    };
     ff.stdout.on('data', (d) => out.push(d as Buffer));
     ff.stderr.on('data', (d) => err.push(d as Buffer));
-    ff.on('error', (e) => reject(new Error(`ffmpeg spawn failed (is it on PATH? set FFMPEG_PATH): ${e.message}`)));
+    ff.on('error', (e) => done(new Error(`ffmpeg spawn failed (is it on PATH? set FFMPEG_PATH): ${e.message}`)));
     ff.on('close', (code) => {
-      if (code !== 0) return reject(new Error(`ffmpeg exited ${code}: ${Buffer.concat(err).toString().slice(-300)}`));
+      if (code !== 0) return done(new Error(`ffmpeg exited ${code}: ${Buffer.concat(err).toString().slice(-300)}`));
       const buf = Buffer.concat(out);
-      if (buf.length === 0) return reject(new Error('ffmpeg produced empty output'));
-      resolve(buf);
+      if (buf.length === 0) return done(new Error('ffmpeg produced empty output'));
+      done(undefined, buf);
     });
     ff.stdin.on('error', () => { /* ignore EPIPE if ffmpeg exits early */ });
     ff.stdin.write(input);
