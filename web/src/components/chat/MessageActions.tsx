@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { ReplyIcon, ForwardIcon, TrashIcon, CopyIcon, PencilIcon, SmileIcon } from '../ui/icons';
 
 const QUICK_EMOJI = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
@@ -14,50 +15,70 @@ export type MessageAction =
 export function MessageActions({
   ownMessage,
   isTextLike,
+  anchorRef,
   onPick,
   onClose,
 }: {
   ownMessage: boolean;
   isTextLike: boolean;
+  anchorRef: RefObject<HTMLElement | null>;
   onPick: (a: MessageAction) => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState('');
-  // Flip the menu upward when there isn't enough room below (last messages would
-  // otherwise open down into / behind the composer and be unclickable).
-  const [dropUp, setDropUp] = useState(false);
+  // Rendered in a portal with fixed positioning so the chat scroll container's
+  // overflow can never clip it. Position is computed from the trigger button and
+  // clamped to the viewport (flips above the message when there's no room below).
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    // ~72px reserves the composer; if the menu's bottom runs past it, drop up.
-    setDropUp(r.bottom > window.innerHeight - 72 && r.top - r.height > 8);
-  }, [customOpen]);
+    const menu = ref.current;
+    const anchor = anchorRef.current;
+    if (!menu || !anchor) return;
+    const a = anchor.getBoundingClientRect();
+    const m = menu.getBoundingClientRect();
+    const M = 8; // viewport margin
+    // Right-align the menu to the trigger, then clamp horizontally.
+    let left = a.right - m.width;
+    left = Math.min(Math.max(left, M), window.innerWidth - m.width - M);
+    // Below the trigger by default; flip above if it would overflow the bottom.
+    let top = a.bottom + 4;
+    if (top + m.height > window.innerHeight - M) {
+      const above = a.top - m.height - 4;
+      top = above >= M ? above : Math.max(M, window.innerHeight - m.height - M);
+    }
+    setPos({ top, left });
+  }, [customOpen, anchorRef]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      const t = e.target as Node;
+      if (ref.current?.contains(t)) return;
+      if (anchorRef.current?.contains(t)) return; // let the trigger toggle itself
+      onClose();
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    // Close if the chat scrolls — a fixed menu would otherwise detach from its bubble.
+    const onScroll = () => onClose();
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('mousedown', onDoc);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, true);
     };
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
   function pick(a: MessageAction) { onPick(a); onClose(); }
 
-  return (
+  return createPortal(
     <div
       ref={ref}
-      className={`absolute z-30 right-0 bg-panel2 border border-line rounded-xl shadow-xl text-[13.5px] min-w-[180px] overflow-hidden ${
-        dropUp ? 'bottom-full mb-1' : 'top-full mt-1'
-      }`}
+      style={{ position: 'fixed', top: pos?.top ?? -9999, left: pos?.left ?? -9999, visibility: pos ? 'visible' : 'hidden' }}
+      className="z-[60] bg-panel2 border border-line rounded-xl shadow-xl text-[13.5px] min-w-[180px] overflow-hidden"
     >
       <div className="flex items-center justify-between gap-1 px-2 py-1.5 border-b border-line">
         {QUICK_EMOJI.map((e) => (
@@ -109,7 +130,8 @@ export function MessageActions({
         danger
         onClick={() => pick({ kind: 'delete' })}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }
 

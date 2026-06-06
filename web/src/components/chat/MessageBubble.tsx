@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type { Message } from '../../lib/types';
 import { clockTime } from '../../lib/format';
@@ -30,6 +30,7 @@ export function MessageBubble({
   const out = msg.fromMe;
   const reacts = msg.reactions && msg.reactions.length > 0;
   const [menuOpen, setMenuOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.body ?? '');
   const deleted = msg.type === 'deleted' || msg.body === '[deleted]';
@@ -59,7 +60,7 @@ export function MessageBubble({
 
   return (
     <div className={`group flex ${out ? 'justify-end' : 'justify-start'} mb-1.5 min-w-0`}>
-      <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[65%] min-w-0 ${menuOpen ? 'z-50' : ''}`}>
+      <div className="relative max-w-[85%] sm:max-w-[75%] md:max-w-[65%] min-w-0">
         <div
           className="rounded-[10px] px-2.5 py-1.5 text-[14.2px] leading-snug shadow"
           style={{ background: out ? '#005C4B' : '#202C33' }}
@@ -83,6 +84,7 @@ export function MessageBubble({
 
         {!editing && !deleted && (
           <button
+            ref={btnRef}
             onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
             className={`absolute top-0.5 ${out ? 'right-0.5' : 'left-0.5'} w-5 h-5 rounded-full grid place-items-center opacity-0 group-hover:opacity-100 transition`}
             style={{ background: out ? 'rgba(0,80,65,.85)' : 'rgba(20,30,36,.85)' }}
@@ -96,6 +98,7 @@ export function MessageBubble({
           <MessageActions
             ownMessage={out}
             isTextLike={isTextLike}
+            anchorRef={btnRef}
             onPick={handlePick}
             onClose={() => setMenuOpen(false)}
           />
