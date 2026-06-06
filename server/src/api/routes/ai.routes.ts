@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { AppContext } from '../../app-context.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { SUPPORTED_LANGS, isSupportedLang } from '../../ai/langs.js';
+import { wavToOpus } from '../../ai/transcode.js';
 
 export function aiRoutes(ctx: AppContext): Router {
   const r = Router();
@@ -72,15 +73,25 @@ export function aiRoutes(ctx: AppContext): Router {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  // --- Text -> voice send (TTS then send as ptt) ---
+  // --- Text -> translated voice note + text (composer voice mode) ---
   r.post('/send-voice', async (req: AuthedRequest, res) => {
     const acc = account(req, res); if (!acc) return;
-    const { chatId, text, language } = req.body ?? {};
-    const lang = isSupportedLang(language) ? language : ctx.langs.getGlobal(req.userId!);
+    const { chatId, message, translateTo } = req.body ?? {};
+    if (!chatId || !message) return res.status(400).json({ error: 'chatId and message required' });
     try {
-      const tts = await ctx.tts.synthesize(req.userId!, acc, `tts-${chatId}-${text.length}`, text, lang);
-      const id = await ctx.manager.sendVoice(acc, chatId, Buffer.from(tts.audioBase64, 'base64'));
-      res.json({ success: true, msgId: id });
+      const lang = isSupportedLang(translateTo) ? translateTo : ctx.langs.getGlobal(req.userId!);
+      const sentText = (translateTo && typeof translateTo === 'string')
+        ? await ctx.translation.translateOutgoing(req.userId!, message, translateTo)
+        : message;
+      const tts = await ctx.tts.synthesize(req.userId!, acc, `tts-out-${chatId}-${sentText.length}`, sentText, lang);
+      const ogg = await wavToOpus(Buffer.from(tts.audioBase64, 'base64'));
+      const voiceMsgId = await ctx.manager.sendVoice(acc, chatId, ogg);
+      const textMsgId = await ctx.manager.sendText(acc, chatId, sentText);
+      res.json({
+        success: true, voiceMsgId, textMsgId,
+        sentText, original: translateTo ? message : undefined,
+        audioBase64: tts.audioBase64, mime: tts.mime,
+      });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
