@@ -12,6 +12,11 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+function fmtSecs(s: number): string {
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
+
 export function Composer({
   onSend,
   onMicSend,
@@ -44,6 +49,9 @@ export function Composer({
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const [recSecs, setRecSecs] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cancelledRef = useRef(false);
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -74,6 +82,7 @@ export function Composer({
       rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
+        if (cancelledRef.current) return; // discarded — don't transcribe/send
         const mime = rec.mimeType || 'audio/webm';
         const blob = new Blob(chunksRef.current, { type: mime });
         if (!blob.size) return;
@@ -91,15 +100,26 @@ export function Composer({
         setTranscribing(false);
       };
       recRef.current = rec;
+      cancelledRef.current = false;
       rec.start();
       setRecording(true);
+      setRecSecs(0);
+      timerRef.current = setInterval(() => setRecSecs((s) => s + 1), 1000);
     } catch {
       alert('Microphone access is needed to record voice.');
     }
   }
   function stopRec() {
+    if (timerRef.current) clearInterval(timerRef.current);
     recRef.current?.stop();
     setRecording(false);
+  }
+  function cancelRec() {
+    cancelledRef.current = true;
+    if (timerRef.current) clearInterval(timerRef.current);
+    recRef.current?.stop();
+    setRecording(false);
+    setRecSecs(0);
   }
   function toggleRec() {
     if (recording) stopRec(); else startRec();
@@ -192,6 +212,13 @@ export function Composer({
         <button onClick={() => fileRef.current?.click()} title="Attach image" className="icon-btn flex-none text-muted">
           <ClipIcon className="w-[22px] h-[22px]" />
         </button>
+
+        {recording && (
+          <>
+            <span className="text-[12px] text-[#ff5d5d] tabular-nums flex-none">● {fmtSecs(recSecs)}</span>
+            <button onClick={cancelRec} className="icon-btn flex-none text-muted" title="Cancel recording"><CloseIcon className="w-5 h-5" /></button>
+          </>
+        )}
 
         {/* record voice -> transcribe into the box (then send via the chosen mode) */}
         <button
