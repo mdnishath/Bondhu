@@ -73,6 +73,11 @@ export const api = {
   react: (acc: string, msgId: string, emoji: string) => post(`/api/react?account=${enc(acc)}`, { msgId, emoji }),
   tts: (acc: string, msgId: string, text: string, lang: string) =>
     post<{ audioBase64: string; mime: string }>(`/api/tts?account=${enc(acc)}`, { msgId, text, lang }),
+  sendVoiceTranslated: (acc: string, chatId: string, message: string, translateTo?: string) =>
+    post<{ success: boolean; voiceMsgId: string | null; textMsgId: string | null; sentText: string; original?: string; audioBase64: string; mime: string }>(
+      `/api/send-voice?account=${enc(acc)}`,
+      { chatId, message, translateTo },
+    ),
   mediaUrl: (acc: string, msgId: string) => `/api/media/${enc(msgId)}?account=${enc(acc)}&token=${auth.token()}`,
 
   // settings
