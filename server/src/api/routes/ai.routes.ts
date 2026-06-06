@@ -87,11 +87,16 @@ export function aiRoutes(ctx: AppContext): Router {
       const ttsKey = `tts-out-${chatId}-${Buffer.from(sentText).toString('base64url')}`;
       const tts = await ctx.tts.synthesize(req.userId!, acc, ttsKey, sentText, lang);
       const ogg = await wavToOpus(Buffer.from(tts.audioBase64, 'base64'));
+      // Voice goes first. If the text send fails AFTER the voice is delivered,
+      // don't fail the whole request (that would make the client retry and
+      // double-send the voice) — report the voice id with textMsgId: null.
       const voiceMsgId = await ctx.manager.sendVoice(acc, chatId, ogg);
-      const textMsgId = await ctx.manager.sendText(acc, chatId, sentText);
+      let textMsgId: string | null = null;
+      try { textMsgId = await ctx.manager.sendText(acc, chatId, sentText); }
+      catch { /* voice already delivered; report partial success */ }
       res.json({
         success: true, voiceMsgId, textMsgId,
-        sentText, original: translateTo ? message : undefined,
+        sentText, original: willTranslate ? message : undefined,
         audioBase64: tts.audioBase64, mime: tts.mime,
       });
     } catch (e: any) { res.status(500).json({ error: e.message }); }

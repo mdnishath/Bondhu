@@ -60,6 +60,14 @@ function renderContent(msg: Message, accountId: string, lang: string) {
     );
   }
   if (msg.type === 'ptt' || msg.type === 'audio') {
+    if (msg.fromMe && !msg.localAudio) {
+      return (
+        <div>
+          <div className="flex items-center gap-2 text-[13px] text-white/75"><SpeakerIcon className="w-4 h-4" /> Voice message sent</div>
+          <Meta msg={msg} />
+        </div>
+      );
+    }
     return (
       <div>
         <VoicePlayer src={msg.localAudio ?? api.mediaUrl(accountId, msg.msgId)} />

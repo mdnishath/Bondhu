@@ -64,3 +64,20 @@ test('send-voice translates, transcodes, sends voice then text', async () => {
     audioBase64: 'QUJD', mime: 'audio/wav',
   });
 });
+
+test('send-voice reports partial (textMsgId null) when text send fails after voice', async () => {
+  const { ctx, app, token } = await authed();
+  const H = { Authorization: `Bearer ${token}` };
+  ctx.translation.translateOutgoing = vi.fn(async () => 'Bonjour') as any;
+  ctx.tts.synthesize = vi.fn(async () => ({ audioBase64: 'QUJD', mime: 'audio/wav' })) as any;
+  ctx.manager.sendVoice = vi.fn(async () => 'v9') as any;
+  ctx.manager.sendText = vi.fn(async () => { throw new Error('text send failed'); }) as any;
+  const created = await request(app).post('/api/accounts').set(H).send({});
+  const acc = created.body.accountId;
+  const res = await request(app).post(`/api/send-voice?account=${acc}`).set(H)
+    .send({ chatId: 'c1', message: 'salut', translateTo: 'fr' });
+  expect(res.status).toBe(200);
+  expect(res.body.success).toBe(true);
+  expect(res.body.voiceMsgId).toBe('v9');
+  expect(res.body.textMsgId).toBe(null);
+});
