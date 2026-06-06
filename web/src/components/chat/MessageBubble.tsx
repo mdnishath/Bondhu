@@ -225,7 +225,7 @@ function EditEditor({
 
 function ImageBubble({ msg, accountId }: { msg: Message; accountId: string }) {
   const [open, setOpen] = useState(false);
-  const src = api.mediaUrl(accountId, msg.msgId);
+  const src = msg.localImage ?? api.mediaUrl(accountId, msg.msgId);
   const caption = msg.body && msg.body !== '[image]' ? msg.body : '';
 
   return (

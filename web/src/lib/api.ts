@@ -85,6 +85,8 @@ export const api = {
       `/api/send-voice?account=${enc(acc)}`,
       { chatId, message, translateTo },
     ),
+  sendImage: (acc: string, chatId: string, imageBase64: string, caption?: string) =>
+    post<{ success: boolean; msgId: string | null }>(`/api/send-image?account=${enc(acc)}`, { chatId, imageBase64, caption }),
   mediaUrl: (acc: string, msgId: string) => `/api/media/${enc(msgId)}?account=${enc(acc)}&token=${auth.token()}`,
   profilePic: (acc: string, jid: string) => `/api/profile-pic?account=${enc(acc)}&id=${enc(jid)}&token=${auth.token()}`,
   profile: (acc: string, jid: string) =>

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type { LangOption, Message } from '../../lib/types';
-import { SendIcon, MicIcon, GlobeIcon, ReplyIcon, CloseIcon } from '../ui/icons';
+import { SendIcon, MicIcon, GlobeIcon, ReplyIcon, CloseIcon, ClipIcon } from '../ui/icons';
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -15,6 +15,7 @@ function blobToBase64(blob: Blob): Promise<string> {
 export function Composer({
   onSend,
   onMicSend,
+  onSendImage,
   langs,
   outLang,
   onOutLangChange,
@@ -27,6 +28,7 @@ export function Composer({
   onSend: (text: string) => void;
   /** Mic-recorded transcript: parent auto-sends as AI voice + text (no original audio leaves the device). */
   onMicSend: (transcript: string) => void;
+  onSendImage: (imageBase64: string, dataUri: string, caption: string) => void;
   langs: LangOption[];
   outLang: string; // '' = send as typed; otherwise translate outgoing to this lang
   onOutLangChange: (code: string) => void;
@@ -41,6 +43,21 @@ export function Composer({
   const [transcribing, setTranscribing] = useState(false);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUri = String(reader.result);
+      const base64 = dataUri.split(',')[1] || '';
+      if (base64) onSendImage(base64, dataUri, text.trim());
+      setText('');
+    };
+    reader.readAsDataURL(f);
+  }
 
   function submit() {
     const v = text.trim();
@@ -169,6 +186,12 @@ export function Composer({
             <GlobeIcon className={`w-3 h-3 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none ${outLang ? 'text-teal' : 'text-muted'}`} />
           </div>
         </div>
+
+        {/* attach an image */}
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+        <button onClick={() => fileRef.current?.click()} title="Attach image" className="icon-btn flex-none text-muted">
+          <ClipIcon className="w-[22px] h-[22px]" />
+        </button>
 
         {/* record voice -> transcribe into the box (then send via the chosen mode) */}
         <button

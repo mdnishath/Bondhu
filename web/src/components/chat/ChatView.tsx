@@ -244,6 +244,24 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     }
   }
 
+  async function sendImage(imageBase64: string, dataUri: string, caption: string) {
+    const id = 'tmp' + Date.now();
+    const tmp: Message = {
+      msgId: id, chatJid: jid, senderJid: null, fromMe: true, type: 'image',
+      body: caption || '[image]', timestamp: Date.now(), ack: 1, reactions: [],
+      localImage: dataUri,
+    };
+    setMessages((prev) => [...prev, tmp]);
+    try {
+      const res = await api.sendImage(accountId, jid, imageBase64, caption || undefined);
+      setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, msgId: res.msgId || id } : m)));
+      onChatBump();
+    } catch {
+      setMessages((prev) => prev.filter((m) => m.msgId !== id));
+      alert('Image send failed.');
+    }
+  }
+
   const bubbleHandlers: MessageBubbleHandlers = {
     onReply: (m) => { setReplyTo(m); },
     onForward: (m) => { setForwardMsg(m); },
@@ -308,6 +326,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       <Composer
         onSend={send}
         onMicSend={micSend}
+        onSendImage={sendImage}
         langs={langs}
         outLang={outLang}
         onOutLangChange={changeOutLang}
