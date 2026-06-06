@@ -68,7 +68,9 @@ export function aiRoutes(ctx: AppContext): Router {
     const { audioBase64, mimeType } = req.body ?? {};
     if (!audioBase64) return res.status(400).json({ error: 'audioBase64 required' });
     try {
-      const transcript = await ctx.transcription.transcribe(req.userId!, audioBase64, mimeType || 'audio/webm');
+      // Browser recordings are webm/opus; transcode to ogg/opus (Gemini-friendly).
+      const ogg = await wavToOpus(Buffer.from(audioBase64, 'base64'));
+      const transcript = await ctx.transcription.transcribe(req.userId!, ogg.toString('base64'), 'audio/ogg');
       res.json({ transcript });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });

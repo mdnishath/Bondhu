@@ -1,27 +1,31 @@
 import type { KeyRing } from './key-ring.js';
 
+const MODEL = 'gemini-2.5-flash';
+
 export class TranscriptionService {
   constructor(private keys: KeyRing, private fetchFn: typeof fetch = fetch) {}
 
+  /** Transcribe audio in its ORIGINAL spoken language via Gemini. Gemini handles
+   *  Bengali/Banglish (and most languages) far better than Google STT here, and
+   *  runs on the same Gemini key as translation. The caller translates the
+   *  transcript to the recipient's language at send time. */
   async transcribe(userId: string, audioBase64: string, mime: string): Promise<string> {
-    const encoding = /webm/i.test(mime) ? 'WEBM_OPUS' : 'OGG_OPUS';
+    const baseMime = (mime || 'audio/ogg').split(';')[0].trim();
     return this.keys.run(userId, async (key) => {
-      const url = `https://speech.googleapis.com/v1/speech:recognize?key=${key}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
       const resp = await this.fetchFn(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          config: {
-            encoding, sampleRateHertz: 48000, languageCode: 'en-US', enableAutomaticPunctuation: true,
-            alternativeLanguageCodes: ['bn-BD', 'hi-IN', 'ar-XA', 'es-ES'],
-          },
-          audio: { content: audioBase64 },
+          contents: [{ parts: [
+            { text: 'Transcribe this audio exactly, in its original spoken language. Output ONLY the transcript text — no quotes, no notes, no translation.' },
+            { inlineData: { mimeType: baseMime, data: audioBase64 } },
+          ] }],
         }),
       });
       if (!resp.ok) { const e: any = new Error(`stt ${resp.status}`); e.status = resp.status; throw e; }
       const data: any = await resp.json();
-      const text = (data.results ?? []).map((r: any) => r.alternatives?.[0]?.transcript ?? '').join(' ').trim();
-      return text;
+      return (data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '').trim();
     });
   }
 }
