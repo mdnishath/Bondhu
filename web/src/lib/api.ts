@@ -70,6 +70,7 @@ export const api = {
       { chatId, message, translateTo },
     ),
   markRead: (acc: string, jid: string) => post(`/api/chats/${enc(jid)}/mark-read?account=${enc(acc)}`),
+  clearChat: (acc: string, jid: string) => post<{ success: boolean }>(`/api/chats/${enc(jid)}/clear?account=${enc(acc)}`),
   react: (acc: string, msgId: string, emoji: string) => post(`/api/react?account=${enc(acc)}`, { msgId, emoji }),
   reply: (acc: string, chatId: string, msgId: string, text: string) =>
     post<{ success: boolean; msgId: string | null }>(`/api/reply?account=${enc(acc)}`, { chatId, msgId, text }),

@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import type { Chat, LangOption, Message, Reaction } from '../../lib/types';
 import { displayName } from '../../lib/format';
 import { Avatar } from '../ui/Avatar';
-import { GlobeIcon, SearchIcon, DotsIcon, BackIcon } from '../ui/icons';
+import { GlobeIcon, SearchIcon, DotsIcon, BackIcon, CloseIcon } from '../ui/icons';
 import { MessageBubble, type MessageBubbleHandlers } from './MessageBubble';
 import { Composer } from './Composer';
 import { ProfilePanel } from './ProfilePanel';
@@ -22,6 +22,9 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   const [showProfile, setShowProfile] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const name = chat ? displayName(jid, chat.name) : displayName(jid);
@@ -47,6 +50,12 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   function changeSendMode(mode: 'text' | 'voice') {
     setSendMode(mode);
     localStorage.setItem('bondhu_mode_' + jid, mode);
+  }
+
+  async function clearChat() {
+    setShowMenu(false);
+    if (!window.confirm('Clear all messages in this chat from this device?')) return;
+    try { await api.clearChat(accountId, jid); setMessages([]); onChatBump(); } catch { alert('Clear failed'); }
   }
 
   useEffect(() => {
@@ -291,6 +300,11 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     },
   };
 
+  const sq = searchQuery.trim().toLowerCase();
+  const shownMessages = sq
+    ? messages.filter((m) => [m.body, m.translated, m.transcript, m.quotedBody].some((t) => !!t && t.toLowerCase().includes(sq)))
+    : messages;
+
   return (
     <main className="flex flex-col min-h-0 chat-wall w-full h-full">
       <header className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-panel border-b border-line flex-none">
@@ -306,18 +320,38 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
             <div className="text-[12.5px] text-muted">{chat?.isGroup ? 'group' : ''}</div>
           </div>
         </button>
-        <button className="icon-btn flex-none hidden sm:grid"><SearchIcon className="w-[21px] h-[21px]" /></button>
+        <button onClick={() => setShowSearch((s) => !s)} className={`icon-btn flex-none ${showSearch ? 'text-teal' : ''}`} title="Search in chat"><SearchIcon className="w-[21px] h-[21px]" /></button>
         <button className="icon-btn flex-none" title="Translation settings" onClick={() => nav('/settings')}><GlobeIcon className="w-[21px] h-[21px]" /></button>
-        <button className="icon-btn flex-none"><DotsIcon className="w-[21px] h-[21px]" /></button>
+        <div className="relative flex-none">
+          <button onClick={() => setShowMenu((m) => !m)} className="icon-btn" title="Menu"><DotsIcon className="w-[21px] h-[21px]" /></button>
+          {showMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+              <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-panel2 border border-line rounded-lg shadow-xl py-1 text-[14px]">
+                <button onClick={() => { setShowMenu(false); setShowProfile(true); }} className="block w-full text-left px-3 py-2 hover:bg-rowhover">Contact info</button>
+                <button onClick={() => { setShowMenu(false); setShowSearch(true); }} className="block w-full text-left px-3 py-2 hover:bg-rowhover">Search in chat</button>
+                <button onClick={clearChat} className="block w-full text-left px-3 py-2 hover:bg-rowhover text-[#ff6b6b]">Clear chat</button>
+              </div>
+            </>
+          )}
+        </div>
       </header>
+
+      {showSearch && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-panel border-b border-line flex-none">
+          <SearchIcon className="w-4 h-4 text-muted flex-none" />
+          <input autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search in this chat…" className="flex-1 bg-transparent outline-none text-txt text-[14px]" />
+          <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="icon-btn text-muted" title="Close search"><CloseIcon className="w-4 h-4" /></button>
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scroll px-3 sm:px-[6%] py-4 min-w-0">
         {loading ? (
           <div className="text-center text-muted py-10">Loading…</div>
-        ) : messages.length === 0 ? (
-          <div className="text-center text-muted py-10">No messages yet. Say hello 👋</div>
+        ) : shownMessages.length === 0 ? (
+          <div className="text-center text-muted py-10">{sq ? 'No matching messages' : 'No messages yet. Say hello 👋'}</div>
         ) : (
-          messages.map((m) => (
+          shownMessages.map((m) => (
             <MessageBubble key={m.msgId} msg={m} accountId={accountId} lang={lang} handlers={bubbleHandlers} />
           ))
         )}

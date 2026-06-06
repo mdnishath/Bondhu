@@ -71,6 +71,10 @@ export class MessagesRepo {
       .run(body, accountId, msgId);
   }
 
+  clearChat(accountId: string, chatJid: string): void {
+    this.db.prepare('DELETE FROM messages WHERE account_id=? AND chat_jid=?').run(accountId, chatJid);
+  }
+
   listByChat(accountId: string, chatJid: string, limit: number, before?: number): Message[] {
     const beforeTs = before ?? Number.MAX_SAFE_INTEGER;
     return (

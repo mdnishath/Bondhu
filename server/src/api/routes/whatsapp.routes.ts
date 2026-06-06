@@ -129,6 +129,13 @@ export function whatsappRoutes(ctx: AppContext): Router {
     res.json({ success: true });
   });
 
+  r.post('/chats/:chatId/clear', (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res);
+    if (!accountId) return;
+    ctx.messages.clearChat(accountId, req.params.chatId);
+    res.json({ success: true });
+  });
+
   r.post('/react', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const { msgId, emoji } = req.body ?? {};
