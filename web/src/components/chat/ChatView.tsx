@@ -70,7 +70,10 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
     if (!s) return;
     const onMsg = (m: Message & { accountId: string }) => {
       if (m.accountId === accountId && m.chatJid === jid) {
-        setMessages((prev) => [...prev, m]);
+        // Dedupe: WhatsApp echoes our own sent messages back via messages.upsert.
+        // Skip any message id we already render (optimistic or already received);
+        // genuinely new ids (e.g. sent from the phone) still appear live.
+        setMessages((prev) => (prev.some((x) => x.msgId === m.msgId) ? prev : [...prev, m]));
         api.markRead(accountId, jid).catch(() => {});
       }
       onChatBump();
@@ -110,7 +113,9 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
           msgId: res.textMsgId || id + 't', chatJid: jid, senderJid: null, fromMe: true, type: 'text',
           body: res.sentText, timestamp: Date.now() + 1, ack: 1, reactions: [], original: res.original,
         };
-        setMessages((prev) => prev.filter((m) => m.msgId !== id).concat(voiceMsg, textMsg));
+        setMessages((prev) =>
+          prev.filter((m) => m.msgId !== id && m.msgId !== voiceMsg.msgId && m.msgId !== textMsg.msgId).concat(voiceMsg, textMsg),
+        );
         onChatBump();
       } catch {
         setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, translating: undefined, body: text } : m)));
@@ -128,11 +133,14 @@ export function ChatView({ accountId, jid, chat, onChatBump }: { accountId: stri
     setMessages((prev) => [...prev, tmp]);
     try {
       const res = await api.send(accountId, jid, text, outLang || undefined);
-      if (res.sentText) {
-        setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, body: res.sentText!, original: res.original, translating: undefined } : m)));
-      } else {
-        setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, translating: undefined } : m)));
-      }
+      // Replace the optimistic bubble with the REAL message id so the WhatsApp
+      // echo (same id) is deduped instead of appended as a second bubble.
+      setMessages((prev) => {
+        const rest = prev.filter((m) => m.msgId !== id);
+        const realId = res.msgId || id;
+        if (rest.some((m) => m.msgId === realId)) return rest; // echo already arrived
+        return [...rest, { ...tmp, msgId: realId, body: res.sentText ?? text, original: res.original, translating: undefined }];
+      });
       onChatBump();
     } catch {
       setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, body: text, original: undefined, translating: undefined } : m)));
