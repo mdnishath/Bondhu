@@ -18,9 +18,9 @@ export function AccountRail() {
 
   return (
     <nav className="bg-panel border-r border-line flex flex-col items-center pt-3.5 pb-4 gap-1.5">
-      <div className="w-[42px] h-[42px] rounded-[13px] grid place-items-center mb-2" style={{ background: 'linear-gradient(145deg,#25D366,#00A884 60%,#017561)', boxShadow: '0 4px 14px rgba(0,168,132,.35)' }}>
+      <button onClick={() => nav('/')} title="Home — chats" className="w-[42px] h-[42px] rounded-[13px] grid place-items-center mb-2 cursor-pointer" style={{ background: 'linear-gradient(145deg,#25D366,#00A884 60%,#017561)', boxShadow: '0 4px 14px rgba(0,168,132,.35)' }}>
         <LogoIcon className="w-6 h-6" />
-      </div>
+      </button>
       <div className="w-[34px] h-px bg-line my-1.5" />
 
       <div className="flex flex-col items-center gap-3.5 py-1">
