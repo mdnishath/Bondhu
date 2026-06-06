@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../../lib/api';
+import { api, auth } from '../../lib/api';
 import { disconnectSocket } from '../../lib/socket';
 import { avatarGradient, initials } from '../../lib/format';
 import { useStore } from '../../store/useStore';
@@ -7,13 +7,27 @@ import { LogoIcon, PlusIcon, GearIcon, LogoutIcon } from '../ui/icons';
 
 export function AccountRail() {
   const nav = useNavigate();
-  const { accounts, activeAccount, setActiveAccount } = useStore();
+  const { accounts, activeAccount, setActiveAccount, setAccounts } = useStore();
 
   function logout() {
     auth.clear();
     disconnectSocket();
     localStorage.removeItem('bondhu_account');
     nav('/login', { replace: true });
+  }
+
+  async function removeAccount(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!window.confirm('Remove this account from Bondhu? Its chats will be cleared from this app.')) return;
+    try { await api.removeAccount(id); } catch { /* ignore — drop from UI regardless */ }
+    const next = accounts.filter((a) => a.id !== id);
+    setAccounts(next);
+    if (activeAccount === id) {
+      const pick = next.find((a) => a.status === 'connected') || next[0];
+      if (pick) setActiveAccount(pick.id);
+      localStorage.removeItem('bondhu_chat');
+      nav('/');
+    }
   }
 
   return (
@@ -29,24 +43,32 @@ export function AccountRail() {
           const nm = a.label || (a.phone ? '+' + a.phone : 'Account');
           const active = a.id === activeAccount;
           return (
-            <button
-              key={a.id}
-              title={`${nm} · ${a.status}`}
-              onClick={() => {
-                if (a.id !== activeAccount) {
-                  setActiveAccount(a.id);
-                  localStorage.removeItem('bondhu_chat');
-                  nav('/');
-                }
-              }}
-              className={`relative rounded-full ${active ? 'p-[3px]' : ''}`}
-              style={active ? { boxShadow: '0 0 0 2px #00A884' } : undefined}
-            >
-              <div className="rounded-full grid place-items-center text-white font-semibold" style={{ width: active ? 40 : 42, height: active ? 40 : 42, background: avatarGradient(a.id), fontSize: 15 }}>
-                {initials(nm)}
-              </div>
-              <span className="absolute -right-px -bottom-px w-[13px] h-[13px] rounded-full border-[2.5px] border-panel" style={{ background: on ? '#25D366' : '#667781' }} />
-            </button>
+            <div key={a.id} className="relative group">
+              <button
+                title={`${nm} · ${a.status}`}
+                onClick={() => {
+                  if (a.id !== activeAccount) {
+                    setActiveAccount(a.id);
+                    localStorage.removeItem('bondhu_chat');
+                    nav('/');
+                  }
+                }}
+                className={`relative rounded-full block ${active ? 'p-[3px]' : ''}`}
+                style={active ? { boxShadow: '0 0 0 2px #00A884' } : undefined}
+              >
+                <div className="rounded-full grid place-items-center text-white font-semibold" style={{ width: active ? 40 : 42, height: active ? 40 : 42, background: avatarGradient(a.id), fontSize: 15 }}>
+                  {initials(nm)}
+                </div>
+                <span className="absolute -right-px -bottom-px w-[13px] h-[13px] rounded-full border-[2.5px] border-panel" style={{ background: on ? '#25D366' : '#667781' }} />
+              </button>
+              <button
+                onClick={(e) => removeAccount(a.id, e)}
+                title="Remove account"
+                className="absolute -top-1 -right-1 w-[17px] h-[17px] rounded-full bg-[#ff5d5d] text-white text-[12px] leading-none grid place-items-center shadow opacity-0 group-hover:opacity-100 transition"
+              >
+                ×
+              </button>
+            </div>
           );
         })}
       </div>

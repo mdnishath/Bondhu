@@ -21,7 +21,17 @@ export function ChatListPanel({
   const nav = useNavigate();
   const { me, accounts, activeAccount } = useStore();
   const [q, setQ] = useState('');
+  const [showNew, setShowNew] = useState(false);
+  const [newNum, setNewNum] = useState('');
   void reloadKey;
+
+  function startNew() {
+    const digits = newNum.replace(/[^0-9]/g, '');
+    if (!digits) return;
+    setShowNew(false);
+    setNewNum('');
+    onSelect(digits + '@s.whatsapp.net');
+  }
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -42,7 +52,7 @@ export function ChatListPanel({
               <div className="text-xs text-muted">{acc?.phone ? '+' + acc.phone : 'not linked'}</div>
             </div>
           </div>
-          <button className="icon-btn" title="New chat" onClick={() => nav('/link')}><PencilIcon className="w-[18px] h-[18px]" /></button>
+          <button className="icon-btn" title="New chat" onClick={() => setShowNew(true)}><PencilIcon className="w-[18px] h-[18px]" /></button>
         </div>
         <label className="flex items-center gap-2.5 bg-panel2 rounded-[10px] px-3 py-2 border border-transparent focus-within:border-teal/50">
           <SearchIcon className="w-[17px] h-[17px] text-muted flex-none" />
@@ -68,6 +78,27 @@ export function ChatListPanel({
           filtered.map((c) => <ChatRow key={c.jid} chat={c} active={c.jid === activeJid} onClick={() => onSelect(c.jid)} accountId={activeAccount} />)
         )}
       </div>
+
+      {showNew && (
+        <div className="fixed inset-0 z-30 bg-black/50 grid place-items-center" onClick={() => setShowNew(false)}>
+          <div className="bg-panel border border-line rounded-xl p-5 w-[320px] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-[15px] font-semibold mb-1">New chat</div>
+            <div className="text-[12.5px] text-muted mb-3">Enter a phone number with country code (digits only).</div>
+            <input
+              autoFocus
+              value={newNum}
+              onChange={(e) => setNewNum(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && startNew()}
+              placeholder="8801XXXXXXXXX"
+              className="w-full bg-panel2 rounded-lg px-3 py-2 text-txt text-[14px] outline-none border border-transparent focus:border-teal/50 mb-3"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowNew(false)} className="text-muted text-[13px] px-3 py-1.5">Cancel</button>
+              <button onClick={startNew} className="text-[#06291f] font-semibold text-[13px] px-3 py-1.5 rounded-lg" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }}>Start chat</button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
