@@ -27,7 +27,9 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   const [showMenu, setShowMenu] = useState(false);
   const [chatLang, setChatLang] = useState('');
   const [msgReload, setMsgReload] = useState(0);
+  const [presence, setPresence] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const presenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const name = chat ? displayName(jid, chat.name) : displayName(jid);
 
@@ -40,6 +42,8 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     setSendMode((localStorage.getItem('bondhu_mode_' + jid) as 'text' | 'voice') || 'text');
     setReplyTo(null);
     api.chatLanguage(accountId, jid).then((r) => setChatLang(r.lang || '')).catch(() => {});
+    setPresence('');
+    api.presenceSubscribe(accountId, jid).catch(() => {});
   }, [accountId, jid]);
 
   function changeOutLang(code: string) {
@@ -128,17 +132,28 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       if (e.accountId !== accountId) return;
       setMessages((prev) => prev.map((m) => (m.msgId === e.msgId ? { ...m, body: e.text, edited: true } : m)));
     };
+    const onPresence = (e: { accountId: string; jid: string; state: string }) => {
+      if (e.accountId !== accountId || e.jid !== jid) return;
+      const label = e.state === 'composing' ? 'typing…' : e.state === 'recording' ? 'recording…' : e.state === 'available' ? 'online' : '';
+      setPresence(label);
+      if (presenceTimer.current) clearTimeout(presenceTimer.current);
+      if (e.state === 'composing' || e.state === 'recording') {
+        presenceTimer.current = setTimeout(() => setPresence('online'), 5000);
+      }
+    };
     s.on('message', onMsg);
     s.on('message_reaction', onReaction);
     s.on('message_ack', onAck);
     s.on('message_delete', onDel);
     s.on('message_edit', onEdit);
+    s.on('presence', onPresence);
     return () => {
       s.off('message', onMsg);
       s.off('message_reaction', onReaction);
       s.off('message_ack', onAck);
       s.off('message_delete', onDel);
       s.off('message_edit', onEdit);
+      s.off('presence', onPresence);
     };
   }, [accountId, jid, onChatBump]);
 
@@ -326,7 +341,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
           <Avatar name={name} seed={jid} size={40} src={api.profilePic(accountId, jid)} />
           <div className="flex-1 min-w-0">
             <div className="text-[16px] font-medium text-txt truncate">{name}</div>
-            <div className="text-[12.5px] text-muted">{chat?.isGroup ? 'group' : ''}</div>
+            <div className={`text-[12.5px] ${presence === 'typing…' || presence === 'recording…' ? 'text-teal' : 'text-muted'}`}>{presence || (chat?.isGroup ? 'group' : '')}</div>
           </div>
         </button>
         <button onClick={() => setShowSearch((s) => !s)} className={`icon-btn flex-none ${showSearch ? 'text-teal' : ''}`} title="Search in chat"><SearchIcon className="w-[21px] h-[21px]" /></button>

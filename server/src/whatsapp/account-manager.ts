@@ -59,6 +59,10 @@ export class AccountManager extends EventEmitter {
       this.emit('chat_update', id, jid);
     });
 
+    conn.on('presence', (jid: string, state: string) => {
+      this.emit('presence', id, jid, state);
+    });
+
     conn.on('message', (m: UpsertMessage, isHistory = false) => {
       this.messages.upsert(m);
       this.chats.touch(id, m.chatJid, {
@@ -239,6 +243,13 @@ export class AccountManager extends EventEmitter {
   async profileAbout(accountId: string, jid: string): Promise<string | null> {
     const conn = this.conns.get(accountId);
     return conn ? conn.fetchAbout(jid) : null;
+  }
+
+  async subscribePresence(accountId: string, jid: string): Promise<void> {
+    await this.conns.get(accountId)?.subscribePresence(jid);
+  }
+  async sendTyping(accountId: string, jid: string, on: boolean): Promise<void> {
+    await this.conns.get(accountId)?.sendTyping(jid, on);
   }
 
   async resolvePhoneJid(accountId: string, jid: string): Promise<string | null> {

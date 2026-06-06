@@ -112,4 +112,6 @@ export const api = {
     post(`/api/chats/${enc(jid)}/language?account=${enc(acc)}`, { lang }),
   chatLanguage: (acc: string, jid: string) =>
     get<{ lang: string | null }>(`/api/chats/${enc(jid)}/language?account=${enc(acc)}`),
+  presenceSubscribe: (acc: string, jid: string) => post(`/api/presence/subscribe?account=${enc(acc)}`, { jid }),
+  presenceTyping: (acc: string, jid: string, on: boolean) => post(`/api/presence/typing?account=${enc(acc)}`, { jid, on }),
 };

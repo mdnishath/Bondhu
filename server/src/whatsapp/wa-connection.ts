@@ -179,12 +179,25 @@ export class WaConnection extends EventEmitter {
 
     sock.ev.on('contacts.upsert', (contacts) => onContacts(contacts as any[]));
     sock.ev.on('contacts.update', (updates) => onContacts(updates as any[]));
+
+    sock.ev.on('presence.update', ({ id, presences }: any) => {
+      const p = presences && (presences[id] || Object.values(presences)[0]);
+      const state = (p as any)?.lastKnownPresence;
+      if (id && state) this.emit('presence', String(id), String(state));
+    });
   }
 
   async sendText(jid: string, text: string): Promise<string | null> {
     if (!this.sock) throw new Error('Not connected');
     const sent = await this.sock.sendMessage(jid, { text });
     return sent?.key?.id ?? null;
+  }
+
+  async subscribePresence(jid: string): Promise<void> {
+    try { await this.sock?.presenceSubscribe(jid); } catch { /* ignore */ }
+  }
+  async sendTyping(jid: string, on: boolean): Promise<void> {
+    try { await this.sock?.sendPresenceUpdate(on ? 'composing' : 'paused', jid); } catch { /* ignore */ }
   }
 
   private keyFor(stored: { msgId: string; chatJid: string; fromMe: boolean; senderJid: string | null }): WAMessageKey {

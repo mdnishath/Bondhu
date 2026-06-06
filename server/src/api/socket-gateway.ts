@@ -77,4 +77,7 @@ export function attachGateway(io: IOServer, ctx: AppContext): void {
   ctx.manager.on('message_edit', (accountId: string, msgId: string, text: string) =>
     toUserRoom(accountId, 'message_edit', { msgId, text }),
   );
+  ctx.manager.on('presence', (accountId: string, jid: string, state: string) =>
+    toUserRoom(accountId, 'presence', { jid, state }),
+  );
 }

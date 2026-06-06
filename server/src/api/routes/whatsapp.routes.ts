@@ -140,6 +140,18 @@ export function whatsappRoutes(ctx: AppContext): Router {
     res.json({ success: true });
   });
 
+  r.post('/presence/subscribe', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    await ctx.manager.subscribePresence(accountId, req.body?.jid);
+    res.json({ success: true });
+  });
+
+  r.post('/presence/typing', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    await ctx.manager.sendTyping(accountId, req.body?.jid, !!req.body?.on);
+    res.json({ success: true });
+  });
+
   r.post('/react', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const { msgId, emoji } = req.body ?? {};
