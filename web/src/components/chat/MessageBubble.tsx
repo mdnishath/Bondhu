@@ -4,6 +4,7 @@ import type { Message } from '../../lib/types';
 import { clockTime } from '../../lib/format';
 import { Tick } from '../ui/Avatar';
 import { GlobeIcon, SpeakerIcon, PlayIcon } from '../ui/icons';
+import { TranslatingLoader } from './TranslatingLoader';
 
 export function MessageBubble({ msg, accountId, lang }: { msg: Message; accountId: string; lang: string }) {
   const out = msg.fromMe;
@@ -39,6 +40,14 @@ function Meta({ msg }: { msg: Message }) {
 }
 
 function renderContent(msg: Message, accountId: string, lang: string) {
+  if (msg.translating) {
+    return (
+      <div>
+        <TranslatingLoader label={msg.translating} />
+        <Meta msg={msg} />
+      </div>
+    );
+  }
   if (msg.type === 'image') {
     return (
       <div className="-mx-1 -mt-0.5">
@@ -53,7 +62,7 @@ function renderContent(msg: Message, accountId: string, lang: string) {
   if (msg.type === 'ptt' || msg.type === 'audio') {
     return (
       <div>
-        <VoicePlayer src={api.mediaUrl(accountId, msg.msgId)} />
+        <VoicePlayer src={msg.localAudio ?? api.mediaUrl(accountId, msg.msgId)} />
         <Meta msg={msg} />
       </div>
     );
