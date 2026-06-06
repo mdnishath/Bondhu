@@ -112,7 +112,7 @@ export class WaConnection extends EventEmitter {
       }
     });
 
-    sock.ev.on('messages.upsert', ({ messages }) => {
+    sock.ev.on('messages.upsert', async ({ messages }) => {
       for (const m of messages) {
         // Surface protocol-layer events (someone revoked / edited a message)
         // BEFORE we filter them out in normalize. Without this the only signal
@@ -134,6 +134,7 @@ export class WaConnection extends EventEmitter {
         const norm = normalizeMessage(this.accountId, m);
         if (!norm) continue;
         norm.raw = JSON.stringify(m, BufferJSON.replacer);
+        norm.chatJid = await this.canonicalJid(norm.chatJid); // merge @lid + phone into one chat
         const name = m.pushName ?? undefined;
         const isGroup = norm.chatJid.endsWith('@g.us');
         this.emit('chat', norm.chatJid, name, isGroup);
@@ -280,6 +281,16 @@ export class WaConnection extends EventEmitter {
     } catch {
       return null;
     }
+  }
+
+  /** Canonical chat key: the phone `@s.whatsapp.net` jid when an `@lid` resolves
+   *  to one, else the jid unchanged. WhatsApp addresses the same person by BOTH
+   *  an `@lid` (privacy id) and their phone jid; keying everything to one form
+   *  keeps a contact's incoming + outgoing in a SINGLE chat. */
+  async canonicalJid(jid: string): Promise<string> {
+    if (!jid || !jid.endsWith('@lid')) return jid;
+    const pn = await this.resolvePhoneJid(jid);
+    return pn && pn.endsWith('@s.whatsapp.net') ? pn : jid;
   }
 
   async profilePicUrl(jid: string): Promise<string | null> {

@@ -15,6 +15,7 @@ function fakeConn(accountId: string) {
   e.start = vi.fn(async () => {});
   e.stop = vi.fn(async () => {});
   e.sendText = vi.fn(async () => 'sent-1');
+  e.canonicalJid = vi.fn(async (j: string) => j);
   return e;
 }
 

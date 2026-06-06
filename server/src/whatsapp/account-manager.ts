@@ -115,6 +115,7 @@ export class AccountManager extends EventEmitter {
   async sendText(accountId: string, jid: string, text: string): Promise<string | null> {
     const conn = this.conns.get(accountId);
     if (!conn) throw new Error('Account not connected');
+    jid = await conn.canonicalJid(jid); // keep send in the same chat as incoming (@lid -> phone)
     const msgId = await conn.sendText(jid, text);
     if (msgId) {
       const ts = Date.now();
@@ -160,6 +161,7 @@ export class AccountManager extends EventEmitter {
 
   async reply(accountId: string, jid: string, msgId: string, text: string): Promise<string | null> {
     const conn = this.requireConn(accountId);
+    jid = await conn.canonicalJid(jid);
     const raw = this.messages.getRaw(accountId, msgId);
     if (!raw) throw new Error('original message unavailable');
     const sentId = await conn.reply(jid, text, raw);
@@ -216,6 +218,7 @@ export class AccountManager extends EventEmitter {
 
   async sendImage(accountId: string, jid: string, buffer: Buffer, caption?: string): Promise<string | null> {
     const conn = this.requireConn(accountId);
+    jid = await conn.canonicalJid(jid);
     const sentId = await conn.sendImage(jid, buffer, caption);
     if (sentId) this.storeOutgoing(accountId, jid, sentId, caption ?? '[image]', 'image');
     return sentId;
@@ -223,6 +226,7 @@ export class AccountManager extends EventEmitter {
 
   async sendVoice(accountId: string, jid: string, buffer: Buffer): Promise<string | null> {
     const conn = this.requireConn(accountId);
+    jid = await conn.canonicalJid(jid);
     const sentId = await conn.sendVoice(jid, buffer);
     if (sentId) this.storeOutgoing(accountId, jid, sentId, '[voice]', 'ptt');
     return sentId;
