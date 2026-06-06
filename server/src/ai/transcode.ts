@@ -1,6 +1,10 @@
 import { spawn } from 'child_process';
+import ffmpegStatic from 'ffmpeg-static';
 
-const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
+// Resolve ffmpeg WITHOUT depending on the launch shell's PATH:
+// explicit FFMPEG_PATH override -> bundled static binary (ffmpeg-static) -> PATH.
+// The bundled binary means voice works regardless of which terminal starts the server.
+export const FFMPEG_BIN: string = process.env.FFMPEG_PATH || ffmpegStatic || 'ffmpeg';
 
 /**
  * Transcode an ffmpeg-readable audio buffer (we feed WAV/PCM16 from Gemini TTS)
@@ -9,7 +13,7 @@ const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
  */
 export function wavToOpus(input: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const ff = spawn(FFMPEG, [
+    const ff = spawn(FFMPEG_BIN, [
       '-hide_banner', '-loglevel', 'error',
       '-i', 'pipe:0',
       '-c:a', 'libopus', '-b:a', '24k',

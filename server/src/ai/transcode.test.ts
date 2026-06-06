@@ -1,8 +1,10 @@
 import { test, expect } from 'vitest';
 import { spawnSync } from 'child_process';
-import { wavToOpus } from './transcode.js';
+import { wavToOpus, FFMPEG_BIN } from './transcode.js';
 
-const hasFfmpeg = spawnSync(process.env.FFMPEG_PATH || 'ffmpeg', ['-version']).status === 0;
+// Uses the same resolved binary the util uses (bundled ffmpeg-static by default),
+// so this runs without depending on the shell PATH.
+const hasFfmpeg = spawnSync(FFMPEG_BIN, ['-version']).status === 0;
 
 // Minimal PCM16 mono WAV builder (test-local; mirrors tts.service's header).
 function wav(pcm: Buffer, rate = 24000, ch = 1): Buffer {
