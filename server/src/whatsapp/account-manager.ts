@@ -63,13 +63,28 @@ export class AccountManager extends EventEmitter {
       this.emit('presence', id, jid, state);
     });
 
-    conn.on('message', (m: UpsertMessage, isHistory = false) => {
+    conn.on('message', async (m: UpsertMessage, isHistory = false) => {
       this.messages.upsert(m);
       this.chats.touch(id, m.chatJid, {
         lastMessageAt: m.timestamp,
         preview: m.body ?? '',
         incUnread: !m.fromMe && !isHistory,
       });
+      // Auto-heal split chats: a real-time reply arrives keyed by `@lid`, but an
+      // earlier outgoing to a then-unknown typed number created a separate bare
+      // phone chat. Now that the lid↔phone mapping is known, fold the phone chat
+      // into this `@lid` one so the contact stays a single thread. Only on live
+      // messages (history sync is already canonicalized at ingest).
+      if (!isHistory && m.chatJid.endsWith('@lid')) {
+        try {
+          const pn: string | null = await conn.resolvePhoneJid(m.chatJid);
+          const bare = pn ? pn.replace(/:\d+@/, '@') : null; // strip device suffix
+          if (bare && bare.endsWith('@s.whatsapp.net') && bare !== m.chatJid) {
+            const moved = this.chats.mergeChat(id, bare, m.chatJid);
+            if (moved) this.emit('chat_update', id, m.chatJid);
+          }
+        } catch { /* best-effort */ }
+      }
       if (!isHistory) this.emit('message', id, m);
       this.emit('chat_update', id, m.chatJid);
     });

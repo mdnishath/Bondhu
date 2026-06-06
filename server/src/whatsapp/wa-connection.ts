@@ -283,14 +283,21 @@ export class WaConnection extends EventEmitter {
     }
   }
 
-  /** Canonical chat key: the phone `@s.whatsapp.net` jid when an `@lid` resolves
-   *  to one, else the jid unchanged. WhatsApp addresses the same person by BOTH
-   *  an `@lid` (privacy id) and their phone jid; keying everything to one form
-   *  keeps a contact's incoming + outgoing in a SINGLE chat. */
+  /** Canonical chat key: a contact's `@lid` identity when their phone jid maps to
+   *  one, else the jid unchanged. WhatsApp now addresses people primarily by
+   *  `@lid` (new incoming arrives as @lid and most chats are already @lid), so
+   *  keying everything to @lid keeps a contact's incoming + outgoing in ONE chat
+   *  with minimal disruption. `@lid` and `@g.us` pass through unchanged. */
   async canonicalJid(jid: string): Promise<string> {
-    if (!jid || !jid.endsWith('@lid')) return jid;
-    const pn = await this.resolvePhoneJid(jid);
-    return pn && pn.endsWith('@s.whatsapp.net') ? pn : jid;
+    if (!jid || !jid.endsWith('@s.whatsapp.net')) return jid;
+    if (!this.sock) return jid;
+    try {
+      const repo: any = (this.sock as any).signalRepository;
+      const lid = await repo?.lidMapping?.getLIDForPN?.(jid);
+      return lid && String(lid).endsWith('@lid') ? String(lid) : jid;
+    } catch {
+      return jid;
+    }
   }
 
   async profilePicUrl(jid: string): Promise<string | null> {

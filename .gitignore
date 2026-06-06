@@ -4,6 +4,7 @@ dist/
 .local/
 *.db
 *.db-*
+*.db.bak
 firebase-service-account.json
 .wwebjs_auth/
 build/

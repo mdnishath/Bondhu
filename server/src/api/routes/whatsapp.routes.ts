@@ -250,6 +250,29 @@ export function whatsappRoutes(ctx: AppContext): Router {
     res.json({ jid: id, about, phoneJid, phone });
   });
 
+  // Repair legacy split chats: any non-group phone-keyed chat whose `@lid` is now
+  // known gets folded into its `@lid` chat so one contact = one thread. New
+  // messages already canonicalize at ingest; this fixes rows stored before the
+  // lid mapping was learned. Returns what was merged. Reload the client after.
+  r.post('/merge-lid-chats', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const conn: any = ctx.manager.get(accountId);
+    if (!conn) return res.status(409).json({ error: 'account not connected' });
+    const phoneChats = ctx.db
+      .prepare("SELECT jid FROM chats WHERE account_id=? AND jid LIKE '%@s.whatsapp.net'")
+      .all(accountId) as Array<{ jid: string }>;
+    const merged: Array<{ from: string; to: string; moved: number }> = [];
+    for (const { jid } of phoneChats) {
+      let lid: string;
+      try { lid = await conn.canonicalJid(jid); } catch { continue; }
+      if (!lid || lid === jid || !lid.endsWith('@lid')) continue;
+      const moved = ctx.chats.mergeChat(accountId, jid, lid);
+      merged.push({ from: jid, to: lid, moved });
+      ctx.manager.emit('chat_update', accountId, lid);
+    }
+    res.json({ merged, count: merged.length, scanned: phoneChats.length });
+  });
+
   r.get('/profile-pic', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const id = req.query.id as string;

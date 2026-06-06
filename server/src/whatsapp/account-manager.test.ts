@@ -16,6 +16,7 @@ function fakeConn(accountId: string) {
   e.stop = vi.fn(async () => {});
   e.sendText = vi.fn(async () => 'sent-1');
   e.canonicalJid = vi.fn(async (j: string) => j);
+  e.resolvePhoneJid = vi.fn(async (j: string) => j);
   return e;
 }
 
@@ -52,6 +53,36 @@ test('start persists incoming message + chat and re-emits', async () => {
   expect(messages.listByChat(acc.id, 'c@s.whatsapp.net', 10)).toHaveLength(1);
   expect(chats.list(acc.id, 10, 0)[0].lastMessagePreview).toBe('hi');
   expect(events).toHaveLength(1);
+});
+
+test('incoming @lid message auto-heals an earlier split phone chat', async () => {
+  const { mgr, accounts, messages, chats, conns } = makeManager();
+  const acc = accounts.create({ userId: 'u1' });
+  await mgr.start(acc.id);
+  const conn = conns[0];
+  const BARE = '8801744243205@s.whatsapp.net';
+  const LID = '23081187860486@lid';
+  // the live mapping resolves this @lid to the phone (with a device suffix).
+  conn.resolvePhoneJid = vi.fn(async (j: string) => (j === LID ? '8801744243205:0@s.whatsapp.net' : j));
+
+  // earlier: outgoing to a typed number landed on a bare phone chat.
+  await mgr.sendText(acc.id, BARE, 'hello (sent before reply)');
+  expect(messages.listByChat(acc.id, BARE, 10)).toHaveLength(1);
+
+  // now: their reply arrives keyed by @lid.
+  conn.emit('chat', LID, 'Client', false);
+  conn.emit('message', {
+    accountId: acc.id, msgId: 'r1', chatJid: LID, senderJid: LID,
+    fromMe: false, type: 'text', body: 'hi back', timestamp: 2000, ack: 0,
+  });
+  await new Promise((r) => setImmediate(r)); // let the async handler settle
+
+  // the two chats are now one @lid thread holding both messages.
+  expect(messages.listByChat(acc.id, BARE, 10)).toHaveLength(0);
+  expect(messages.listByChat(acc.id, LID, 10)).toHaveLength(2);
+  const list = chats.list(acc.id, 10, 0);
+  expect(list).toHaveLength(1);
+  expect(list[0].jid).toBe(LID);
 });
 
 test('phone event records phone on the stable account id', async () => {
