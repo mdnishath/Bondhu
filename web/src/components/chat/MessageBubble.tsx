@@ -59,7 +59,7 @@ export function MessageBubble({
 
   return (
     <div className={`group flex ${out ? 'justify-end' : 'justify-start'} mb-1.5 min-w-0`}>
-      <div className="relative max-w-[85%] sm:max-w-[75%] md:max-w-[65%] min-w-0">
+      <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[65%] min-w-0 ${menuOpen ? 'z-50' : ''}`}>
         <div
           className="rounded-[10px] px-2.5 py-1.5 text-[14.2px] leading-snug shadow"
           style={{ background: out ? '#005C4B' : '#202C33' }}
