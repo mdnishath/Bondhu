@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { AppContext } from '../../app-context.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { SUPPORTED_LANGS, isSupportedLang } from '../../ai/langs.js';
+import { wavToOpus } from '../../ai/transcode.js';
 
 export function aiRoutes(ctx: AppContext): Router {
   const r = Router();
@@ -19,7 +20,7 @@ export function aiRoutes(ctx: AppContext): Router {
 
   // --- Language ---
   r.get('/settings/language', (req: AuthedRequest, res) =>
-    res.json({ lang: ctx.langs.getGlobal(req.userId!), supported: SUPPORTED_LANGS.map((l) => ({ code: l.code, name: l.name })) }));
+    res.json({ lang: ctx.langs.getGlobal(req.userId!), supported: SUPPORTED_LANGS.map((l) => ({ code: l.code, name: l.name, flag: l.flag })) }));
   r.post('/settings/language', (req: AuthedRequest, res) => {
     const { lang } = req.body ?? {};
     if (!isSupportedLang(lang)) return res.status(400).json({ error: 'unsupported lang' });
@@ -72,15 +73,32 @@ export function aiRoutes(ctx: AppContext): Router {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  // --- Text -> voice send (TTS then send as ptt) ---
+  // --- Text -> translated voice note + text (composer voice mode) ---
   r.post('/send-voice', async (req: AuthedRequest, res) => {
     const acc = account(req, res); if (!acc) return;
-    const { chatId, text, language } = req.body ?? {};
-    const lang = isSupportedLang(language) ? language : ctx.langs.getGlobal(req.userId!);
+    const { chatId, message, translateTo } = req.body ?? {};
+    if (!chatId || !message) return res.status(400).json({ error: 'chatId and message required' });
     try {
-      const tts = await ctx.tts.synthesize(req.userId!, acc, `tts-${chatId}-${text.length}`, text, lang);
-      const id = await ctx.manager.sendVoice(acc, chatId, Buffer.from(tts.audioBase64, 'base64'));
-      res.json({ success: true, msgId: id });
+      const willTranslate = isSupportedLang(translateTo);
+      const lang = willTranslate ? translateTo : ctx.langs.getGlobal(req.userId!);
+      const sentText = willTranslate
+        ? await ctx.translation.translateOutgoing(req.userId!, message, translateTo)
+        : message;
+      const ttsKey = `tts-out-${chatId}-${Buffer.from(sentText).toString('base64url')}`;
+      const tts = await ctx.tts.synthesize(req.userId!, acc, ttsKey, sentText, lang);
+      const ogg = await wavToOpus(Buffer.from(tts.audioBase64, 'base64'));
+      // Voice goes first. If the text send fails AFTER the voice is delivered,
+      // don't fail the whole request (that would make the client retry and
+      // double-send the voice) — report the voice id with textMsgId: null.
+      const voiceMsgId = await ctx.manager.sendVoice(acc, chatId, ogg);
+      let textMsgId: string | null = null;
+      try { textMsgId = await ctx.manager.sendText(acc, chatId, sentText); }
+      catch { /* voice already delivered; report partial success */ }
+      res.json({
+        success: true, voiceMsgId, textMsgId,
+        sentText, original: willTranslate ? message : undefined,
+        audioBase64: tts.audioBase64, mime: tts.mime,
+      });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
