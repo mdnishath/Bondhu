@@ -33,9 +33,10 @@ export function MessageBubble({ msg, accountId, lang }: { msg: Message; accountI
 
 function Meta({ msg }: { msg: Message }) {
   return (
-    <span className="float-right ml-2 mt-1 text-[11px] text-muted whitespace-nowrap select-none">
-      {clockTime(msg.timestamp)} {msg.fromMe && <Tick ack={msg.ack} />}
-    </span>
+    <div className="flex items-center justify-end gap-1 mt-0.5 -mb-0.5 text-[11px] text-muted/80 leading-none whitespace-nowrap select-none">
+      <span>{clockTime(msg.timestamp)}</span>
+      {msg.fromMe && <Tick ack={msg.ack} />}
+    </div>
   );
 }
 
