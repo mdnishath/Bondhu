@@ -60,6 +60,12 @@ export class ChatsRepo {
       .run(accountId, jid, name);
   }
 
+  /** Saved contact name for a jid (used to label group-message senders). */
+  contactName(accountId: string, jid: string): string | null {
+    const r = this.db.prepare('SELECT name FROM contacts WHERE account_id=? AND jid=?').get(accountId, jid) as any;
+    return r?.name ?? null;
+  }
+
   list(accountId: string, limit: number, offset: number): Chat[] {
     return (
       this.db

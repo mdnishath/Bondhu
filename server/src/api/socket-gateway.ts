@@ -54,7 +54,12 @@ export function attachGateway(io: IOServer, ctx: AppContext): void {
       } catch { /* best-effort: stay silent, original audio still plays */ }
     }
 
-    toUserRoom(accountId, 'message', { ...m, transcript, translated });
+    let senderName: string | undefined;
+    if (!m.fromMe && m.chatJid?.endsWith('@g.us') && m.senderJid) {
+      senderName = ctx.chats.contactName(accountId, m.senderJid) || '+' + m.senderJid.split('@')[0];
+    }
+
+    toUserRoom(accountId, 'message', { ...m, transcript, translated, senderName });
   });
   ctx.manager.on('status', (accountId: string, status: string, info?: any) =>
     toUserRoom(accountId, 'status', { status, ...(info ?? {}) }),

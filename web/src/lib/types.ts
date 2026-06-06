@@ -48,6 +48,7 @@ export interface Message {
   quotedSenderJid?: string | null;
   quotedBody?: string;
   edited?: boolean;
+  senderName?: string; // group chats: who sent this (incoming only)
 }
 
 export interface ApiKeyView {

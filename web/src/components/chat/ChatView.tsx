@@ -25,6 +25,8 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(false);
+  const [chatLang, setChatLang] = useState('');
+  const [msgReload, setMsgReload] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const name = chat ? displayName(jid, chat.name) : displayName(jid);
@@ -37,7 +39,8 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     setOutLang(localStorage.getItem('bondhu_out_' + jid) || '');
     setSendMode((localStorage.getItem('bondhu_mode_' + jid) as 'text' | 'voice') || 'text');
     setReplyTo(null);
-  }, [jid]);
+    api.chatLanguage(accountId, jid).then((r) => setChatLang(r.lang || '')).catch(() => {});
+  }, [accountId, jid]);
 
   function changeOutLang(code: string) {
     setOutLang(code);
@@ -50,6 +53,12 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   function changeSendMode(mode: 'text' | 'voice') {
     setSendMode(mode);
     localStorage.setItem('bondhu_mode_' + jid, mode);
+  }
+
+  function changeChatLang(code: string) {
+    setChatLang(code);
+    setShowMenu(false);
+    api.setChatLanguage(accountId, jid, code || null).then(() => setMsgReload((n) => n + 1)).catch(() => {});
   }
 
   async function clearChat() {
@@ -72,7 +81,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       })
       .catch(() => alive && setLoading(false));
     return () => { alive = false; };
-  }, [accountId, jid]);
+  }, [accountId, jid, msgReload]);
 
   useEffect(() => {
     const s = getSocket();
@@ -327,7 +336,14 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
           {showMenu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-panel2 border border-line rounded-lg shadow-xl py-1 text-[14px]">
+              <div className="absolute right-0 top-full mt-1 z-20 w-60 bg-panel2 border border-line rounded-lg shadow-xl py-1 text-[14px]">
+                <div className="px-3 py-2 border-b border-line">
+                  <div className="text-[11px] text-muted mb-1">Translate incoming to</div>
+                  <select value={chatLang} onClick={(e) => e.stopPropagation()} onChange={(e) => changeChatLang(e.target.value)} className="w-full bg-panel text-txt text-[13px] rounded px-1.5 py-1 outline-none border border-line">
+                    <option value="">Default</option>
+                    {langs.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+                  </select>
+                </div>
                 <button onClick={() => { setShowMenu(false); setShowProfile(true); }} className="block w-full text-left px-3 py-2 hover:bg-rowhover">Contact info</button>
                 <button onClick={() => { setShowMenu(false); setShowSearch(true); }} className="block w-full text-left px-3 py-2 hover:bg-rowhover">Search in chat</button>
                 <button onClick={clearChat} className="block w-full text-left px-3 py-2 hover:bg-rowhover text-[#ff6b6b]">Clear chat</button>

@@ -90,6 +90,7 @@ export function whatsappRoutes(ctx: AppContext): Router {
     const messages = ctx.messages.listByChat(accountId, req.params.chatId, limit, before);
     const reactions = ctx.manager.reactionsFor(accountId, messages.map((m) => m.msgId));
     const lang = ctx.langs.resolve(req.userId!, accountId, req.params.chatId);
+    const isGroup = req.params.chatId.endsWith('@g.us');
     res.json({
       lang,
       messages: messages.map((m) => ({
@@ -97,6 +98,9 @@ export function whatsappRoutes(ctx: AppContext): Router {
         reactions: reactions[m.msgId] ?? [],
         translated: ctx.translation.cachedFor(accountId, m.msgId, lang) ?? null,
         transcript: m.transcript ?? null,
+        senderName: isGroup && !m.fromMe && m.senderJid
+          ? (ctx.chats.contactName(accountId, m.senderJid) || '+' + m.senderJid.split('@')[0])
+          : undefined,
       })),
     });
   });

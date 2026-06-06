@@ -64,6 +64,9 @@ export function MessageBubble({
           className="rounded-[10px] px-2.5 py-1.5 text-[14.2px] leading-snug shadow"
           style={{ background: out ? '#005C4B' : '#202C33' }}
         >
+          {!out && msg.senderName && (
+            <div className="text-[12px] font-semibold text-[#4fd1ab] mb-0.5">{msg.senderName}</div>
+          )}
           {editing ? (
             <EditEditor
               value={editText}

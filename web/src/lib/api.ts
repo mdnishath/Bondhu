@@ -110,4 +110,6 @@ export const api = {
   setLanguage: (lang: string) => post('/api/settings/language', { lang }),
   setChatLanguage: (acc: string, jid: string, lang: string | null) =>
     post(`/api/chats/${enc(jid)}/language?account=${enc(acc)}`, { lang }),
+  chatLanguage: (acc: string, jid: string) =>
+    get<{ lang: string | null }>(`/api/chats/${enc(jid)}/language?account=${enc(acc)}`),
 };
