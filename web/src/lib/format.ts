@@ -24,8 +24,11 @@ export function initials(name: string): string {
 
 export function displayName(jid: string, name?: string | null): string {
   if (name) return name;
-  const num = (jid || '').split('@')[0];
-  return num.startsWith('account') ? 'Unknown' : '+' + num;
+  const [num, domain] = (jid || '').split('@');
+  if (!num || num.startsWith('account')) return 'Unknown';
+  // @lid digits are a privacy id, not a phone number — don't render as "+...".
+  if (domain === 'lid') return 'WhatsApp user';
+  return '+' + num;
 }
 
 export function fmtTime(ms: number | null): string {

@@ -42,6 +42,11 @@ export interface Message {
   original?: string; // for outgoing messages translated before sending
   translating?: string; // when set, bubble shows the animated loader with this label
   localAudio?: string;  // data URI for own TTS voice playback (no /api/media round-trip)
+  transcript?: string | null; // STT result for incoming voice notes
+  quotedMsgId?: string;
+  quotedSenderJid?: string | null;
+  quotedBody?: string;
+  edited?: boolean;
 }
 
 export interface ApiKeyView {

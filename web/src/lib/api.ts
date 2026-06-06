@@ -71,6 +71,13 @@ export const api = {
     ),
   markRead: (acc: string, jid: string) => post(`/api/chats/${enc(jid)}/mark-read?account=${enc(acc)}`),
   react: (acc: string, msgId: string, emoji: string) => post(`/api/react?account=${enc(acc)}`, { msgId, emoji }),
+  reply: (acc: string, chatId: string, msgId: string, text: string) =>
+    post<{ success: boolean; msgId: string | null }>(`/api/reply?account=${enc(acc)}`, { chatId, msgId, text }),
+  deleteMessage: (acc: string, msgId: string) => post(`/api/delete-message?account=${enc(acc)}`, { msgId }),
+  deleteLocal: (acc: string, msgId: string) => post(`/api/delete-local?account=${enc(acc)}`, { msgId }),
+  editMessage: (acc: string, msgId: string, text: string) => post(`/api/edit-message?account=${enc(acc)}`, { msgId, text }),
+  forward: (acc: string, msgIds: string[], targetChatIds: string[]) =>
+    post<{ success: boolean; forwarded: number }>(`/api/forward?account=${enc(acc)}`, { msgIds, targetChatIds }),
   tts: (acc: string, msgId: string, text: string, lang: string) =>
     post<{ audioBase64: string; mime: string }>(`/api/tts?account=${enc(acc)}`, { msgId, text, lang }),
   sendVoiceTranslated: (acc: string, chatId: string, message: string, translateTo?: string) =>
@@ -80,9 +87,16 @@ export const api = {
     ),
   mediaUrl: (acc: string, msgId: string) => `/api/media/${enc(msgId)}?account=${enc(acc)}&token=${auth.token()}`,
   profilePic: (acc: string, jid: string) => `/api/profile-pic?account=${enc(acc)}&id=${enc(jid)}&token=${auth.token()}`,
-  profile: (acc: string, jid: string) => get<{ jid: string; about: string | null }>(`/api/profile?account=${enc(acc)}&id=${enc(jid)}`),
+  profile: (acc: string, jid: string) =>
+    get<{ jid: string; about: string | null; phoneJid: string | null; phone: string | null }>(
+      `/api/profile?account=${enc(acc)}&id=${enc(jid)}`,
+    ),
   transcribe: (acc: string, audioBase64: string, mimeType: string) =>
     post<{ transcript: string }>(`/api/transcribe?account=${enc(acc)}`, { audioBase64, mimeType }),
+  retranscribe: (acc: string, msgId: string) =>
+    post<{ transcript: string }>(`/api/retranscribe?account=${enc(acc)}`, { msgId }),
+  retranslate: (acc: string, msgId: string, text: string, chatId: string, _lang: string) =>
+    post<{ translated: string; lang: string }>(`/api/retranslate?account=${enc(acc)}`, { msgId, text, chatId }),
 
   // settings
   keys: () => get<{ keys: ApiKeyView[] }>('/api/settings/keys'),

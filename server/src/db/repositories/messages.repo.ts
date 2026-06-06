@@ -9,6 +9,7 @@ export interface Message {
   body: string | null;
   timestamp: number;
   ack: number;
+  transcript?: string | null;
 }
 
 export interface UpsertMessage {
@@ -60,6 +61,16 @@ export class MessagesRepo {
       .run('[deleted]', 'deleted', accountId, msgId);
   }
 
+  setTranscript(accountId: string, msgId: string, transcript: string): void {
+    this.db.prepare('UPDATE messages SET transcript=? WHERE account_id=? AND msg_id=?')
+      .run(transcript, accountId, msgId);
+  }
+
+  setBody(accountId: string, msgId: string, body: string): void {
+    this.db.prepare('UPDATE messages SET body=? WHERE account_id=? AND msg_id=?')
+      .run(body, accountId, msgId);
+  }
+
   listByChat(accountId: string, chatJid: string, limit: number, before?: number): Message[] {
     const beforeTs = before ?? Number.MAX_SAFE_INTEGER;
     return (
@@ -82,6 +93,7 @@ export class MessagesRepo {
       body: r.body,
       timestamp: r.timestamp,
       ack: r.ack,
+      transcript: r.transcript ?? null,
     };
   }
 }

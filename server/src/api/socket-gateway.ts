@@ -30,13 +30,31 @@ export function attachGateway(io: IOServer, ctx: AppContext): void {
 
   ctx.manager.on('message', async (accountId: string, m: any) => {
     let translated: string | null = null;
+    let transcript: string | null = null;
     const userId = ownerOf(ctx, accountId);
+    const hasKey = userId && ctx.apiKeys.activeKey(userId);
+
     // Best-effort auto-translate of incoming text, only when the user has a key.
-    if (userId && !m.fromMe && m.type === 'text' && m.body && ctx.apiKeys.activeKey(userId)) {
+    if (userId && hasKey && !m.fromMe && m.type === 'text' && m.body) {
       const lang = ctx.langs.resolve(userId, accountId, m.chatJid);
       try { translated = await ctx.translation.translate(userId, accountId, m.msgId, m.body, lang); } catch { /* best-effort */ }
     }
-    toUserRoom(accountId, 'message', { ...m, translated });
+
+    // Incoming voice: STT → translate. Cached so chat reload preserves both.
+    if (userId && hasKey && !m.fromMe && (m.type === 'ptt' || m.type === 'audio')) {
+      try {
+        const { buffer, mime } = await ctx.manager.downloadMedia(accountId, m.msgId);
+        const b64 = buffer.toString('base64');
+        transcript = (await ctx.transcription.transcribe(userId, b64, mime)) || null;
+        if (transcript) {
+          ctx.messages.setTranscript(accountId, m.msgId, transcript);
+          const lang = ctx.langs.resolve(userId, accountId, m.chatJid);
+          try { translated = await ctx.translation.translate(userId, accountId, m.msgId, transcript, lang); } catch { /* best-effort */ }
+        }
+      } catch { /* best-effort: stay silent, original audio still plays */ }
+    }
+
+    toUserRoom(accountId, 'message', { ...m, transcript, translated });
   });
   ctx.manager.on('status', (accountId: string, status: string, info?: any) =>
     toUserRoom(accountId, 'status', { status, ...(info ?? {}) }),
@@ -47,5 +65,11 @@ export function attachGateway(io: IOServer, ctx: AppContext): void {
   ctx.manager.on('chat_update', (accountId: string, jid: string) => toUserRoom(accountId, 'chat_update', { jid }));
   ctx.manager.on('reaction', (accountId: string, msgId: string, emoji: string, sender: string) =>
     toUserRoom(accountId, 'message_reaction', { msgId, emoji, sender }),
+  );
+  ctx.manager.on('message_delete', (accountId: string, msgId: string) =>
+    toUserRoom(accountId, 'message_delete', { msgId }),
+  );
+  ctx.manager.on('message_edit', (accountId: string, msgId: string, text: string) =>
+    toUserRoom(accountId, 'message_edit', { msgId, text }),
   );
 }

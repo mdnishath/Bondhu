@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { api } from '../../lib/api';
-import type { LangOption } from '../../lib/types';
-import { SendIcon, MicIcon, GlobeIcon } from '../ui/icons';
+import type { LangOption, Message } from '../../lib/types';
+import { SendIcon, MicIcon, GlobeIcon, ReplyIcon, CloseIcon } from '../ui/icons';
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -14,20 +14,27 @@ function blobToBase64(blob: Blob): Promise<string> {
 
 export function Composer({
   onSend,
+  onMicSend,
   langs,
   outLang,
   onOutLangChange,
   sendMode,
   onSendModeChange,
   accountId,
+  replyTo,
+  onCancelReply,
 }: {
   onSend: (text: string) => void;
+  /** Mic-recorded transcript: parent auto-sends as AI voice + text (no original audio leaves the device). */
+  onMicSend: (transcript: string) => void;
   langs: LangOption[];
   outLang: string; // '' = send as typed; otherwise translate outgoing to this lang
   onOutLangChange: (code: string) => void;
   sendMode: 'text' | 'voice';
   onSendModeChange: (mode: 'text' | 'voice') => void;
   accountId: string;
+  replyTo?: Message | null;
+  onCancelReply?: () => void;
 }) {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
@@ -57,8 +64,13 @@ export function Composer({
         try {
           const b64 = await blobToBase64(blob);
           const { transcript } = await api.transcribe(accountId, b64, mime);
-          if (transcript) setText((t) => (t ? t.trim() + ' ' : '') + transcript);
-        } catch { /* STT failed — leave text as-is */ }
+          // Hand the transcript to the parent for an immediate AI-voice + text
+          // send. The original recording is intentionally discarded so it can
+          // never reach the recipient.
+          if (transcript) onMicSend(transcript);
+        } catch {
+          alert('Transcription failed — check your API key.');
+        }
         setTranscribing(false);
       };
       recRef.current = rec;
@@ -90,6 +102,15 @@ export function Composer({
 
   return (
     <footer className="flex flex-col bg-panel border-t border-line">
+      {replyTo && (
+        <div className="mx-4 mt-2 flex items-stretch gap-2 bg-panel2 border-l-[3px] border-teal rounded-md px-3 py-1.5">
+          <div className="flex-1 min-w-0">
+            <div className="text-[11.5px] text-teal flex items-center gap-1"><ReplyIcon className="w-3 h-3" />Replying to {replyTo.fromMe ? 'yourself' : 'message'}</div>
+            <div className="text-[12.5px] text-txtsoft truncate">{replyTo.body || replyTo.transcript || `[${replyTo.type}]`}</div>
+          </div>
+          <button onClick={onCancelReply} className="icon-btn text-muted" title="Cancel reply"><CloseIcon className="w-4 h-4" /></button>
+        </div>
+      )}
       {outLang && (
         <div className="px-4 pt-2 text-[12px] text-[#4fd1ab] flex items-center gap-1.5">
           <GlobeIcon className="w-3.5 h-3.5" />

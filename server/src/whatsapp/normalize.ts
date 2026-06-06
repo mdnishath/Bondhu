@@ -9,6 +9,23 @@ export function normalizeMessage(accountId: string, m: any): UpsertMessage | nul
 
   const fromMe = !!m.key.fromMe;
   const content = m.message ?? {};
+
+  // Control / protocol messages must NEVER show up as a chat bubble:
+  //  - protocolMessage: delete-for-everyone (REVOKE=0), edit (MESSAGE_EDIT=14),
+  //    ephemeral timer changes, history sync, app-state sync, etc.
+  //  - reactionMessage: handled via the dedicated messages.reaction event.
+  //  - senderKeyDistributionMessage / messageContextInfo: signal-layer plumbing.
+  if (
+    content.protocolMessage ||
+    content.reactionMessage ||
+    content.senderKeyDistributionMessage ||
+    content.messageContextInfo ||
+    content.pollUpdateMessage ||
+    (Object.keys(content).length === 1 && content.messageContextInfo)
+  ) {
+    return null;
+  }
+
   let type = 'text';
   let body: string | null = null;
 

@@ -12,11 +12,13 @@ export function ChatListPanel({
   activeJid,
   onSelect,
   reloadKey,
+  onMenuClick,
 }: {
   chats: Chat[];
   activeJid: string;
   onSelect: (jid: string) => void;
   reloadKey: number;
+  onMenuClick?: () => void;
 }) {
   const nav = useNavigate();
   const { me, accounts, activeAccount } = useStore();
@@ -42,17 +44,24 @@ export function ChatListPanel({
   const acc = accounts.find((a) => a.id === activeAccount);
 
   return (
-    <aside className="bg-panel border-r border-line flex flex-col min-h-0">
+    <aside className="bg-panel border-r border-line flex flex-col min-h-0 w-full h-full">
       <div className="px-3.5 pt-2.5 pb-1.5 flex flex-col gap-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {onMenuClick && (
+              <button onClick={onMenuClick} className="icon-btn md:hidden flex-none" title="Accounts">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M3 6h18M3 12h18M3 18h18" />
+                </svg>
+              </button>
+            )}
             <Avatar name={me?.name || me?.email || 'Me'} seed={me?.id || 'me'} size={40} />
-            <div>
-              <div className="text-[15px] font-semibold text-txt">{me?.name || me?.email || 'You'}</div>
-              <div className="text-xs text-muted">{acc?.phone ? '+' + acc.phone : 'not linked'}</div>
+            <div className="min-w-0">
+              <div className="text-[15px] font-semibold text-txt truncate">{me?.name || me?.email || 'You'}</div>
+              <div className="text-xs text-muted truncate">{acc?.phone ? '+' + acc.phone : 'not linked'}</div>
             </div>
           </div>
-          <button className="icon-btn" title="New chat" onClick={() => setShowNew(true)}><PencilIcon className="w-[18px] h-[18px]" /></button>
+          <button className="icon-btn flex-none" title="New chat" onClick={() => setShowNew(true)}><PencilIcon className="w-[18px] h-[18px]" /></button>
         </div>
         <label className="flex items-center gap-2.5 bg-panel2 rounded-[10px] px-3 py-2 border border-transparent focus-within:border-teal/50">
           <SearchIcon className="w-[17px] h-[17px] text-muted flex-none" />

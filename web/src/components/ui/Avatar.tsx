@@ -35,10 +35,24 @@ export function Tick({ ack }: { ack: number }) {
   const blue = ack >= 3;
   const dbl = ack >= 2;
   const cls = blue ? 'text-blue' : 'text-muted';
-  const w = dbl ? 18 : 15;
   return (
-    <svg className={cls} width={w} height="11" viewBox={dbl ? '0 0 18 11' : '0 0 15 11'} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', verticalAlign: 'middle' }}>
-      {dbl ? <path d="M1 6 4 9 11.5 1.5M6.5 9 13 9.2 16.8 1.5" /> : <path d="M1.5 6 4.5 9 13 1.5" />}
+    <svg
+      className={cls}
+      width={dbl ? 16 : 13}
+      height="11"
+      viewBox={dbl ? '0 0 16 11' : '0 0 13 11'}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ display: 'inline', verticalAlign: 'middle' }}
+    >
+      {dbl ? (
+        <path d="M1 6 L3.6 8.6 L9.8 2.4 M5.8 6 L8.4 8.6 L15 2.4" />
+      ) : (
+        <path d="M1.5 6 L4.5 9 L12 1.8" />
+      )}
     </svg>
   );
 }

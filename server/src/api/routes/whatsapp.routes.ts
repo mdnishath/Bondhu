@@ -30,6 +30,13 @@ export function whatsappRoutes(ctx: AppContext): Router {
   });
 
   r.post('/accounts', async (req: AuthedRequest, res) => {
+    // Reuse a pending (non-connected) account if one already exists for this
+    // user — revisiting the link page was creating a fresh empty row each time.
+    const existing = ctx.accounts.listByUser(req.userId!).find((a) => a.status !== 'connected');
+    if (existing) {
+      await ctx.manager.start(existing.id, undefined);
+      return res.json({ accountId: existing.id });
+    }
     const acc = ctx.accounts.create({ userId: req.userId!, label: req.body?.label });
     await ctx.manager.start(acc.id, undefined);
     res.json({ accountId: acc.id });
@@ -89,6 +96,7 @@ export function whatsappRoutes(ctx: AppContext): Router {
         ...m,
         reactions: reactions[m.msgId] ?? [],
         translated: ctx.translation.cachedFor(accountId, m.msgId, lang) ?? null,
+        transcript: m.transcript ?? null,
       })),
     });
   });
@@ -142,6 +150,22 @@ export function whatsappRoutes(ctx: AppContext): Router {
     catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
+  r.post('/delete-local', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { msgId } = req.body ?? {};
+    if (!msgId) return res.status(400).json({ error: 'msgId required' });
+    try { await ctx.manager.deleteForMe(accountId, msgId); res.json({ success: true }); }
+    catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  r.post('/edit-message', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { msgId, text } = req.body ?? {};
+    if (!msgId || typeof text !== 'string') return res.status(400).json({ error: 'msgId and text required' });
+    try { await ctx.manager.editMessage(accountId, msgId, text); res.json({ success: true }); }
+    catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   r.post('/forward', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const { msgIds, targetChatIds } = req.body ?? {};
@@ -191,7 +215,16 @@ export function whatsappRoutes(ctx: AppContext): Router {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const id = req.query.id as string;
     if (!id) return res.status(400).json({ error: 'id required' });
-    res.json({ jid: id, about: await ctx.manager.profileAbout(accountId, id) });
+    const [about, phoneJid] = await Promise.all([
+      ctx.manager.profileAbout(accountId, id),
+      ctx.manager.resolvePhoneJid(accountId, id),
+    ]);
+    // Baileys returns e.g. "8801767591988:0@s.whatsapp.net" — strip the ":<device>"
+    // suffix so the contact panel shows just the phone digits.
+    const phone = phoneJid && phoneJid.endsWith('@s.whatsapp.net')
+      ? phoneJid.split('@')[0].split(':')[0]
+      : null;
+    res.json({ jid: id, about, phoneJid, phone });
   });
 
   r.get('/profile-pic', async (req: AuthedRequest, res) => {

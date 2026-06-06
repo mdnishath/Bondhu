@@ -80,6 +80,21 @@ export class AccountManager extends EventEmitter {
       this.emit('reaction', id, msgId, emoji, sender);
     });
 
+    // Remote-side delete / edit: persist locally and re-emit so the gateway can
+    // push the update to the open chat in real time.
+    conn.on('remote_delete', (msgId: string) => {
+      const m = this.messages.getById(id, msgId);
+      this.messages.markDeleted(id, msgId);
+      this.emit('message_delete', id, msgId);
+      if (m) this.emit('chat_update', id, m.chatJid);
+    });
+    conn.on('remote_edit', (msgId: string, text: string) => {
+      const m = this.messages.getById(id, msgId);
+      this.messages.setBody(id, msgId, text);
+      this.emit('message_edit', id, msgId, text);
+      if (m) this.emit('chat_update', id, m.chatJid);
+    });
+
     conn.on('phone', (phone: string) => {
       // Keep the stable account id; just record the revealed phone number.
       // (Renaming the id mid-connection raced the auth-state migration and
@@ -168,6 +183,23 @@ export class AccountManager extends EventEmitter {
     this.messages.markDeleted(accountId, msgId);
   }
 
+  /** Local-only delete: only erases the message from Bondhu's DB. Used for
+   *  incoming messages (WhatsApp does not let you delete other people's
+   *  messages from their devices). */
+  async deleteForMe(accountId: string, msgId: string): Promise<void> {
+    this.messages.markDeleted(accountId, msgId);
+    const m = this.messages.getById(accountId, msgId);
+    if (m) this.emit('chat_update', accountId, m.chatJid);
+  }
+
+  async editMessage(accountId: string, msgId: string, text: string): Promise<void> {
+    const conn = this.requireConn(accountId);
+    const m = this.getStored(accountId, msgId);
+    await conn.editMessage(m, text);
+    this.messages.setBody(accountId, msgId, text);
+    this.emit('chat_update', accountId, m.chatJid);
+  }
+
   async markRead(accountId: string, jid: string): Promise<void> {
     this.chats.clearUnread(accountId, jid);
     const conn = this.conns.get(accountId);
@@ -207,6 +239,11 @@ export class AccountManager extends EventEmitter {
   async profileAbout(accountId: string, jid: string): Promise<string | null> {
     const conn = this.conns.get(accountId);
     return conn ? conn.fetchAbout(jid) : null;
+  }
+
+  async resolvePhoneJid(accountId: string, jid: string): Promise<string | null> {
+    const conn = this.conns.get(accountId);
+    return conn ? conn.resolvePhoneJid(jid) : null;
   }
 
   /** Cached profile photo bytes. Avoids hitting WhatsApp on every avatar render

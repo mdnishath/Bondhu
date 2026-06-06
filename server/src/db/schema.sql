@@ -56,6 +56,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_chat
 
 ALTER TABLE messages ADD COLUMN raw TEXT;
 
+ALTER TABLE messages ADD COLUMN transcript TEXT;
+
 CREATE TABLE IF NOT EXISTS reactions (
   account_id TEXT NOT NULL,
   msg_id TEXT NOT NULL,

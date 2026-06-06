@@ -114,6 +114,23 @@ export class WaConnection extends EventEmitter {
 
     sock.ev.on('messages.upsert', ({ messages }) => {
       for (const m of messages) {
+        // Surface protocol-layer events (someone revoked / edited a message)
+        // BEFORE we filter them out in normalize. Without this the only signal
+        // that the other side deleted or edited would be silently dropped.
+        const pm: any = (m as any).message?.protocolMessage;
+        if (pm) {
+          const targetId = pm.key?.id;
+          // type 0 = REVOKE (delete-for-everyone), 14 = MESSAGE_EDIT.
+          if (pm.type === 0 && targetId) this.emit('remote_delete', targetId);
+          else if (pm.type === 14 && targetId) {
+            const newText =
+              pm.editedMessage?.conversation ??
+              pm.editedMessage?.extendedTextMessage?.text ??
+              '';
+            if (newText) this.emit('remote_edit', targetId, String(newText));
+          }
+          continue;
+        }
         const norm = normalizeMessage(this.accountId, m);
         if (!norm) continue;
         norm.raw = JSON.stringify(m, BufferJSON.replacer);
@@ -204,6 +221,12 @@ export class WaConnection extends EventEmitter {
     await this.sock.sendMessage(stored.chatJid, { delete: this.keyFor(stored) });
   }
 
+  /** Baileys edit: WhatsApp shows "edited" on the original bubble for both sides. */
+  async editMessage(stored: any, text: string): Promise<void> {
+    if (!this.sock) throw new Error('Not connected');
+    await this.sock.sendMessage(stored.chatJid, { text, edit: this.keyFor(stored) });
+  }
+
   async markRead(stored: any): Promise<void> {
     if (!this.sock) return;
     await this.sock.readMessages([this.keyFor(stored)]);
@@ -229,6 +252,21 @@ export class WaConnection extends EventEmitter {
       content.imageMessage?.mimetype || content.audioMessage?.mimetype ||
       content.videoMessage?.mimetype || content.documentMessage?.mimetype || 'application/octet-stream';
     return { buffer, mime };
+  }
+
+  /** Resolve a privacy-preserving `@lid` JID to the phone-based `@s.whatsapp.net`
+   *  JID using Baileys' internal LID↔PN mapping (populated from real messages).
+   *  Returns null when the mapping isn't known yet. Non-lid jids pass through. */
+  async resolvePhoneJid(jid: string): Promise<string | null> {
+    if (!this.sock) return null;
+    if (!jid.endsWith('@lid')) return jid;
+    try {
+      const repo: any = (this.sock as any).signalRepository;
+      const pn = await repo?.lidMapping?.getPNForLID?.(jid);
+      return pn || null;
+    } catch {
+      return null;
+    }
   }
 
   async profilePicUrl(jid: string): Promise<string | null> {
