@@ -52,12 +52,25 @@ export class ChatsRepo {
     this.db.prepare('UPDATE chats SET unread_count=0 WHERE account_id=? AND jid=?').run(accountId, jid);
   }
 
+  /** Store a saved-contact name (from the WhatsApp address book) for a jid. This
+   *  takes priority over the volatile pushName captured in chats.name. */
+  setContact(accountId: string, jid: string, name: string): void {
+    this.db
+      .prepare('INSERT INTO contacts (account_id,jid,name) VALUES (?,?,?) ON CONFLICT(account_id,jid) DO UPDATE SET name=excluded.name')
+      .run(accountId, jid, name);
+  }
+
   list(accountId: string, limit: number, offset: number): Chat[] {
     return (
       this.db
         .prepare(
-          `SELECT * FROM chats WHERE account_id=?
-           ORDER BY COALESCE(last_message_at,0) DESC LIMIT ? OFFSET ?`,
+          `SELECT chats.account_id, chats.jid,
+                  COALESCE(ct.name, chats.name) AS name,
+                  chats.is_group, chats.last_message_at, chats.last_message_preview, chats.unread_count
+           FROM chats LEFT JOIN contacts ct
+             ON ct.account_id = chats.account_id AND ct.jid = chats.jid
+           WHERE chats.account_id=?
+           ORDER BY COALESCE(chats.last_message_at,0) DESC LIMIT ? OFFSET ?`,
         )
         .all(accountId, limit, offset) as any[]
     ).map((r) => this.map(r));

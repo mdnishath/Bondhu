@@ -52,6 +52,16 @@ export class WaConnection extends EventEmitter {
     const sock = makeWASocket({ version, auth: state, logger });
     this.sock = sock;
 
+    // Address-book contact names: prefer saved name, then business, then pushName.
+    const onContacts = (contacts: any[]) => {
+      for (const c of contacts ?? []) {
+        const jid = c?.id;
+        if (!jid || String(jid).endsWith('@g.us')) continue;
+        const name = c.name || c.verifiedName || c.notify;
+        if (name) this.emit('contact', String(jid), String(name));
+      }
+    };
+
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (u) => {
@@ -127,7 +137,8 @@ export class WaConnection extends EventEmitter {
     // Initial / incremental history sync: WhatsApp delivers existing chats and
     // their past messages here (NOT via messages.upsert). Mark messages as
     // history so unread counts are not inflated by the back-fill.
-    sock.ev.on('messaging-history.set', ({ chats, messages }) => {
+    sock.ev.on('messaging-history.set', ({ chats, contacts, messages }) => {
+      onContacts(contacts as any[]);
       for (const c of chats) {
         const jid = (c as any).id;
         if (!jid) continue;
@@ -148,6 +159,9 @@ export class WaConnection extends EventEmitter {
         if (upd.key?.id && typeof ack === 'number') this.emit('ack', upd.key.id, ack);
       }
     });
+
+    sock.ev.on('contacts.upsert', (contacts) => onContacts(contacts as any[]));
+    sock.ev.on('contacts.update', (updates) => onContacts(updates as any[]));
   }
 
   async sendText(jid: string, text: string): Promise<string | null> {

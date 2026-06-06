@@ -54,6 +54,11 @@ export class AccountManager extends EventEmitter {
       this.emit('chat_update', id, jid);
     });
 
+    conn.on('contact', (jid: string, name: string) => {
+      this.chats.setContact(id, jid, name);
+      this.emit('chat_update', id, jid);
+    });
+
     conn.on('message', (m: UpsertMessage, isHistory = false) => {
       this.messages.upsert(m);
       this.chats.touch(id, m.chatJid, {

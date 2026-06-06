@@ -115,3 +115,10 @@ CREATE TABLE IF NOT EXISTS profile_pics (
   fetched_at INTEGER NOT NULL,
   PRIMARY KEY (account_id, jid)
 );
+
+CREATE TABLE IF NOT EXISTS contacts (
+  account_id TEXT NOT NULL,
+  jid TEXT NOT NULL,
+  name TEXT,
+  PRIMARY KEY (account_id, jid)
+);
