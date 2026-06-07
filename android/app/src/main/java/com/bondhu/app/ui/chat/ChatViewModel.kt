@@ -129,6 +129,9 @@ class ChatViewModel @Inject constructor(
         _state.value = _state.value.copy(messages = _state.value.messages.map { if (it.id == id) f(it) else it })
     }
 
+    /** Tokenised profile-pic URL for the current chat; null if not ready. */
+    fun headerAvatarUrl(): String? = media.profilePic(chatId)
+
     fun onDraft(v: String) { _state.value = _state.value.copy(draft = v) }
 
     fun send() {

@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bondhu.app.data.model.ChatRow
-import com.bondhu.app.ui.common.Avatar
 import com.bondhu.app.ui.common.EmptyState
+import com.bondhu.app.ui.common.RemoteAvatar
 import com.bondhu.app.ui.theme.Tokens
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -46,7 +46,7 @@ fun ChatListScreen(onOpenChat: (String) -> Unit, vm: ChatListViewModel = hiltVie
             s.chats.isEmpty() -> EmptyState("No chats yet.", Modifier.padding(pad))
             else -> LazyColumn(Modifier.fillMaxSize().padding(pad)) {
                 items(s.chats, key = { it.jid }) { row ->
-                    ChatRowItem(row, s.account, onClick = { onOpenChat(row.jid) })
+                    ChatRowItem(row, s.account, vm = vm, onClick = { onOpenChat(row.jid) })
                     HorizontalDivider(color = Tokens.Divider)
                 }
             }
@@ -55,12 +55,12 @@ fun ChatListScreen(onOpenChat: (String) -> Unit, vm: ChatListViewModel = hiltVie
 }
 
 @Composable
-private fun ChatRowItem(row: ChatRow, account: String?, onClick: () -> Unit) {
+private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(row.title)
+        RemoteAvatar(name = row.title, url = vm.avatarUrl(row.jid))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(row.title, color = Tokens.TextMain, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)

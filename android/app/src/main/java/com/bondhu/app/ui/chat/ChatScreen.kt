@@ -8,10 +8,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bondhu.app.ui.common.RemoteAvatar
 import com.bondhu.app.ui.theme.Tokens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,7 +29,13 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         containerColor = Tokens.AppBg,
         topBar = {
             TopAppBar(
-                title = { Text(title) },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RemoteAvatar(name = title, url = vm.headerAvatarUrl(), size = 36)
+                        Spacer(Modifier.width(10.dp))
+                        Text(title)
+                    }
+                },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Tokens.Header, titleContentColor = Tokens.TextMain, navigationIconContentColor = Tokens.TextMain),
             )
