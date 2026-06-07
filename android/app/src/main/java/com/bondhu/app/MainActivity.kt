@@ -5,12 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.bondhu.app.ui.nav.BondhuNavHost
+import com.bondhu.app.ui.theme.BondhuTheme
+import com.bondhu.app.ui.theme.Tokens
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -19,9 +18,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    Text("Bondhu", modifier = Modifier.wrapContentSize())
+            BondhuTheme {
+                Surface(Modifier.fillMaxSize(), color = Tokens.AppBg) {
+                    BondhuNavHost()
                 }
             }
         }
