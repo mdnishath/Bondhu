@@ -28,11 +28,12 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
 
     val jwt: Flow<String?> = ds.data.map { it[Keys.JWT] }
     val activeAccount: Flow<String?> = ds.data.map { it[Keys.ACTIVE_ACCOUNT] }
-    val baseUrl: Flow<String> = ds.data.map { it[Keys.BASE_URL] ?: BuildConfig.BASE_URL }
+    // Server URL is hardcoded (BuildConfig.BASE_URL) and not user-configurable.
+    // Always emit it, ignoring any value persisted by older builds.
+    val baseUrl: Flow<String> = ds.data.map { BuildConfig.BASE_URL }
 
     suspend fun setJwt(v: String?) = ds.edit { p -> if (v == null) p.remove(Keys.JWT) else p[Keys.JWT] = v }
     suspend fun setActiveAccount(v: String?) = ds.edit { p -> if (v == null) p.remove(Keys.ACTIVE_ACCOUNT) else p[Keys.ACTIVE_ACCOUNT] = v }
-    suspend fun setBaseUrl(v: String) = ds.edit { it[Keys.BASE_URL] = v }
 
     // Blocking reads for OkHttp interceptors (called off the main thread).
     fun jwtBlocking(): String? = runBlocking { jwt.first() }

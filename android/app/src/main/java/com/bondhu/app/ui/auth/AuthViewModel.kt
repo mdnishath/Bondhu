@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bondhu.app.data.repository.AuthRepository
 import com.bondhu.app.data.socket.SocketManager
-import com.bondhu.app.data.store.Prefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +15,6 @@ data class AuthUiState(
     val email: String = "",
     val password: String = "",
     val name: String = "",
-    val server: String = "",
     val loading: Boolean = false,
     val error: String? = null,
     val success: Boolean = false,
@@ -25,24 +23,16 @@ data class AuthUiState(
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repo: AuthRepository,
-    private val prefs: Prefs,
     private val socket: SocketManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AuthUiState())
     val state: StateFlow<AuthUiState> = _state
 
-    init {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(server = prefs.baseUrlBlocking())
-        }
-    }
-
     fun toggleMode() { _state.value = _state.value.copy(isRegister = !_state.value.isRegister, error = null) }
     fun onEmail(v: String) { _state.value = _state.value.copy(email = v) }
     fun onPassword(v: String) { _state.value = _state.value.copy(password = v) }
     fun onName(v: String) { _state.value = _state.value.copy(name = v) }
-    fun onServer(v: String) { _state.value = _state.value.copy(server = v) }
     fun clearError() { _state.value = _state.value.copy(error = null) }
 
     fun submit() {
@@ -53,7 +43,6 @@ class AuthViewModel @Inject constructor(
         _state.value = s.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                if (s.server.isNotBlank()) prefs.setBaseUrl(s.server.trim())
                 if (s.isRegister) repo.register(s.email, s.password, s.name)
                 else repo.login(s.email, s.password)
                 socket.reset()

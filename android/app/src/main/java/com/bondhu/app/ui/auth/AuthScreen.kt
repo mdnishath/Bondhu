@@ -49,8 +49,6 @@ fun AuthScreen(onAuthed: () -> Unit, vm: AuthViewModel = hiltViewModel()) {
             BondhuField(s.email, vm::onEmail, "Email", keyboardType = KeyboardType.Email)
             Spacer(Modifier.height(12.dp))
             BondhuField(s.password, vm::onPassword, "Password", isPassword = true)
-            Spacer(Modifier.height(12.dp))
-            BondhuField(s.server, vm::onServer, "Server URL")
             Spacer(Modifier.height(20.dp))
 
             BondhuButton(

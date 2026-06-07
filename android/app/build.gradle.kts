@@ -14,14 +14,14 @@ android {
         applicationId = "com.bondhu.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         debug {
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:3050\"")
+            buildConfigField("String", "BASE_URL", "\"https://wa.client-flow.xyz\"")
         }
         release {
             isMinifyEnabled = false
