@@ -1,0 +1,41 @@
+package com.bondhu.app.data.store
+
+import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import com.bondhu.app.BuildConfig
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
+import javax.inject.Singleton
+
+private val Context.dataStore by preferencesDataStore(name = "bondhu")
+
+@Singleton
+class Prefs @Inject constructor(@ApplicationContext private val context: Context) {
+    private val ds = context.dataStore
+
+    private object Keys {
+        val JWT = stringPreferencesKey("jwt")
+        val ACTIVE_ACCOUNT = stringPreferencesKey("active_account")
+        val BASE_URL = stringPreferencesKey("base_url")
+        val THEME = stringPreferencesKey("theme")
+    }
+
+    val jwt: Flow<String?> = ds.data.map { it[Keys.JWT] }
+    val activeAccount: Flow<String?> = ds.data.map { it[Keys.ACTIVE_ACCOUNT] }
+    val baseUrl: Flow<String> = ds.data.map { it[Keys.BASE_URL] ?: BuildConfig.BASE_URL }
+
+    suspend fun setJwt(v: String?) = ds.edit { p -> if (v == null) p.remove(Keys.JWT) else p[Keys.JWT] = v }
+    suspend fun setActiveAccount(v: String?) = ds.edit { p -> if (v == null) p.remove(Keys.ACTIVE_ACCOUNT) else p[Keys.ACTIVE_ACCOUNT] = v }
+    suspend fun setBaseUrl(v: String) = ds.edit { it[Keys.BASE_URL] = v }
+
+    // Blocking reads for OkHttp interceptors (called off the main thread).
+    fun jwtBlocking(): String? = runBlocking { jwt.first() }
+    fun baseUrlBlocking(): String = runBlocking { baseUrl.first() }
+    fun activeAccountBlocking(): String? = runBlocking { activeAccount.first() }
+}
