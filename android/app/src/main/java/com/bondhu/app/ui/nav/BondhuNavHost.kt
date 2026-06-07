@@ -2,31 +2,41 @@ package com.bondhu.app.ui.nav
 
 import androidx.compose.runtime.*
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.bondhu.app.ui.account.AccountListScreen
+import com.bondhu.app.ui.account.PairScreen
 import com.bondhu.app.ui.auth.AuthScreen
+import com.bondhu.app.ui.common.EmptyState
 
 @Composable
 fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
     val nav = rememberNavController()
     val start by gateVm.start.collectAsState()
 
-    if (start == null) return // splash: deciding
+    if (start == null) return
 
     NavHost(navController = nav, startDestination = start!!) {
         composable(Routes.AUTH) {
-            AuthScreen(onAuthed = {
-                nav.navigate(Routes.ACCOUNTS) { popUpTo(Routes.AUTH) { inclusive = true } }
-            })
+            AuthScreen(onAuthed = { nav.navigate(Routes.ACCOUNTS) { popUpTo(Routes.AUTH) { inclusive = true } } })
         }
         composable(Routes.ACCOUNTS) {
-            // Replaced in Task 11
-            com.bondhu.app.ui.common.EmptyState("Accounts — coming in Task 11")
+            AccountListScreen(
+                onAddAccount = { accountId -> nav.navigate(Routes.pair(accountId)) },
+                onOpenAccount = { nav.navigate(Routes.CHAT_LIST) { popUpTo(Routes.ACCOUNTS) } },
+            )
+        }
+        composable(Routes.PAIR, arguments = listOf(navArgument("accountId") { type = NavType.StringType })) { entry ->
+            val accountId = entry.arguments?.getString("accountId") ?: ""
+            PairScreen(accountId = accountId, onConnected = {
+                nav.navigate(Routes.ACCOUNTS) { popUpTo(Routes.ACCOUNTS) { inclusive = true } }
+            })
         }
         composable(Routes.CHAT_LIST) {
-            // Replaced in Task 12
-            com.bondhu.app.ui.common.EmptyState("Chats — coming in Task 12")
+            EmptyState("Chats — coming in Task 12")
         }
     }
 }
