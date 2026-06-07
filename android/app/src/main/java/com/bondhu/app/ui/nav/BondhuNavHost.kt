@@ -10,7 +10,6 @@ import androidx.navigation.navArgument
 import com.bondhu.app.ui.account.AccountListScreen
 import com.bondhu.app.ui.account.PairScreen
 import com.bondhu.app.ui.auth.AuthScreen
-import com.bondhu.app.ui.common.EmptyState
 
 @Composable
 fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
@@ -36,7 +35,15 @@ fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
             })
         }
         composable(Routes.CHAT_LIST) {
-            EmptyState("Chats — coming in Task 12")
+            com.bondhu.app.ui.chatlist.ChatListScreen(onOpenChat = { jid -> nav.navigate(Routes.chat(jid)) })
+        }
+        composable(
+            Routes.CHAT,
+            arguments = listOf(androidx.navigation.navArgument("chatId") { type = androidx.navigation.NavType.StringType }),
+        ) { entry ->
+            val chatId = android.net.Uri.decode(entry.arguments?.getString("chatId") ?: "")
+            // Replaced in Task 13
+            com.bondhu.app.ui.common.EmptyState("Chat $chatId — coming in Task 13")
         }
     }
 }
