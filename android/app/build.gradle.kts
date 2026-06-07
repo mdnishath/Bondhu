@@ -69,6 +69,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.datastore.preferences)
     implementation(libs.zxing.core)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.common)
 
     debugImplementation(libs.compose.ui.tooling)
 
