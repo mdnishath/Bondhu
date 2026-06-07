@@ -29,6 +29,19 @@ class AuthRepositoryTest {
         assertEquals("tok", res.token)
         assertEquals("u1", res.user.id)
         assertEquals(listOf<String?>("tok"), tokens)
+        // Guard the exact backend path — auth routes are mounted at /api/auth.
+        assertEquals("/api/auth/login", server.takeRequest().path)
+        server.shutdown()
+    }
+
+    @Test fun register_postsToAuthPath() = runTest {
+        val server = MockWebServer().apply {
+            enqueue(MockResponse().setBody("""{"token":"t2","user":{"id":"u2","email":"a@b.com","name":"A"}}"""))
+            start()
+        }
+        val repo = AuthRepository(apiFor(server), saveToken = {})
+        repo.register("a@b.com", "secret1", "A")
+        assertEquals("/api/auth/register", server.takeRequest().path)
         server.shutdown()
     }
 }

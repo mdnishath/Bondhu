@@ -81,10 +81,10 @@ All under base `/api`. `requireAuth` routes need `Authorization: Bearer <jwt>`.
 Account-scoped routes need `?account=<accountId>` (interceptor adds it from the
 active account; media/profile-pic also accept `?token=` for image loaders).
 
-**Auth (`auth.routes.ts`)**
-- `POST /register {email,password,name}` → `{token, user:{id,email,name}}`
-- `POST /login {email,password}` → `{token, user}`
-- `GET /me` → `{id,email,name}`
+**Auth (`auth.routes.ts`, mounted at `/api/auth` in server.ts)**
+- `POST /api/auth/register {email,password,name}` → `{token, user:{id,email,name}}`
+- `POST /api/auth/login {email,password}` → `{token, user}`
+- `GET /api/auth/me` → `{id,email,name}`
 
 **Accounts / connection (`whatsapp.routes.ts`)**
 - `GET /accounts` → `{accounts:[{id,label,phone,status,qr}]}`

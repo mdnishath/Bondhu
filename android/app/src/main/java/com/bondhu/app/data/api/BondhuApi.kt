@@ -4,13 +4,13 @@ import com.bondhu.app.data.model.*
 import retrofit2.http.*
 
 interface BondhuApi {
-    @POST("api/login")
+    @POST("api/auth/login")
     suspend fun login(@Body body: AuthRequest): AuthResponse
 
-    @POST("api/register")
+    @POST("api/auth/register")
     suspend fun register(@Body body: AuthRequest): AuthResponse
 
-    @GET("api/me")
+    @GET("api/auth/me")
     suspend fun me(): UserDto
 
     @GET("api/accounts")
