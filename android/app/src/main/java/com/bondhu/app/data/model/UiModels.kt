@@ -14,7 +14,7 @@ data class ChatRow(
     val jid: String,
     val title: String,
     val preview: String,
-    val timestamp: Long, // epoch seconds
+    val timestamp: Long, // epoch millis
     val unread: Int,
 )
 

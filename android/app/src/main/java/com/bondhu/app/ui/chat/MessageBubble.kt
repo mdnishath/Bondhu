@@ -21,8 +21,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// ts is epoch SECONDS (Baileys); Date expects millis.
-private fun hhmm(ts: Long) = if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts * 1000))
+// ts is epoch millis (backend normalises all timestamps to ms).
+private fun hhmm(ts: Long) = if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts))
 
 @Composable
 fun MessageBubble(

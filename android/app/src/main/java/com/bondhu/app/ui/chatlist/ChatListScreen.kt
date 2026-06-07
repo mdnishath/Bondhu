@@ -24,9 +24,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// ts is epoch SECONDS (Baileys); Date expects millis.
+// ts is epoch millis (backend normalises all timestamps to ms).
 private fun shortTime(ts: Long): String =
-    if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts * 1000))
+    if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

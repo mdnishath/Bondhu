@@ -253,7 +253,7 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun now() = System.currentTimeMillis() / 1000
+    private fun now() = System.currentTimeMillis() // epoch millis, matches server
 
     override fun onCleared() { super.onCleared(); audio.stop() }
 }
