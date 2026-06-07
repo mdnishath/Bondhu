@@ -25,7 +25,15 @@ import java.util.Locale
 private fun hhmm(ts: Long) = if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts * 1000))
 
 @Composable
-fun MessageBubble(m: Message, speaking: Boolean = false, onSpeak: () -> Unit = {}) {
+fun MessageBubble(
+    m: Message,
+    speaking: Boolean = false,
+    onSpeak: () -> Unit = {},
+    isVoicePlaying: Boolean = false,
+    voiceProgress: Float = 0f,
+    onPlayVoice: () -> Unit = {},
+    onRetranscribe: () -> Unit = {},
+) {
     val align = if (m.fromMe) Alignment.End else Alignment.Start
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 3.dp), horizontalAlignment = align) {
@@ -35,9 +43,21 @@ fun MessageBubble(m: Message, speaking: Boolean = false, onSpeak: () -> Unit = {
             if (!m.fromMe && m.senderName != null) {
                 Text(m.senderName, color = Tokens.Primary, fontSize = 12.sp)
             }
-            Text(m.body ?: (if (m.type != "text") "[${m.type}]" else ""), color = Tokens.TextMain)
-            if (m.translated != null && m.type == "text") {
-                TranslationText(m.translated, onSpeak = onSpeak, speaking = speaking)
+            if (m.type == "ptt" || m.type == "audio") {
+                VoiceBubble(
+                    m = m,
+                    isPlaying = isVoicePlaying,
+                    progress = voiceProgress,
+                    onPlayToggle = onPlayVoice,
+                    onSpeak = onSpeak,
+                    speaking = speaking,
+                    onRetranscribe = onRetranscribe,
+                )
+            } else {
+                Text(m.body ?: (if (m.type != "text") "[${m.type}]" else ""), color = Tokens.TextMain)
+                if (m.translated != null && m.type == "text") {
+                    TranslationText(m.translated, onSpeak = onSpeak, speaking = speaking)
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.align(Alignment.End)) {
                 Text(hhmm(m.timestamp), color = Tokens.TextFaint, fontSize = 10.sp)

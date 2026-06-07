@@ -40,7 +40,18 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(vertical = 8.dp)) {
                 items(s.messages, key = { it.id }) { msg ->
                     val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
-                    MessageBubble(msg, speaking = speaking, onSpeak = { vm.speak(msg) })
+                    val isVoicePlaying = playback.id == "voice-${msg.id}" && playback.isPlaying
+                    val voiceProgress = if (playback.id == "voice-${msg.id}" && playback.durationMs > 0)
+                        playback.positionMs.toFloat() / playback.durationMs else 0f
+                    MessageBubble(
+                        m = msg,
+                        speaking = speaking,
+                        onSpeak = { vm.speak(msg) },
+                        isVoicePlaying = isVoicePlaying,
+                        voiceProgress = voiceProgress,
+                        onPlayVoice = { vm.playVoice(msg) },
+                        onRetranscribe = { vm.retranscribe(msg) },
+                    )
                 }
             }
         }

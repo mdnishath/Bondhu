@@ -2,6 +2,7 @@ package com.bondhu.app.ui.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bondhu.app.data.api.MediaUrlBuilder
 import com.bondhu.app.data.audio.AudioPlayer
 import com.bondhu.app.data.model.AckTick
 import com.bondhu.app.data.model.Message
@@ -30,6 +31,7 @@ class ChatViewModel @Inject constructor(
     private val prefs: Prefs,
     private val socket: SocketManager,
     private val audio: AudioPlayer,
+    private val media: MediaUrlBuilder,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
@@ -100,6 +102,31 @@ class ChatViewModel @Inject constructor(
                 _state.value = _state.value.copy(error = e.message)
             }
         }
+    }
+
+    fun playVoice(msg: Message, localBase64: String? = null, mime: String? = null) {
+        if (localBase64 != null && mime != null) {
+            audio.toggleBytes("voice-${msg.id}", localBase64, mime)
+            return
+        }
+        audio.toggleUrl("voice-${msg.id}", media.media(msg.id))
+    }
+
+    fun retranscribe(msg: Message) {
+        viewModelScope.launch {
+            try {
+                val t = repo.retranscribe(account, msg.id) ?: return@launch
+                upsertPatch(msg.id) { it.copy(transcript = t) }
+                val tr = repo.retranslate(account, chatId, msg.id, t)
+                if (tr.translated != null) upsertPatch(msg.id) { it.copy(translated = tr.translated) }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = e.message)
+            }
+        }
+    }
+
+    private fun upsertPatch(id: String, f: (Message) -> Message) {
+        _state.value = _state.value.copy(messages = _state.value.messages.map { if (it.id == id) f(it) else it })
     }
 
     fun onDraft(v: String) { _state.value = _state.value.copy(draft = v) }
