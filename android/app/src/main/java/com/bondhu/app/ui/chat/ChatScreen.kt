@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     val s by vm.state.collectAsStateWithLifecycle()
     val playback by vm.playback.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    var menuExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(chatId) { vm.bind(chatId) }
     LaunchedEffect(s.messages.size) { if (s.messages.isNotEmpty()) listState.animateScrollToItem(s.messages.lastIndex) }
 
@@ -37,6 +39,20 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                     }
                 },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                actions = {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = Tokens.TextMain)
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Chat language") },
+                            onClick = { menuExpanded = false; vm.openLangSheet() },
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Tokens.Header, titleContentColor = Tokens.TextMain, navigationIconContentColor = Tokens.TextMain),
             )
         },
@@ -82,4 +98,12 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
             }
         }
     }
+
+    LanguageSheet(
+        open = s.langSheetOpen,
+        current = s.chatLang,
+        options = s.supported,
+        onPick = { vm.setChatLanguage(it) },
+        onDismiss = { vm.closeLangSheet() },
+    )
 }

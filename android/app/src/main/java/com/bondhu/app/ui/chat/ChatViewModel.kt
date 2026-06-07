@@ -31,6 +31,8 @@ data class ChatUiState(
     val supported: List<LangOption> = emptyList(),
     val recording: Boolean = false,
     val recordSecs: Int = 0,
+    val chatLang: String? = null,
+    val langSheetOpen: Boolean = false,
 )
 
 @HiltViewModel
@@ -56,6 +58,9 @@ class ChatViewModel @Inject constructor(
             load()
             loadComposerPrefs()
             runCatching { repo.markRead(account, chatId) }
+            viewModelScope.launch {
+                try { _state.value = _state.value.copy(chatLang = lang.getChat(account, chatId)) } catch (_: Exception) {}
+            }
         }
         viewModelScope.launch { socket.events.collect { onEvent(it.name, it.payload) } }
         viewModelScope.launch { socket.connects.collect { load() } }
@@ -84,6 +89,20 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             prefs.setOutLang(chatId, code)
             _state.value = _state.value.copy(outLang = code)
+        }
+    }
+
+    fun openLangSheet() { _state.value = _state.value.copy(langSheetOpen = true) }
+    fun closeLangSheet() { _state.value = _state.value.copy(langSheetOpen = false) }
+    fun setChatLanguage(code: String?) {
+        viewModelScope.launch {
+            try {
+                lang.setChat(account, chatId, code)
+                _state.value = _state.value.copy(chatLang = code, langSheetOpen = false)
+                load()
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = e.message)
+            }
         }
     }
 
