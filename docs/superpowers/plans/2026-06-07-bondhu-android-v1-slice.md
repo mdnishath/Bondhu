@@ -56,7 +56,7 @@ android/
       data/api/Interceptors.kt   HostSelectionInterceptor, AuthInterceptor
       data/socket/SocketManager.kt  one socket, JWT handshake, SharedFlow events
       data/model/Dtos.kt         @JsonClass DTOs (auth, account, chat, message, status)
-      data/model/UiModels.kt     UI models + Ack/Conn enums
+      data/model/UiModels.kt     UI models + AckTick enum (ConnUi lives with StatusChip in ui/common/Atoms.kt)
       data/model/Mappers.kt      DTO→UI mappers, ack→tick, base-url resolve
       data/repository/AuthRepository.kt
       data/repository/AccountRepository.kt
@@ -65,7 +65,7 @@ android/
       ui/theme/Color.kt          Material3 ColorScheme
       ui/theme/Type.kt           Typography
       ui/theme/Theme.kt          BondhuTheme composable
-      ui/common/Atoms.kt         BondhuButton, BondhuField, BondhuChip, StatusChip, Avatar, EmptyState, ErrorBanner
+      ui/common/Atoms.kt         BondhuButton, BondhuField, StatusChip, ConnUi, Avatar, EmptyState, ErrorBanner
       ui/nav/Routes.kt           route constants
       ui/nav/BondhuNavHost.kt    NavHost + start-destination gate
       ui/auth/AuthScreen.kt      ui/auth/AuthViewModel.kt
@@ -1168,13 +1168,14 @@ import com.bondhu.app.data.model.*
 import retrofit2.http.*
 
 interface BondhuApi {
-    @POST("api/login")
+    // NOTE: auth routes are mounted at /api/auth in server.ts (app.use('/api/auth', authRoutes)).
+    @POST("api/auth/login")
     suspend fun login(@Body body: AuthRequest): AuthResponse
 
-    @POST("api/register")
+    @POST("api/auth/register")
     suspend fun register(@Body body: AuthRequest): AuthResponse
 
-    @GET("api/me")
+    @GET("api/auth/me")
     suspend fun me(): UserDto
 
     @GET("api/accounts")
@@ -2581,15 +2582,17 @@ class ChatSendTest {
         server.shutdown()
     }
 
-    @Test fun messages_mapNewestLast() = runTest {
+    @Test fun messages_returnedOldestFirst() = runTest {
+        // Server returns newest-first (DESC); repo must return oldest-first for display.
         val server = MockWebServer().apply {
-            enqueue(MockResponse().setBody("""{"lang":"bn","messages":[{"msgId":"m1","chatJid":"c@lid","fromMe":false,"type":"text","body":"hi","timestamp":1,"ack":0},{"msgId":"m2","chatJid":"c@lid","fromMe":true,"type":"text","body":"yo","timestamp":2,"ack":2}]}"""))
+            enqueue(MockResponse().setBody("""{"lang":"bn","messages":[{"msgId":"m2","chatJid":"c@lid","fromMe":true,"type":"text","body":"yo","timestamp":2,"ack":2},{"msgId":"m1","chatJid":"c@lid","fromMe":false,"type":"text","body":"hi","timestamp":1,"ack":0}]}"""))
             start()
         }
         val repo = ChatRepository(apiFor(server))
         val msgs = repo.messages("acc1", "c@lid")
         assertEquals(2, msgs.size)
-        assertEquals("m1", msgs[0].id)
+        assertEquals("m1", msgs.first().id)   // oldest first
+        assertEquals("m2", msgs.last().id)    // newest last
         server.shutdown()
     }
 }
@@ -2621,7 +2624,9 @@ class ChatRepository @Inject constructor(private val api: BondhuApi) {
         api.chats(account, limit, offset).chats.map { it.toUi() }
 
     suspend fun messages(account: String, chatId: String, before: Long? = null, limit: Int = 50): List<Message> =
-        api.messages(chatId, account, limit, before).messages.map { it.toUi() }
+        // Backend returns newest-first (ORDER BY timestamp DESC); the chat list paints
+        // top-to-bottom, so sort ascending (oldest first, newest last) for display.
+        api.messages(chatId, account, limit, before).messages.map { it.toUi() }.sortedBy { it.timestamp }
 
     suspend fun send(account: String, chatId: String, message: String, translateTo: String?): SendResponse =
         api.send(SendRequest(account = account, chatId = chatId, message = message, translateTo = translateTo))
