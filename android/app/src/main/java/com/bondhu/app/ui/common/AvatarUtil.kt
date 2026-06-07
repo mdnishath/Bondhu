@@ -2,7 +2,7 @@ package com.bondhu.app.ui.common
 
 import androidx.compose.ui.graphics.Color
 
-val AVATAR_COLORS = listOf(
+internal val AVATAR_COLORS = listOf(
     Color(0xFF6B8AFE), Color(0xFFE59866), Color(0xFF48C9B0), Color(0xFFEC7063),
     Color(0xFFAF7AC5), Color(0xFF5DADE2), Color(0xFFF4D03F), Color(0xFF52BE80), Color(0xFFE08283),
 )

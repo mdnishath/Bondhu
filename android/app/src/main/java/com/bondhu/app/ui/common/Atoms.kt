@@ -10,7 +10,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,13 +32,13 @@ fun BondhuButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
 @Composable
 fun BondhuField(
     value: String, onValueChange: (String) -> Unit, label: String,
-    modifier: Modifier = Modifier, isPassword: Boolean = false, keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+    modifier: Modifier = Modifier, isPassword: Boolean = false, keyboardType: KeyboardType = KeyboardType.Text,
 ) {
     OutlinedTextField(
         value = value, onValueChange = onValueChange, label = { Text(label) },
         singleLine = true, modifier = modifier.fillMaxWidth(),
-        visualTransformation = if (isPassword) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType),
+        visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Tokens.Field, unfocusedContainerColor = Tokens.Field,
             focusedBorderColor = Tokens.Primary, unfocusedBorderColor = Color.Transparent,

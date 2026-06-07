@@ -17,6 +17,7 @@ object Tokens {
     val Tick = Color(0xFF53BDEB)
     val Field = Color(0xFF2A3942)
     val Danger = Color(0xFFF15C6D)
+    // Same green as Primary; kept as a separate token so the online indicator can diverge later.
     val Online = Color(0xFF00A884)
     val OnPrimary = Color(0xFF04130E)
 }
