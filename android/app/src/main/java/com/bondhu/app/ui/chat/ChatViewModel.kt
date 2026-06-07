@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bondhu.app.data.api.MediaUrlBuilder
 import com.bondhu.app.data.audio.AudioPlayer
+import com.bondhu.app.data.audio.VoiceRecorder
 import com.bondhu.app.data.model.AckTick
 import com.bondhu.app.data.model.LangOption
 import com.bondhu.app.data.model.Message
@@ -28,6 +29,8 @@ data class ChatUiState(
     val sendMode: String = "text",
     val outLang: String? = null,
     val supported: List<LangOption> = emptyList(),
+    val recording: Boolean = false,
+    val recordSecs: Int = 0,
 )
 
 @HiltViewModel
@@ -38,6 +41,7 @@ class ChatViewModel @Inject constructor(
     private val audio: AudioPlayer,
     private val media: MediaUrlBuilder,
     private val lang: LanguageRepository,
+    private val recorder: VoiceRecorder,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
@@ -166,6 +170,43 @@ class ChatViewModel @Inject constructor(
     fun headerAvatarUrl(): String? = media.profilePic(chatId)
 
     fun onDraft(v: String) { _state.value = _state.value.copy(draft = v) }
+
+    fun startRecording(nowMs: Long) {
+        try {
+            recorder.start(nowMs)
+            _state.value = _state.value.copy(recording = true, recordSecs = 0)
+        } catch (e: Exception) {
+            _state.value = _state.value.copy(error = e.message)
+        }
+    }
+
+    fun tickRecording() {
+        if (_state.value.recording) {
+            _state.value = _state.value.copy(recordSecs = _state.value.recordSecs + 1)
+        }
+    }
+
+    fun cancelRecording() {
+        recorder.cancel()
+        _state.value = _state.value.copy(recording = false, recordSecs = 0)
+    }
+
+    fun stopRecordingAndTranscribe() {
+        val result = recorder.stop()
+        _state.value = _state.value.copy(recording = false, recordSecs = 0)
+        if (result == null) return
+        val (base64, mime) = result
+        viewModelScope.launch {
+            try {
+                val transcript = repo.transcribe(account, base64, mime)
+                if (!transcript.isNullOrBlank()) {
+                    _state.value = _state.value.copy(draft = transcript)
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = e.message)
+            }
+        }
+    }
 
     fun send() {
         val text = _state.value.draft.trim()
