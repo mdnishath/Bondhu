@@ -29,7 +29,7 @@ docs/design-reference/ bondhu-html = the original Claude Design vanilla export (
 - [x] **server/** — Foundation+Auth, WhatsApp Core (Baileys), Rich Messaging, AI (translate/TTS/STT). **53 tests, tsc clean, live-verified.**
 - [x] **web/** — React SPA: Login, ChatPage, LinkDevice (QR+pairing), Settings. Full **two-way translation + outgoing voice**. Rich messaging: reply, forward (dialog), edit, delete, reactions, image lightbox, per-message action menu. **Profile photos + saved contact names + profile view** (incl. `@lid` phone resolution). New-chat compose, account remove (sidebar ×). **Mic recording → transcribe (Gemini) → translated voice/text**. Perf: cached profile pics + lazy avatars. Mobile back nav.
 - [ ] **android/** — design done (`android/DESIGN.md`), Compose NOT started. **Main remaining work.**
-- [ ] **Deploy** to VPS not done yet.
+- [x] **Deploy** — LIVE at **https://wa.client-flow.xyz** (VPS `144.79.218.148`, pm2 `bondhu` port 3060, nginx + LE SSL). See `DEPLOY.md`. Update with `ssh root@144.79.218.148 'bash /opt/bondhu/deploy.sh'`. Old `whatsapp-mcp` stopped (code kept).
 - WhatsApp account is linked (`nishatbd3388`, +8801767591988) and used for live verification; API keys are in the DB for that user.
 
 ## Run / build / test
