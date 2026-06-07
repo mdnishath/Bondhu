@@ -14,7 +14,9 @@ class ChatRepository @Inject constructor(private val api: BondhuApi) {
         api.chats(account, limit, offset).chats.map { it.toUi() }
 
     suspend fun messages(account: String, chatId: String, before: Long? = null, limit: Int = 50): List<Message> =
-        api.messages(chatId, account, limit, before).messages.map { it.toUi() }
+        // Backend returns newest-first (ORDER BY timestamp DESC); the chat list paints
+        // top-to-bottom, so sort ascending (oldest first, newest last) for display.
+        api.messages(chatId, account, limit, before).messages.map { it.toUi() }.sortedBy { it.timestamp }
 
     suspend fun send(account: String, chatId: String, message: String, translateTo: String?): SendResponse =
         api.send(SendRequest(account = account, chatId = chatId, message = message, translateTo = translateTo))

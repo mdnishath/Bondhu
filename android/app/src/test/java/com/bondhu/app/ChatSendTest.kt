@@ -33,15 +33,17 @@ class ChatSendTest {
         server.shutdown()
     }
 
-    @Test fun messages_mapNewestLast() = runTest {
+    @Test fun messages_returnedOldestFirst() = runTest {
+        // Server returns newest-first (DESC); repo must return oldest-first for display.
         val server = MockWebServer().apply {
-            enqueue(MockResponse().setBody("""{"lang":"bn","messages":[{"msgId":"m1","chatJid":"c@lid","fromMe":false,"type":"text","body":"hi","timestamp":1,"ack":0},{"msgId":"m2","chatJid":"c@lid","fromMe":true,"type":"text","body":"yo","timestamp":2,"ack":2}]}"""))
+            enqueue(MockResponse().setBody("""{"lang":"bn","messages":[{"msgId":"m2","chatJid":"c@lid","fromMe":true,"type":"text","body":"yo","timestamp":2,"ack":2},{"msgId":"m1","chatJid":"c@lid","fromMe":false,"type":"text","body":"hi","timestamp":1,"ack":0}]}"""))
             start()
         }
         val repo = ChatRepository(apiFor(server))
         val msgs = repo.messages("acc1", "c@lid")
         assertEquals(2, msgs.size)
-        assertEquals("m1", msgs[0].id)
+        assertEquals("m1", msgs.first().id)   // oldest first
+        assertEquals("m2", msgs.last().id)    // newest last
         server.shutdown()
     }
 }
