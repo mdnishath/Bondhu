@@ -2,6 +2,7 @@ package com.bondhu.app.ui.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bondhu.app.data.audio.AudioPlayer
 import com.bondhu.app.data.model.AckTick
 import com.bondhu.app.data.model.Message
 import com.bondhu.app.data.model.ackTick
@@ -28,6 +29,7 @@ class ChatViewModel @Inject constructor(
     private val repo: ChatRepository,
     private val prefs: Prefs,
     private val socket: SocketManager,
+    private val audio: AudioPlayer,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
@@ -83,6 +85,20 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             try { _state.value = _state.value.copy(loading = false, messages = repo.messages(account, chatId), error = null) }
             catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message) }
+        }
+    }
+
+    val playback get() = audio.state
+
+    fun speak(msg: Message) {
+        val text = msg.translated ?: msg.body ?: return
+        viewModelScope.launch {
+            try {
+                val r = repo.tts(account, msg.id, text, null)
+                audio.toggleBytes("tts-${msg.id}", r.audioBase64, r.mime)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = e.message)
+            }
         }
     }
 

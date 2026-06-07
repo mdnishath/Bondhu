@@ -18,6 +18,7 @@ import com.bondhu.app.ui.theme.Tokens
 @Composable
 fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewModel = hiltViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
+    val playback by vm.playback.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     LaunchedEffect(chatId) { vm.bind(chatId) }
     LaunchedEffect(s.messages.size) { if (s.messages.isNotEmpty()) listState.animateScrollToItem(s.messages.lastIndex) }
@@ -37,7 +38,10 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
             Box(Modifier.fillMaxSize().padding(pad), androidx.compose.ui.Alignment.Center) { CircularProgressIndicator(color = Tokens.Primary) }
         } else {
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(vertical = 8.dp)) {
-                items(s.messages, key = { it.id }) { MessageBubble(it) }
+                items(s.messages, key = { it.id }) { msg ->
+                    val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
+                    MessageBubble(msg, speaking = speaking, onSpeak = { vm.speak(msg) })
+                }
             }
         }
     }
