@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api } from '../lib/api';
 import { useStore } from '../store/useStore';
-import { LogoIcon, BackIcon } from '../components/ui/icons';
+import { LogoIcon, BackIcon, CopyIcon } from '../components/ui/icons';
 
 export function LinkDevice() {
   const nav = useNavigate();
   const setActiveAccount = useStore((s) => s.setActiveAccount);
   const [status, setStatus] = useState('Starting…');
-  const [pairCode, setPairCode] = useState('');
+  const [pairCode, setPairCode] = useState(''); // raw 8-char code; formatted only for display
+  const [copied, setCopied] = useState(false);
   const [phone, setPhone] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const accRef = useRef<string>('');
@@ -46,7 +47,7 @@ export function LinkDevice() {
         return;
       }
       if (s.pairingCode) {
-        setPairCode(s.pairingCode.replace(/(.{4})(.{4})/, '$1-$2'));
+        setPairCode(s.pairingCode);
         setStatus('Enter the code below on your phone');
       } else if (s.qr && canvasRef.current) {
         await QRCode.toCanvas(canvasRef.current, s.qr, { width: 232, margin: 1, color: { dark: '#0B141A', light: '#ffffff' } });
@@ -61,13 +62,30 @@ export function LinkDevice() {
   async function getCode() {
     const p = phone.replace(/[^0-9]/g, '');
     if (!p) return setStatus('Enter your phone number');
+    if (!accRef.current) return setStatus('Account not ready — reload the page');
+    setPairCode('');
+    setStatus('Generating pairing code…');
     try {
       await api.pair(accRef.current, p);
-      setStatus('Generating pairing code…');
+      // The pair restart re-arms polling; nudge it so the code shows fast.
+      if (pollRef.current) clearTimeout(pollRef.current);
+      setTimeout(poll, 1200);
     } catch (e: any) {
       setStatus(e.message);
     }
   }
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(pairCode); // raw, no dash
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setStatus('Copy failed — select the code manually');
+    }
+  }
+
+  const pairDisplay = pairCode.replace(/(.{4})(.{4})/, '$1-$2');
 
   return (
     <div className="h-full w-full grid place-items-center bg-bg relative">
@@ -105,8 +123,18 @@ export function LinkDevice() {
             </div>
             {pairCode && (
               <div className="mt-3 text-center">
-                <div className="text-[12px] text-muted mb-1">Enter this code in WhatsApp → Linked devices → Link with phone number</div>
-                <div className="text-[26px] font-bold tracking-[3px] text-[#4fd1ab]">{pairCode}</div>
+                <div className="text-[12px] text-muted mb-1.5">Enter this code in WhatsApp → Linked devices → <b>Link with phone number</b></div>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="text-[26px] font-bold tracking-[4px] text-[#4fd1ab] bg-black/25 rounded-[10px] px-3.5 py-1.5 select-all">{pairDisplay}</div>
+                  <button
+                    onClick={copyCode}
+                    title="Copy code"
+                    className="w-9 h-9 rounded-[10px] grid place-items-center bg-white/10 hover:bg-white/20 text-[#cfe9e2] transition flex-none"
+                  >
+                    {copied ? <span className="text-teal text-[15px] font-bold">✓</span> : <CopyIcon className="w-4 h-4" />}
+                  </button>
+                </div>
+                {copied && <div className="text-[11px] text-teal mt-1">Copied!</div>}
               </div>
             )}
           </div>
