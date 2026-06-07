@@ -56,7 +56,7 @@ android/
       data/api/Interceptors.kt   HostSelectionInterceptor, AuthInterceptor
       data/socket/SocketManager.kt  one socket, JWT handshake, SharedFlow events
       data/model/Dtos.kt         @JsonClass DTOs (auth, account, chat, message, status)
-      data/model/UiModels.kt     UI models + Ack/Conn enums
+      data/model/UiModels.kt     UI models + AckTick enum (ConnUi lives with StatusChip in ui/common/Atoms.kt)
       data/model/Mappers.kt      DTO→UI mappers, ack→tick, base-url resolve
       data/repository/AuthRepository.kt
       data/repository/AccountRepository.kt
@@ -65,7 +65,7 @@ android/
       ui/theme/Color.kt          Material3 ColorScheme
       ui/theme/Type.kt           Typography
       ui/theme/Theme.kt          BondhuTheme composable
-      ui/common/Atoms.kt         BondhuButton, BondhuField, BondhuChip, StatusChip, Avatar, EmptyState, ErrorBanner
+      ui/common/Atoms.kt         BondhuButton, BondhuField, StatusChip, ConnUi, Avatar, EmptyState, ErrorBanner
       ui/nav/Routes.kt           route constants
       ui/nav/BondhuNavHost.kt    NavHost + start-destination gate
       ui/auth/AuthScreen.kt      ui/auth/AuthViewModel.kt
