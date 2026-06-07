@@ -156,23 +156,27 @@ export function Composer({
             : <>Your messages are translated to <b className="font-semibold">{outName}</b> before sending.</>}
         </div>
       )}
-      <div className="flex items-center gap-2 px-4 py-2.5">
-        <div className="flex-1 flex items-center gap-2 bg-panel2 rounded-xl px-3 py-2">
+      <div className="flex flex-col gap-2 px-3 sm:px-4 py-2.5">
+        {/* text input — full width on top */}
+        <div className="flex items-center bg-panel2 rounded-xl px-3 py-2">
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
             placeholder={placeholder}
-            className="flex-1 bg-transparent border-none outline-none text-txt text-[14.5px]"
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-txt text-[14.5px]"
           />
+        </div>
 
+        {/* actions — wrap-safe row below the input */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* send-mode: text / voice, each with the target flag */}
           <div className="flex items-center gap-0.5 bg-rowhover rounded-md p-0.5 flex-none">
             <button
               type="button"
               onClick={() => onSendModeChange('text')}
               title={`Send as text${outName ? ' in ' + outName : ''}`}
-              className={`px-1.5 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${sendMode === 'text' ? 'bg-teal/20 text-teal' : 'text-muted'}`}
+              className={`px-1.5 py-1 rounded text-[11px] font-semibold flex items-center gap-1 ${sendMode === 'text' ? 'bg-teal/20 text-teal' : 'text-muted'}`}
             >
               <span>{flag}</span><span>Aa</span>
             </button>
@@ -181,18 +185,19 @@ export function Composer({
               disabled={!outLang}
               onClick={() => onSendModeChange('voice')}
               title={outLang ? `Send as voice in ${outName ?? outLang}` : 'Pick a language first'}
-              className={`px-1.5 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${voice ? 'bg-teal/20 text-teal' : 'text-muted'} ${!outLang ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className={`px-1.5 py-1 rounded text-[11px] font-semibold flex items-center gap-1 ${voice ? 'bg-teal/20 text-teal' : 'text-muted'} ${!outLang ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
               <span>{flag}</span><MicIcon className="w-3 h-3" />
             </button>
           </div>
 
+          {/* language */}
           <div className="relative flex-none">
             <select
               value={outLang}
               onChange={(e) => onOutLangChange(e.target.value)}
               title="Send in language"
-              className={`appearance-none cursor-pointer text-[11px] font-semibold rounded-md pl-2 pr-5 py-1 border-none outline-none ${
+              className={`appearance-none cursor-pointer text-[11px] font-semibold rounded-md pl-2 pr-6 py-1.5 border-none outline-none max-w-[140px] ${
                 outLang ? 'text-teal bg-teal/15' : 'text-muted bg-rowhover'
               }`}
             >
@@ -203,36 +208,39 @@ export function Composer({
                 </option>
               ))}
             </select>
-            <GlobeIcon className={`w-3 h-3 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none ${outLang ? 'text-teal' : 'text-muted'}`} />
+            <GlobeIcon className={`w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none ${outLang ? 'text-teal' : 'text-muted'}`} />
+          </div>
+
+          {/* attach an image */}
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+          <button onClick={() => fileRef.current?.click()} title="Attach image" className="icon-btn flex-none text-muted">
+            <ClipIcon className="w-[22px] h-[22px]" />
+          </button>
+
+          {/* right group: rec timer, mic, send — stays right-aligned, wraps as a unit */}
+          <div className="ml-auto flex items-center gap-2 flex-none">
+            {recording && (
+              <>
+                <span className="text-[12px] text-[#ff5d5d] tabular-nums flex-none">● {fmtSecs(recSecs)}</span>
+                <button onClick={cancelRec} className="icon-btn flex-none text-muted" title="Cancel recording"><CloseIcon className="w-5 h-5" /></button>
+              </>
+            )}
+
+            {/* record voice -> transcribe into the box (then send via the chosen mode) */}
+            <button
+              onClick={toggleRec}
+              disabled={transcribing}
+              title={recording ? 'Stop recording' : 'Record voice'}
+              className={`icon-btn flex-none ${recording ? 'text-[#ff5d5d] animate-pulse' : transcribing ? 'text-teal animate-pulse' : 'text-muted'}`}
+            >
+              <MicIcon className="w-[22px] h-[22px]" />
+            </button>
+
+            <button onClick={submit} className="w-11 h-11 rounded-full grid place-items-center text-[#06291f] flex-none" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }} title="Send">
+              <SendIcon className="w-6 h-6" />
+            </button>
           </div>
         </div>
-
-        {/* attach an image */}
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
-        <button onClick={() => fileRef.current?.click()} title="Attach image" className="icon-btn flex-none text-muted">
-          <ClipIcon className="w-[22px] h-[22px]" />
-        </button>
-
-        {recording && (
-          <>
-            <span className="text-[12px] text-[#ff5d5d] tabular-nums flex-none">● {fmtSecs(recSecs)}</span>
-            <button onClick={cancelRec} className="icon-btn flex-none text-muted" title="Cancel recording"><CloseIcon className="w-5 h-5" /></button>
-          </>
-        )}
-
-        {/* record voice -> transcribe into the box (then send via the chosen mode) */}
-        <button
-          onClick={toggleRec}
-          disabled={transcribing}
-          title={recording ? 'Stop recording' : 'Record voice'}
-          className={`icon-btn flex-none ${recording ? 'text-[#ff5d5d] animate-pulse' : transcribing ? 'text-teal animate-pulse' : 'text-muted'}`}
-        >
-          <MicIcon className="w-[22px] h-[22px]" />
-        </button>
-
-        <button onClick={submit} className="w-[46px] h-[46px] rounded-full grid place-items-center text-[#06291f] flex-none" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }} title="Send">
-          <SendIcon className="w-6 h-6" />
-        </button>
       </div>
     </footer>
   );
