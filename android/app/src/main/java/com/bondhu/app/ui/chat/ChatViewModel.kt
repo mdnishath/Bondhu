@@ -254,4 +254,6 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun now() = System.currentTimeMillis() / 1000
+
+    override fun onCleared() { super.onCleared(); audio.stop() }
 }
