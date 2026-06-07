@@ -211,18 +211,28 @@ class ChatViewModel @Inject constructor(
     fun send() {
         val text = _state.value.draft.trim()
         if (text.isEmpty() || account.isEmpty()) return
+        val mode = _state.value.sendMode
+        val tLang = _state.value.outLang
         _state.value = _state.value.copy(draft = "", sending = true)
         viewModelScope.launch {
             try {
-                val res = repo.send(account, chatId, text, translateTo = null)
-                if (res.msgId != null) upsert(
-                    // timestamp in epoch SECONDS to match server-delivered messages
-                    Message(res.msgId, chatId, true, "text", res.sentText ?: text, System.currentTimeMillis() / 1000, AckTick.SENT, null, null, null)
-                )
+                if (mode == "voice" && tLang != null) {
+                    val r = repo.sendVoice(account, chatId, text, tLang)
+                    // optimistic ptt bubble — uses the real returned id so socket echo dedupes
+                    r.voiceMsgId?.let { upsert(Message(it, chatId, true, "ptt", null, now(), AckTick.SENT, null, null, null)) }
+                    // optimistic text bubble (translation)
+                    r.textMsgId?.let { upsert(Message(it, chatId, true, "text", r.sentText ?: text, now(), AckTick.SENT, null, null, null)) }
+                } else {
+                    val r = repo.send(account, chatId, text, tLang)
+                    // optimistic text bubble — real id ensures socket echo is a no-op replace
+                    r.msgId?.let { upsert(Message(it, chatId, true, "text", r.sentText ?: text, now(), AckTick.SENT, null, null, null)) }
+                }
                 _state.value = _state.value.copy(sending = false)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(sending = false, error = e.message, draft = text)
             }
         }
     }
+
+    private fun now() = System.currentTimeMillis() / 1000
 }
