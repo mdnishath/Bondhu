@@ -40,7 +40,19 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Tokens.Header, titleContentColor = Tokens.TextMain, navigationIconContentColor = Tokens.TextMain),
             )
         },
-        bottomBar = { Composer(s.draft, s.sending, vm::onDraft, vm::send) },
+        bottomBar = {
+            Composer(
+                draft = s.draft,
+                sending = s.sending,
+                onDraft = vm::onDraft,
+                onSend = vm::send,
+                sendMode = s.sendMode,
+                outLang = s.outLang,
+                supported = s.supported,
+                onSetMode = vm::setSendMode,
+                onSetOutLang = vm::setOutLang,
+            )
+        },
     ) { pad ->
         if (s.loading) {
             Box(Modifier.fillMaxSize().padding(pad), androidx.compose.ui.Alignment.Center) { CircularProgressIndicator(color = Tokens.Primary) }

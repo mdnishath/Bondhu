@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.bondhu.app.data.api.MediaUrlBuilder
 import com.bondhu.app.data.audio.AudioPlayer
 import com.bondhu.app.data.model.AckTick
+import com.bondhu.app.data.model.LangOption
 import com.bondhu.app.data.model.Message
 import com.bondhu.app.data.model.ackTick
 import com.bondhu.app.data.repository.ChatRepository
+import com.bondhu.app.data.repository.LanguageRepository
 import com.bondhu.app.data.socket.SocketManager
 import com.bondhu.app.data.store.Prefs
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +25,9 @@ data class ChatUiState(
     val draft: String = "",
     val sending: Boolean = false,
     val error: String? = null,
+    val sendMode: String = "text",
+    val outLang: String? = null,
+    val supported: List<LangOption> = emptyList(),
 )
 
 @HiltViewModel
@@ -32,6 +37,7 @@ class ChatViewModel @Inject constructor(
     private val socket: SocketManager,
     private val audio: AudioPlayer,
     private val media: MediaUrlBuilder,
+    private val lang: LanguageRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
@@ -44,10 +50,37 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             account = prefs.activeAccount.first() ?: return@launch
             load()
+            loadComposerPrefs()
             runCatching { repo.markRead(account, chatId) }
         }
         viewModelScope.launch { socket.events.collect { onEvent(it.name, it.payload) } }
         viewModelScope.launch { socket.connects.collect { load() } }
+    }
+
+    private fun loadComposerPrefs() {
+        viewModelScope.launch {
+            val mode = prefs.sendModeBlocking(chatId)
+            val outLang = prefs.outLangBlocking(chatId)
+            _state.value = _state.value.copy(sendMode = mode, outLang = outLang)
+            runCatching {
+                val resp = lang.getGlobal()
+                _state.value = _state.value.copy(supported = resp.supported)
+            }
+        }
+    }
+
+    fun setSendMode(mode: String) {
+        viewModelScope.launch {
+            prefs.setSendMode(chatId, mode)
+            _state.value = _state.value.copy(sendMode = mode)
+        }
+    }
+
+    fun setOutLang(code: String?) {
+        viewModelScope.launch {
+            prefs.setOutLang(chatId, code)
+            _state.value = _state.value.copy(outLang = code)
+        }
     }
 
     private fun onEvent(name: String, payload: org.json.JSONObject) {
