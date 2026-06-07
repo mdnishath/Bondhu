@@ -42,8 +42,11 @@ fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
             arguments = listOf(androidx.navigation.navArgument("chatId") { type = androidx.navigation.NavType.StringType }),
         ) { entry ->
             val chatId = android.net.Uri.decode(entry.arguments?.getString("chatId") ?: "")
-            // Replaced in Task 13
-            com.bondhu.app.ui.common.EmptyState("Chat $chatId — coming in Task 13")
+            com.bondhu.app.ui.chat.ChatScreen(
+                chatId = chatId,
+                title = "+" + chatId.substringBefore("@"),
+                onBack = { nav.popBackStack() },
+            )
         }
     }
 }
