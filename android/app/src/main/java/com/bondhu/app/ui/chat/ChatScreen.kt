@@ -73,6 +73,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 onStopRecord = vm::stopRecordingAndTranscribe,
                 onCancelRecord = vm::cancelRecording,
                 onTick = vm::tickRecording,
+                onOpenLangs = { vm.ensureLanguages() },
             )
         },
     ) { pad ->

@@ -92,6 +92,16 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    fun ensureLanguages() {
+        if (_state.value.supported.isEmpty()) {
+            viewModelScope.launch {
+                runCatching {
+                    _state.value = _state.value.copy(supported = lang.getGlobal().supported)
+                }
+            }
+        }
+    }
+
     fun openLangSheet() { _state.value = _state.value.copy(langSheetOpen = true) }
     fun closeLangSheet() { _state.value = _state.value.copy(langSheetOpen = false) }
     fun setChatLanguage(code: String?) {
