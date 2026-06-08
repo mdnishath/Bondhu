@@ -72,6 +72,7 @@ fun Composer(
     onCancelEdit: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var showLangSheet by remember { mutableStateOf(false) }
     // Image pending a caption (base64, content-uri) — set by the picker, sent from the dialog.
     var pendingImage by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -459,7 +460,12 @@ fun Composer(
 
                             // Send FAB — circular lime, crossfades to spinner while sending
                             FloatingActionButton(
-                                onClick = { if (!sending) onSend() },
+                                onClick = {
+                                    if (!sending && draft.isNotBlank()) {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        onSend()
+                                    }
+                                },
                                 containerColor = Tokens.Primary,
                                 contentColor = Tokens.OnPrimary,
                                 modifier = Modifier.size(48.dp),

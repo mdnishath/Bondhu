@@ -120,3 +120,9 @@ data class ForwardRequest(val account: String, val msgIds: List<String>, val tar
 
 @JsonClass(generateAdapter = true)
 data class EditMessageRequest(val account: String, val msgId: String, val text: String)
+
+@JsonClass(generateAdapter = true)
+data class JidRequest(val jid: String)
+
+@JsonClass(generateAdapter = true)
+data class TestKeyResponse(val ok: Boolean = false, val error: String? = null)

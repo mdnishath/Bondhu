@@ -10,4 +10,5 @@ class SettingsRepository @Inject constructor(private val api: BondhuApi) {
     suspend fun addKey(value: String, label: String? = null): ApiKeyDto = api.addKey(AddKeyRequest(value, label))
     suspend fun deleteKey(id: String) { api.deleteKey(id) }
     suspend fun activateKey(id: String) { api.activateKey(id) }
+    suspend fun testKey() = api.testKey()
 }

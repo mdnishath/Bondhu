@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bondhu.app.data.repository.AccountRepository
 import com.bondhu.app.data.socket.SocketManager
+import com.bondhu.app.data.store.Prefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ data class PairUiState(
 class PairViewModel @Inject constructor(
     private val repo: AccountRepository,
     private val socket: SocketManager,
+    private val prefs: Prefs,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PairUiState())
@@ -42,6 +44,8 @@ class PairViewModel @Inject constructor(
                 kotlinx.coroutines.delay(2500)
                 poll()
             }
+            // Linked — make this the active account so the redirect lands in chats.
+            runCatching { prefs.setActiveAccount(accountId) }
         }
         viewModelScope.launch {
             socket.events.collect { ev ->

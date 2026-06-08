@@ -105,6 +105,23 @@ export function whatsappRoutes(ctx: AppContext): Router {
     });
   });
 
+  r.get('/messages/:chatId/search', (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res);
+    if (!accountId) return;
+    const q = String(req.query.q ?? '').trim();
+    if (!q) return res.json({ messages: [] });
+    const lang = ctx.langs.resolve(req.userId!, accountId, req.params.chatId);
+    const messages = ctx.messages.search(accountId, req.params.chatId, q, 100);
+    res.json({
+      messages: messages.map((m) => ({
+        ...m,
+        reactions: [],
+        translated: ctx.translation.cachedFor(accountId, m.msgId, lang) ?? null,
+        transcript: m.transcript ?? null,
+      })),
+    });
+  });
+
   r.post('/send', async (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res);
     if (!accountId) return;

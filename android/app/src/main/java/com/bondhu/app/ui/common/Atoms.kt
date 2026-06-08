@@ -5,8 +5,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,9 +97,67 @@ fun StatusChip(state: ConnUi) {
 }
 
 @Composable
-fun EmptyState(text: String, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, color = Tokens.TextMut, textAlign = TextAlign.Center)
+fun EmptyState(text: String, modifier: Modifier = Modifier, cta: String? = null, onCta: (() -> Unit)? = null) {
+    Box(modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text, color = Tokens.TextMut, textAlign = TextAlign.Center)
+            if (cta != null && onCta != null) {
+                Spacer(Modifier.height(16.dp))
+                BondhuButton(cta, onCta)
+            }
+        }
+    }
+}
+
+/** Subtle shimmering placeholder block — used to build skeleton loaders. */
+@Composable
+fun Shimmer(modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(8.dp)) {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "shimmer")
+    val a by t.animateFloat(
+        initialValue = 0.35f, targetValue = 0.85f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(850),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+        ),
+        label = "shimmerAlpha",
+    )
+    Box(modifier.clip(shape).background(Tokens.Field.copy(alpha = a)))
+}
+
+/** Skeleton placeholder rows for the chat list while it loads. */
+@Composable
+fun ChatListSkeleton(modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp)) {
+        repeat(8) {
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 11.dp, horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Shimmer(Modifier.size(46.dp), CircleShape)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Shimmer(Modifier.fillMaxWidth(0.5f).height(13.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Shimmer(Modifier.fillMaxWidth(0.8f).height(11.dp))
+                }
+            }
+        }
+    }
+}
+
+/** Thin "Reconnecting…" strip shown under the app bar when the socket is down. */
+@Composable
+fun ReconnectingBanner() {
+    Surface(color = Tokens.Danger.copy(alpha = 0.18f), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 5.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = Tokens.Danger)
+            Spacer(Modifier.width(8.dp))
+            Text("Reconnecting…", color = Tokens.Danger, fontSize = 12.sp)
+        }
     }
 }
 

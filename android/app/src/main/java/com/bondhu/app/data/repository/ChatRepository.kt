@@ -65,4 +65,11 @@ class ChatRepository @Inject constructor(private val api: BondhuApi) {
 
     suspend fun editMessage(account: String, msgId: String, text: String) =
         api.editMessage(com.bondhu.app.data.model.EditMessageRequest(account, msgId, text))
+
+    suspend fun subscribePresence(account: String, jid: String) =
+        api.subscribePresence(account, com.bondhu.app.data.model.JidRequest(jid))
+
+    /** Backend search across a chat's full history (not just the loaded window). */
+    suspend fun searchMessages(account: String, chatId: String, q: String): List<Message> =
+        api.searchMessages(chatId, account, q).messages.map { it.toUi() }
 }

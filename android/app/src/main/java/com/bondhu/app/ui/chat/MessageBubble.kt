@@ -12,6 +12,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +30,7 @@ import java.util.Locale
 
 // ts is epoch millis (backend normalises all timestamps to ms).
 private fun hhmm(ts: Long) = if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts))
+private fun fullTime(ts: Long) = if (ts <= 0) "" else SimpleDateFormat("d MMM yyyy, HH:mm", Locale.getDefault()).format(Date(ts))
 
 // Own message: tight corner on bottom-end (tail on right).
 // Received: tight corner on bottom-start (tail on left).
@@ -49,6 +54,8 @@ fun MessageBubble(
     onPlayVoice: () -> Unit = {},
     onRetranscribe: () -> Unit = {},
     transcribing: Boolean = false,
+    voiceSpeed: Float = 1f,
+    onCycleSpeed: () -> Unit = {},
     imageUrl: String? = null,
     onOpenImage: () -> Unit = {},
     onLongPress: () -> Unit = {},
@@ -56,6 +63,7 @@ fun MessageBubble(
     val align = if (m.fromMe) Alignment.End else Alignment.Start
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
     val shape = if (m.fromMe) OutBubbleShape else InBubbleShape
+    var showFullTime by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -68,7 +76,7 @@ fun MessageBubble(
                 .widthIn(max = 300.dp)
                 .clip(shape)
                 .background(bg)
-                .combinedClickable(onClick = {}, onLongClick = onLongPress)
+                .combinedClickable(onClick = { showFullTime = !showFullTime }, onLongClick = onLongPress)
                 .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {
             if (!m.fromMe && m.senderName != null) {
@@ -86,6 +94,8 @@ fun MessageBubble(
                     speaking = speaking,
                     onRetranscribe = onRetranscribe,
                     transcribing = transcribing,
+                    speed = voiceSpeed,
+                    onCycleSpeed = onCycleSpeed,
                 )
             } else if (m.type == "image") {
                 ImageBubble(m = m, imageUrl = imageUrl, onOpen = onOpenImage)
@@ -99,7 +109,7 @@ fun MessageBubble(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.align(Alignment.End),
             ) {
-                Text(hhmm(m.timestamp), color = Tokens.TextFaint, fontSize = 10.sp)
+                Text(if (showFullTime) fullTime(m.timestamp) else hhmm(m.timestamp), color = Tokens.TextFaint, fontSize = 10.sp)
                 if (m.fromMe) {
                     Spacer(Modifier.width(4.dp))
                     when (m.ack) {

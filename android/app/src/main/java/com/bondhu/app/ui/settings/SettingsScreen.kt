@@ -43,6 +43,12 @@ fun SettingsScreen(
             vm.clearError()
         }
     }
+    LaunchedEffect(s.notice) {
+        if (s.notice != null) {
+            snackbarHostState.showSnackbar(s.notice!!)
+            vm.clearNotice()
+        }
+    }
 
     Scaffold(
         containerColor = Tokens.AppBg,
@@ -128,6 +134,16 @@ fun SettingsScreen(
                         enabled = !s.loading,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    OutlinedButton(
+                        onClick = { vm.testKey() },
+                        enabled = !s.testing && s.keys.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Tokens.Primary),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Tokens.Primary),
+                    ) {
+                        Text(if (s.testing) "Testing…" else "Test active key", fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 

@@ -45,6 +45,7 @@ fun ChatListScreen(
     vm: ChatListViewModel = hiltViewModel(),
 ) {
     val s by vm.state.collectAsStateWithLifecycle()
+    val connected by vm.socketConnected.collectAsStateWithLifecycle()
     var showNewChat by remember { mutableStateOf(false) }
     var newChatPhone by remember { mutableStateOf("") }
 
@@ -127,6 +128,7 @@ fun ChatListScreen(
                     ),
                 )
                 HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
+                if (!connected) com.bondhu.app.ui.common.ReconnectingBanner()
             }
         },
         floatingActionButton = {
@@ -145,10 +147,12 @@ fun ChatListScreen(
             modifier = Modifier.fillMaxSize().padding(pad),
         ) {
             when {
-                s.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator(color = Tokens.Primary)
-                }
-                s.chats.isEmpty() -> EmptyState("No chats yet.")
+                s.loading -> com.bondhu.app.ui.common.ChatListSkeleton()
+                s.chats.isEmpty() -> EmptyState(
+                    "No chats yet.\nStart a conversation to see it here.",
+                    cta = "New chat",
+                    onCta = { showNewChat = true },
+                )
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 6.dp),

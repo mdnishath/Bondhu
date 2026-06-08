@@ -41,6 +41,7 @@ data class ChatUiState(
     val editing: Message? = null,
     val loadingOlder: Boolean = false,
     val hasMore: Boolean = true,
+    val presence: String? = null,
     // Contact info
     val contact: ProfileResponse? = null,
     val contactOpen: Boolean = false,
@@ -49,6 +50,8 @@ data class ChatUiState(
     val forwardTarget: Message? = null,
     // Search
     val searchQuery: String? = null,
+    val searchResults: List<Message> = emptyList(),
+    val searching: Boolean = false,
 )
 
 @HiltViewModel
@@ -65,6 +68,7 @@ class ChatViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = _state
+    val socketConnected: StateFlow<Boolean> = socket.connected
     private var account: String = ""
     private var chatId: String = ""
 
@@ -85,6 +89,7 @@ class ChatViewModel @Inject constructor(
             loadComposerPrefs()
             runCatching { repo.markRead(account, chatId) }
             runCatching { _state.value = _state.value.copy(chatLang = lang.getChat(account, chatId)) }
+            runCatching { repo.subscribePresence(account, chatId) }
         }
         viewModelScope.launch { socket.events.collect { onEvent(it.name, it.payload) } }
         viewModelScope.launch {
@@ -192,6 +197,18 @@ class ChatViewModel @Inject constructor(
                 val newText = payload.strOrNull("text") ?: return
                 upsertPatch(msgId) { it.copy(body = newText) }
             }
+            "presence" -> {
+                val pj = payload.optString("jid")
+                fun bare(j: String) = j.substringBefore("@").substringBefore(":")
+                if (pj != chatId && bare(pj) != bare(chatId)) return
+                val label = when (payload.optString("state")) {
+                    "composing" -> "typing…"
+                    "recording" -> "recording…"
+                    "available" -> "online"
+                    else -> null
+                }
+                _state.value = _state.value.copy(presence = label)
+            }
         }
     }
 
@@ -231,6 +248,7 @@ class ChatViewModel @Inject constructor(
     fun loadOlder() {
         val cur = _state.value
         if (cur.loadingOlder || !cur.hasMore || cur.messages.isEmpty() || account.isEmpty()) return
+        if (!cur.searchQuery.isNullOrBlank()) return // don't paginate the live list while searching
         val oldest = cur.messages.first().timestamp
         _state.value = cur.copy(loadingOlder = true)
         viewModelScope.launch {
@@ -269,6 +287,8 @@ class ChatViewModel @Inject constructor(
             }
         }
     }
+
+    fun cycleVoiceSpeed() = audio.cycleSpeed()
 
     fun playVoice(msg: Message, localBase64: String? = null, mime: String? = null) {
         if (localBase64 != null && mime != null) {
@@ -360,8 +380,23 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    // --- Search ---
-    fun setSearch(q: String?) { _state.value = _state.value.copy(searchQuery = q) }
+    // --- Search (backend-wide across the chat's full history, debounced) ---
+    private var searchJob: kotlinx.coroutines.Job? = null
+    fun setSearch(q: String?) {
+        searchJob?.cancel()
+        _state.value = _state.value.copy(searchQuery = q)
+        if (q.isNullOrBlank()) { _state.value = _state.value.copy(searchResults = emptyList(), searching = false); return }
+        searchJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(300)
+            _state.value = _state.value.copy(searching = true)
+            try {
+                val r = repo.searchMessages(account, chatId, q.trim())
+                _state.value = _state.value.copy(searchResults = r, searching = false)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(searching = false)
+            }
+        }
+    }
 
     /** Expose the media builder so ForwardSheet can build profile-pic URLs. */
     val mediaBuilder: MediaUrlBuilder get() = media

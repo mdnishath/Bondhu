@@ -17,6 +17,15 @@ export function aiRoutes(ctx: AppContext): Router {
   });
   r.delete('/settings/keys/:id', (req: AuthedRequest, res) => { ctx.apiKeys.remove(req.userId!, req.params.id); res.json({ success: true }); });
   r.post('/settings/keys/:id/activate', (req: AuthedRequest, res) => { ctx.apiKeys.activate(req.userId!, req.params.id); res.json({ success: true }); });
+  // Verify the user's active key actually works by making a tiny Gemini call.
+  r.post('/settings/keys/test', async (req: AuthedRequest, res) => {
+    try {
+      const out = await ctx.translation.translateOutgoing(req.userId!, 'hello', 'bn');
+      res.json({ ok: !!out });
+    } catch (e: any) {
+      res.json({ ok: false, error: e.message });
+    }
+  });
 
   // Resolve + authorize the ?account= (or body.account) param against the caller.
   // 400 when missing, 403 when the account isn't owned by this user.

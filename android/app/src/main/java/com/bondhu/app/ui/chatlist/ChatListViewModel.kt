@@ -32,6 +32,7 @@ class ChatListViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ChatListUiState())
     val state: StateFlow<ChatListUiState> = _state
+    val socketConnected: StateFlow<Boolean> = socket.connected
 
     private var lastReloadAt = 0L
 

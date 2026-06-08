@@ -32,7 +32,8 @@ fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
         composable(Routes.PAIR, arguments = listOf(navArgument("accountId") { type = NavType.StringType })) { entry ->
             val accountId = entry.arguments?.getString("accountId") ?: ""
             PairScreen(accountId = accountId, onConnected = {
-                nav.navigate(Routes.ACCOUNTS) { popUpTo(Routes.ACCOUNTS) { inclusive = true } }
+                // Linked → go straight to chats (PairViewModel set this as active account).
+                nav.navigate(Routes.CHAT_LIST) { popUpTo(Routes.ACCOUNTS) { inclusive = true } }
             })
         }
         composable(Routes.CHAT_LIST) {

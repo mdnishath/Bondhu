@@ -5,7 +5,9 @@ import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,6 +29,10 @@ class SocketManager @Inject constructor(private val prefs: Prefs) {
     private val _connects = MutableSharedFlow<Unit>(extraBufferCapacity = 4, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val connects: SharedFlow<Unit> = _connects
 
+    // Live connection state — drives the "Reconnecting…" banner.
+    private val _connected = MutableStateFlow(false)
+    val connected: StateFlow<Boolean> = _connected
+
     private val forwarded = listOf(
         "status", "message", "message_ack", "chat_update",
         "message_reaction", "message_delete", "message_edit", "presence",
@@ -43,7 +49,8 @@ class SocketManager @Inject constructor(private val prefs: Prefs) {
             transports = arrayOf("websocket")
         }
         val s = IO.socket(base, opts)
-        s.on(Socket.EVENT_CONNECT) { _connects.tryEmit(Unit) }
+        s.on(Socket.EVENT_CONNECT) { _connects.tryEmit(Unit); _connected.value = true }
+        s.on(Socket.EVENT_DISCONNECT) { _connected.value = false }
         forwarded.forEach { name ->
             s.on(name) { args ->
                 val obj = args.firstOrNull() as? JSONObject ?: JSONObject()
@@ -58,6 +65,7 @@ class SocketManager @Inject constructor(private val prefs: Prefs) {
     fun disconnect() {
         socket?.let { it.off(); it.disconnect(); it.close() }
         socket = null
+        _connected.value = false
     }
 
     /** Reconnect with the latest token/base (call after login or server change). */

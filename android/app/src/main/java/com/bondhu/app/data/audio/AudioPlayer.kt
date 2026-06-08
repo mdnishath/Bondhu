@@ -14,7 +14,7 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class Playback(val id: String? = null, val isPlaying: Boolean = false, val positionMs: Long = 0, val durationMs: Long = 0)
+data class Playback(val id: String? = null, val isPlaying: Boolean = false, val positionMs: Long = 0, val durationMs: Long = 0, val speed: Float = 1f)
 
 @Singleton
 class AudioPlayer @Inject constructor(@ApplicationContext private val context: Context) {
@@ -23,12 +23,20 @@ class AudioPlayer @Inject constructor(@ApplicationContext private val context: C
     val state: StateFlow<Playback> = _state
     private var player: ExoPlayer? = null
     private var currentId: String? = null
+    private var speed = 1f
     private val ticker = object : Runnable {
         override fun run() {
             val p = player ?: return
-            _state.value = Playback(currentId, p.isPlaying, p.currentPosition.coerceAtLeast(0), p.duration.coerceAtLeast(0))
+            _state.value = Playback(currentId, p.isPlaying, p.currentPosition.coerceAtLeast(0), p.duration.coerceAtLeast(0), speed)
             if (p.isPlaying) main.postDelayed(this, 250)
         }
+    }
+
+    /** Cycle playback speed 1x → 1.5x → 2x → 1x; applies live to the active clip. */
+    fun cycleSpeed() = main.post {
+        speed = when (speed) { 1f -> 1.5f; 1.5f -> 2f; else -> 1f }
+        player?.setPlaybackSpeed(speed)
+        _state.value = _state.value.copy(speed = speed)
     }
 
     private fun ensurePlayer(): ExoPlayer {
@@ -66,8 +74,8 @@ class AudioPlayer @Inject constructor(@ApplicationContext private val context: C
     private fun playItem(id: String, item: MediaItem) {
         val p = ensurePlayer()
         currentId = id
-        p.setMediaItem(item); p.prepare(); p.playWhenReady = true
-        _state.value = Playback(id, true, 0, 0)
+        p.setMediaItem(item); p.prepare(); p.setPlaybackSpeed(speed); p.playWhenReady = true
+        _state.value = Playback(id, true, 0, 0, speed)
     }
 
     private fun stopInternal() { player?.stop(); currentId = null; _state.value = Playback() }

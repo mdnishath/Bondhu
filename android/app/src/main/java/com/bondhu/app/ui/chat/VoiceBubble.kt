@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +41,8 @@ fun VoiceBubble(
     speaking: Boolean,
     onRetranscribe: () -> Unit,
     transcribing: Boolean = false,
+    speed: Float = 1f,
+    onCycleSpeed: () -> Unit = {},
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -69,6 +72,21 @@ fun VoiceBubble(
                 color = Tokens.Primary,
                 trackColor = Tokens.Divider,
             )
+            if (isPlaying) {
+                Spacer(Modifier.width(6.dp))
+                Surface(
+                    color = Tokens.Field,
+                    shape = RoundedCornerShape(50),
+                    modifier = Modifier.clickable { onCycleSpeed() },
+                ) {
+                    Text(
+                        "${if (speed == 1f) "1" else if (speed == 1.5f) "1.5" else "2"}×",
+                        color = Tokens.Primary,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    )
+                }
+            }
         }
         val timeLabel = when {
             durationMs > 0 -> "${fmt(positionMs)} / ${fmt(durationMs)}"

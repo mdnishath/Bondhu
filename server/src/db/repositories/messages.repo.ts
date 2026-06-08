@@ -75,6 +75,20 @@ export class MessagesRepo {
     this.db.prepare('DELETE FROM messages WHERE account_id=? AND chat_jid=?').run(accountId, chatJid);
   }
 
+  /** Full-text-ish search across a chat's entire history (body + transcript). */
+  search(accountId: string, chatJid: string, q: string, limit = 100): Message[] {
+    const like = `%${q.replace(/[%_]/g, (m) => '\\' + m)}%`;
+    return (
+      this.db
+        .prepare(
+          `SELECT * FROM messages WHERE account_id=? AND chat_jid=?
+           AND (body LIKE ? ESCAPE '\\' OR transcript LIKE ? ESCAPE '\\')
+           ORDER BY timestamp ASC LIMIT ?`,
+        )
+        .all(accountId, chatJid, like, like, limit) as any[]
+    ).map((r) => this.map(r));
+  }
+
   listByChat(accountId: string, chatJid: string, limit: number, before?: number): Message[] {
     const beforeTs = before ?? Number.MAX_SAFE_INTEGER;
     return (

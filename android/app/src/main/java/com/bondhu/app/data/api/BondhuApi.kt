@@ -43,6 +43,13 @@ interface BondhuApi {
         @Query("before") before: Long? = null,
     ): MessagesResponse
 
+    @GET("api/messages/{chatId}/search")
+    suspend fun searchMessages(
+        @Path("chatId") chatId: String,
+        @Query("account") account: String,
+        @Query("q") q: String,
+    ): MessagesResponse
+
     @POST("api/send")
     suspend fun send(@Body body: SendRequest): SendResponse
 
@@ -97,6 +104,9 @@ interface BondhuApi {
     @POST("api/settings/keys/{id}/activate")
     suspend fun activateKey(@Path("id") id: String): OkResponse
 
+    @POST("api/settings/keys/test")
+    suspend fun testKey(): TestKeyResponse
+
     @POST("api/chats/{chatId}/clear")
     suspend fun clearChat(@Path("chatId") chatId: String, @Query("account") account: String): OkResponse
 
@@ -118,4 +128,7 @@ interface BondhuApi {
 
     @POST("api/edit-message")
     suspend fun editMessage(@Body body: EditMessageRequest): OkResponse
+
+    @POST("api/presence/subscribe")
+    suspend fun subscribePresence(@Query("account") account: String, @Body body: JidRequest): OkResponse
 }

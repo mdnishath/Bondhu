@@ -20,6 +20,8 @@ data class SettingsUiState(
     val supported: List<LangOption> = emptyList(),
     val loading: Boolean = false,
     val error: String? = null,
+    val notice: String? = null,
+    val testing: Boolean = false,
     val newKeyValue: String = "",
     val newKeyLabel: String = "",
 )
@@ -58,6 +60,23 @@ class SettingsViewModel @Inject constructor(
     fun onNewKeyValue(v: String) { _state.value = _state.value.copy(newKeyValue = v) }
     fun onNewKeyLabel(v: String) { _state.value = _state.value.copy(newKeyLabel = v) }
     fun clearError() { _state.value = _state.value.copy(error = null) }
+    fun clearNotice() { _state.value = _state.value.copy(notice = null) }
+
+    /** Verify the active API key works via a tiny Gemini call. */
+    fun testKey() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(testing = true)
+            try {
+                val r = settingsRepo.testKey()
+                _state.value = _state.value.copy(
+                    testing = false,
+                    notice = if (r.ok) "API key works ✓" else "Key failed: ${r.error ?: "invalid or restricted"}",
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(testing = false, error = e.message ?: "Test failed")
+            }
+        }
+    }
 
     fun addKey() {
         val s = _state.value

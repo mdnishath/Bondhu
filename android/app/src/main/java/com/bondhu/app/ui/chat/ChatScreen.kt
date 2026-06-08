@@ -1,14 +1,21 @@
 package com.bondhu.app.ui.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -16,11 +23,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.bondhu.app.data.model.Message
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,12 +41,19 @@ import coil.compose.AsyncImage
 import com.bondhu.app.ui.common.EmptyState
 import com.bondhu.app.ui.common.RemoteAvatar
 import com.bondhu.app.ui.theme.Tokens
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewModel = hiltViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
     val playback by vm.playback.collectAsStateWithLifecycle()
+    val connected by vm.socketConnected.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     var menuExpanded by remember { mutableStateOf(false) }
     var lightboxUrl by remember { mutableStateOf<String?>(null) }
@@ -44,14 +63,34 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     var showClearConfirm by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
     val snackbarHost = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    // Whether the list is scrolled to (near) the bottom.
+    val atBottom by remember {
+        derivedStateOf {
+            val li = listState.layoutInfo
+            val last = li.visibleItemsInfo.lastOrNull()
+            last == null || last.index >= li.totalItemsCount - 1
+        }
+    }
+    var newCount by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(chatId) { vm.bind(chatId) }
-    // Stick to bottom only when a NEW last message arrives (keying on the last id),
-    // so deletes/edits and older-history prepends don't yank the view down.
+    // Stick to bottom only when a NEW last message arrives AND the user is already
+    // at the bottom (or it's our own message). Otherwise count it as "new" and let
+    // the user pull down via the scroll-to-bottom FAB — don't yank their view.
     val lastMsgId = s.messages.lastOrNull()?.id
     LaunchedEffect(lastMsgId) {
-        if (s.searchQuery.isNullOrBlank() && s.messages.isNotEmpty()) listState.animateScrollToItem(s.messages.lastIndex)
+        if (s.searchQuery.isNullOrBlank() && s.messages.isNotEmpty()) {
+            val last = s.messages.last()
+            if (atBottom || last.fromMe) {
+                listState.animateScrollToItem(s.messages.lastIndex)
+                newCount = 0
+            } else {
+                newCount++
+            }
+        }
     }
+    LaunchedEffect(atBottom) { if (atBottom) newCount = 0 }
     // Infinite older-history: page in when the user scrolls near the top.
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
@@ -66,10 +105,9 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         }
     }
 
-    // Filter messages when searching
-    val shown = s.searchQuery?.takeIf { it.isNotBlank() }
-        ?.let { q -> s.messages.filter { (it.body ?: it.transcript ?: "").contains(q, ignoreCase = true) } }
-        ?: s.messages
+    // When searching, show backend results (full chat history); else the live list.
+    val searching = !s.searchQuery.isNullOrBlank()
+    val shown = if (searching) s.searchResults else s.messages
 
     Scaffold(
         containerColor = Tokens.AppBg,
@@ -102,10 +140,16 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                             ) {
                                 RemoteAvatar(name = title, url = vm.headerAvatarUrl(), size = 36)
                                 Spacer(Modifier.width(10.dp))
-                                Text(
-                                    text = title,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
+                                Column {
+                                    Text(text = title, fontWeight = FontWeight.SemiBold)
+                                    if (s.presence != null) {
+                                        Text(
+                                            s.presence!!,
+                                            color = if (s.presence == "typing…" || s.presence == "recording…") Tokens.Primary else Tokens.TextMut,
+                                            fontSize = 11.sp,
+                                        )
+                                    }
+                                }
                             }
                         }
                     },
@@ -168,6 +212,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                     ),
                 )
                 HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
+                if (!connected) com.bondhu.app.ui.common.ReconnectingBanner()
             }
         },
         bottomBar = {
@@ -226,17 +271,21 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
             }
             !s.loading && shown.isEmpty() -> {
                 EmptyState(
-                    if (s.searchQuery?.isNotBlank() == true) "No results" else "No messages yet",
+                    if (s.searching) "Searching…" else if (searching) "No results" else "No messages yet",
                     Modifier.padding(pad),
                 )
             }
             else -> {
+              Box(Modifier.fillMaxSize().padding(pad)) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().padding(pad),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 8.dp),
                 ) {
-                    items(shown, key = { it.id }) { msg ->
+                    itemsIndexed(shown, key = { _, m -> m.id }) { i, msg ->
+                        if (i == 0 || dayKey(shown[i - 1].timestamp) != dayKey(msg.timestamp)) {
+                            DateSeparator(dayLabel(msg.timestamp))
+                        }
                         val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
                         val isVoiceActive = playback.id == "voice-${msg.id}"
                         val isVoicePlaying = isVoiceActive && playback.isPlaying
@@ -257,12 +306,37 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                             onPlayVoice = { vm.playVoice(msg) },
                             onRetranscribe = { vm.retranscribe(msg) },
                             transcribing = isTranscribing,
+                            voiceSpeed = if (isVoiceActive) playback.speed else 1f,
+                            onCycleSpeed = { vm.cycleVoiceSpeed() },
                             imageUrl = imgUrl,
                             onOpenImage = { lightboxUrl = imgUrl },
                             onLongPress = { actionTarget = msg },
                         )
                     }
                 }
+                if (!atBottom) {
+                    Box(Modifier.align(Alignment.BottomEnd).padding(16.dp)) {
+                        SmallFloatingActionButton(
+                            onClick = { scope.launch { listState.animateScrollToItem(shown.lastIndex.coerceAtLeast(0)) } },
+                            containerColor = Tokens.Surface,
+                            contentColor = Tokens.Primary,
+                        ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Scroll to bottom") }
+                        if (newCount > 0) {
+                            Surface(
+                                color = Tokens.Primary,
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                modifier = Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-4).dp),
+                            ) {
+                                Text(
+                                    newCount.toString(), color = Tokens.OnPrimary, fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+              }
             }
         }
     }
@@ -283,7 +357,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         onReact = { emoji -> actionTarget?.let { vm.react(it, emoji) } },
         onReply = { actionTarget?.let { vm.setReplyTo(it) } },
         onForward = { actionTarget?.let { vm.openForward(it) } },
-        onCopy = { actionTarget?.let { clipboard.setText(AnnotatedString(it.body ?: "")) } },
+        onCopy = { actionTarget?.let { clipboard.setText(AnnotatedString(it.body ?: it.transcript ?: "")); scope.launch { snackbarHost.showSnackbar("Copied") } } },
         onEdit = { actionTarget?.let { vm.startEdit(it) } },
         onDeleteForMe = { actionTarget?.let { vm.deleteForMe(it) } },
         onDeleteForEveryone = { actionTarget?.let { vm.deleteForEveryone(it) } },
@@ -333,23 +407,88 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         )
     }
 
-    // Fullscreen image lightbox
+    // Fullscreen image lightbox — pinch-zoom, pan, double-tap zoom, swipe-down to dismiss
     if (lightboxUrl != null) {
-        Dialog(onDismissRequest = { lightboxUrl = null }) {
+        Dialog(
+            onDismissRequest = { lightboxUrl = null },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            var scale by remember { mutableFloatStateOf(1f) }
+            var offsetX by remember { mutableFloatStateOf(0f) }
+            var offsetY by remember { mutableFloatStateOf(0f) }
+            var dismissY by remember { mutableFloatStateOf(0f) }
+            val transState = rememberTransformableState { zoom, pan, _ ->
+                scale = (scale * zoom).coerceIn(1f, 5f)
+                if (scale > 1f) { offsetX += pan.x; offsetY += pan.y }
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.95f))
-                    .clickable { lightboxUrl = null },
+                    .background(Color.Black.copy(alpha = 0.97f))
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = { if (kotlin.math.abs(dismissY) > 280f) lightboxUrl = null else dismissY = 0f },
+                        ) { _, dy -> if (scale <= 1f) dismissY += dy }
+                    }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { lightboxUrl = null },
+                            onDoubleTap = { if (scale > 1f) { scale = 1f; offsetX = 0f; offsetY = 0f } else scale = 2.5f },
+                        )
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 AsyncImage(
                     model = lightboxUrl,
                     contentDescription = "Full image",
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset { IntOffset(offsetX.roundToInt(), (offsetY + dismissY).roundToInt()) }
+                        .graphicsLayer(scaleX = scale, scaleY = scale)
+                        .transformable(transState),
                 )
             }
+        }
+    }
+}
+
+/** Day bucket key (year+dayOfYear) to detect date boundaries between messages. */
+private fun dayKey(ts: Long): Long {
+    if (ts <= 0) return 0
+    val c = Calendar.getInstance().apply { timeInMillis = ts }
+    return c.get(Calendar.YEAR) * 1000L + c.get(Calendar.DAY_OF_YEAR)
+}
+
+/** Human date label: Today / Yesterday / "12 Jun 2026". */
+private fun dayLabel(ts: Long): String {
+    if (ts <= 0) return ""
+    val now = Calendar.getInstance()
+    val msg = Calendar.getInstance().apply { timeInMillis = ts }
+    fun same(a: Calendar, b: Calendar) =
+        a.get(Calendar.YEAR) == b.get(Calendar.YEAR) && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+    if (same(now, msg)) return "Today"
+    now.add(Calendar.DAY_OF_YEAR, -1)
+    if (same(now, msg)) return "Yesterday"
+    return SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(ts))
+}
+
+@Composable
+private fun DateSeparator(label: String) {
+    if (label.isEmpty()) return
+    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Surface(
+            color = Tokens.Surface,
+            shape = RoundedCornerShape(50),
+            modifier = Modifier.border(1.dp, Tokens.Divider, RoundedCornerShape(50)),
+        ) {
+            Text(
+                label,
+                color = Tokens.TextMut,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            )
         }
     }
 }
