@@ -1,5 +1,10 @@
 package com.bondhu.app.ui.chat
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,8 +13,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -100,6 +107,16 @@ fun VoiceBubble(
                 }
             } else {
                 if (transcribing) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "transcribingPulse")
+                    val pulse by infiniteTransition.animateFloat(
+                        initialValue = 0.4f,
+                        targetValue = 1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(700),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                        label = "transcribingTextAlpha",
+                    )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -110,7 +127,12 @@ fun VoiceBubble(
                             strokeWidth = 2.dp,
                             color = Tokens.Primary,
                         )
-                        Text("Transcribing…", color = Tokens.TextMut, fontSize = 12.sp)
+                        Text(
+                            "Transcribing…",
+                            color = Tokens.TextMut,
+                            fontSize = 12.sp,
+                            modifier = Modifier.alpha(pulse),
+                        )
                     }
                 } else {
                     TextButton(onClick = onRetranscribe) {

@@ -4,12 +4,19 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
@@ -21,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -198,6 +206,39 @@ fun Composer(
                         }
                     }
                 } else {
+                    // Pulsing "Translating…" / "Sending…" caption while sending
+                    if (sending) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "sendingPulse")
+                        val pulse by infiniteTransition.animateFloat(
+                            initialValue = 0.3f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(700),
+                                repeatMode = RepeatMode.Reverse,
+                            ),
+                            label = "sendingDotAlpha",
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Tokens.Primary)
+                                    .alpha(pulse),
+                            )
+                            Text(
+                                text = if (outLang != null) "Translating…" else "Sending…",
+                                color = Tokens.Primary,
+                                fontSize = 12.sp,
+                                modifier = Modifier.alpha(pulse),
+                            )
+                        }
+                    }
+
                     // ROW 2 — actions row, BELOW the input
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -324,22 +365,27 @@ fun Composer(
                                 )
                             }
 
-                            // Send FAB — circular lime, shows spinner while sending
+                            // Send FAB — circular lime, crossfades to spinner while sending
                             FloatingActionButton(
                                 onClick = { if (!sending) onSend() },
                                 containerColor = Tokens.Primary,
                                 contentColor = Tokens.OnPrimary,
                                 modifier = Modifier.size(48.dp),
-                                shape = androidx.compose.foundation.shape.CircleShape,
+                                shape = CircleShape,
                             ) {
-                                if (sending) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(22.dp),
-                                        strokeWidth = 2.dp,
-                                        color = Tokens.OnPrimary,
-                                    )
-                                } else {
-                                    Icon(Icons.Default.Send, "Send")
+                                Crossfade(
+                                    targetState = sending,
+                                    label = "fabIcon",
+                                ) { isSending ->
+                                    if (isSending) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(22.dp),
+                                            strokeWidth = 2.dp,
+                                            color = Tokens.OnPrimary,
+                                        )
+                                    } else {
+                                        Icon(Icons.Default.Send, "Send")
+                                    }
                                 }
                             }
                         }
