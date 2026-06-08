@@ -70,33 +70,38 @@ class ChatViewModel @Inject constructor(
         // Seed instantly from the app-scoped cache so a re-opened chat shows its
         // messages with no spinner; the background load() then refreshes them.
         cache.get(chatId)?.let { _state.value = _state.value.copy(messages = it, loading = false) }
+        // Active account from the in-memory cache — NO DataStore read / no main-thread
+        // block on the critical chat-open path (a runBlocking DataStore read here was
+        // freezing the UI and leaving the loader stuck on first open).
+        account = prefs.activeAccountBlocking() ?: run {
+            _state.value = _state.value.copy(loading = false, error = "No active account")
+            return
+        }
+        load()
         viewModelScope.launch {
-            val acct = prefs.activeAccount.first()
-            if (acct == null) {
-                _state.value = _state.value.copy(loading = false, error = "No active account")
-                return@launch
-            }
-            account = acct
-            load()
             loadComposerPrefs()
             runCatching { repo.markRead(account, chatId) }
-            viewModelScope.launch {
-                try { _state.value = _state.value.copy(chatLang = lang.getChat(account, chatId)) } catch (_: Exception) {}
-            }
+            runCatching { _state.value = _state.value.copy(chatLang = lang.getChat(account, chatId)) }
         }
         viewModelScope.launch { socket.events.collect { onEvent(it.name, it.payload) } }
-        viewModelScope.launch { socket.connects.collect { load() } }
+        viewModelScope.launch {
+            socket.connects.collect {
+                // Debounce: a flapping socket must not storm the server with reloads.
+                val now = System.currentTimeMillis()
+                if (now - lastReloadAt > 4000L) { lastReloadAt = now; load() }
+            }
+        }
     }
 
-    private fun loadComposerPrefs() {
-        viewModelScope.launch {
-            val mode = prefs.sendModeBlocking(chatId)
-            val outLang = prefs.outLangBlocking(chatId)
-            _state.value = _state.value.copy(sendMode = mode, outLang = outLang)
-            runCatching {
-                val resp = lang.getGlobal()
-                _state.value = _state.value.copy(supported = resp.supported)
-            }
+    private var lastReloadAt = 0L
+
+    private suspend fun loadComposerPrefs() {
+        val mode = prefs.getSendMode(chatId)
+        val outLang = prefs.getOutLang(chatId)
+        _state.value = _state.value.copy(sendMode = mode, outLang = outLang)
+        runCatching {
+            val resp = lang.getGlobal()
+            _state.value = _state.value.copy(supported = resp.supported)
         }
     }
 

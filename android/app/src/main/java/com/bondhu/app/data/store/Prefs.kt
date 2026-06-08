@@ -51,7 +51,9 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
     fun sendModeKey(jid: String) = androidx.datastore.preferences.core.stringPreferencesKey("send_mode_${jid}")
 
     suspend fun setOutLang(jid: String, lang: String?) = ds.edit { p -> val k = outLangKey(jid); if (lang == null) p.remove(k) else p[k] = lang }
-    fun outLangBlocking(jid: String): String? = runBlocking { ds.data.first()[outLangKey(jid)] }
     suspend fun setSendMode(jid: String, mode: String) = ds.edit { it[sendModeKey(jid)] = mode } // "text" | "voice"
-    fun sendModeBlocking(jid: String): String = runBlocking { ds.data.first()[sendModeKey(jid)] ?: "text" }
+
+    // Suspend reads (NOT runBlocking) so the chat-open path never blocks the main thread.
+    suspend fun getOutLang(jid: String): String? = ds.data.first()[outLangKey(jid)]
+    suspend fun getSendMode(jid: String): String = ds.data.first()[sendModeKey(jid)] ?: "text"
 }
