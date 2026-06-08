@@ -10,3 +10,4 @@ firebase-service-account.json
 build/
 .gradle/
 local.properties
+*.apk
