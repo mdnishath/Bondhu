@@ -33,6 +33,23 @@ class ChatSendTest {
         server.shutdown()
     }
 
+    @Test fun sendImage_postsBodyAndReturnsMsgId() = runTest {
+        val server = MockWebServer().apply {
+            enqueue(MockResponse().setBody("""{"success":true,"msgId":"img1"}"""))
+            start()
+        }
+        val repo = ChatRepository(apiFor(server))
+        val res = repo.sendImage("acc1", "c@lid", "base64data==", "nice photo")
+        assertEquals("img1", res.msgId)
+        val recorded = server.takeRequest()
+        assertEquals("/api/send-image", recorded.path)
+        val body = recorded.body.readUtf8()
+        assertTrue(body.contains("\"chatId\":\"c@lid\""))
+        assertTrue(body.contains("\"imageBase64\":\"base64data==\""))
+        assertTrue(body.contains("\"caption\":\"nice photo\""))
+        server.shutdown()
+    }
+
     @Test fun messages_returnedOldestFirst() = runTest {
         // Server returns newest-first (DESC); repo must return oldest-first for display.
         val server = MockWebServer().apply {

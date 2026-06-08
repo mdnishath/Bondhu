@@ -14,8 +14,8 @@ android {
         applicationId = "com.bondhu.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 10
+        versionName = "0.4.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -69,6 +69,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.datastore.preferences)
     implementation(libs.zxing.core)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.common)
 
     debugImplementation(libs.compose.ui.tooling)
 

@@ -1,6 +1,7 @@
 package com.bondhu.app.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,13 +21,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bondhu.app.ui.theme.Tokens
 
+private val PillShape = RoundedCornerShape(50)
+
 @Composable
 fun BondhuButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     Button(
-        onClick = onClick, enabled = enabled, modifier = modifier.height(48.dp),
-        shape = RoundedCornerShape(24.dp),
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.height(52.dp),
+        shape = PillShape,
         colors = ButtonDefaults.buttonColors(containerColor = Tokens.Primary, contentColor = Tokens.OnPrimary),
-    ) { Text(text, fontWeight = FontWeight.SemiBold) }
+    ) {
+        Text(text, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 @Composable
@@ -70,8 +77,16 @@ fun StatusChip(state: ConnUi) {
         ConnUi.Pairing -> "Pairing" to Tokens.TextMut
         ConnUi.Disconnected -> "Disconnected" to Tokens.Danger
     }
-    Surface(color = color.copy(alpha = 0.16f), shape = RoundedCornerShape(18.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
+    // Glassy pill: elevated dark surface + hairline border
+    Surface(
+        color = Tokens.Surface,
+        shape = PillShape,
+        modifier = Modifier.border(1.dp, Tokens.Divider, PillShape),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
             Box(Modifier.size(7.dp).clip(CircleShape).background(color))
             Spacer(Modifier.width(6.dp))
             Text(label, color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)

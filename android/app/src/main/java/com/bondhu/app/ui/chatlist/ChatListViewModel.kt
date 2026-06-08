@@ -2,6 +2,7 @@ package com.bondhu.app.ui.chatlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bondhu.app.data.api.MediaUrlBuilder
 import com.bondhu.app.data.model.ChatRow
 import com.bondhu.app.data.repository.ChatRepository
 import com.bondhu.app.data.socket.SocketManager
@@ -25,6 +26,7 @@ class ChatListViewModel @Inject constructor(
     private val repo: ChatRepository,
     private val prefs: Prefs,
     private val socket: SocketManager,
+    private val media: MediaUrlBuilder,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatListUiState())
@@ -47,4 +49,7 @@ class ChatListViewModel @Inject constructor(
             catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message) }
         }
     }
+
+    /** Tokenised profile-pic URL for [jid]; null if not ready. Cheap string build — Coil caches the fetch. */
+    fun avatarUrl(jid: String): String? = media.profilePic(jid)
 }

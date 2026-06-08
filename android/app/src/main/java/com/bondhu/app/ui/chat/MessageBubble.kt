@@ -21,32 +21,88 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// ts is epoch SECONDS (Baileys); Date expects millis.
-private fun hhmm(ts: Long) = if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts * 1000))
+// ts is epoch millis (backend normalises all timestamps to ms).
+private fun hhmm(ts: Long) = if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts))
+
+// Own message: tight corner on bottom-end (tail on right).
+// Received: tight corner on bottom-start (tail on left).
+private val OutBubbleShape = RoundedCornerShape(
+    topStart = 20.dp, topEnd = 20.dp, bottomEnd = 6.dp, bottomStart = 20.dp,
+)
+private val InBubbleShape = RoundedCornerShape(
+    topStart = 20.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 6.dp,
+)
 
 @Composable
-fun MessageBubble(m: Message) {
+fun MessageBubble(
+    m: Message,
+    speaking: Boolean = false,
+    onSpeak: () -> Unit = {},
+    isVoicePlaying: Boolean = false,
+    voiceProgress: Float = 0f,
+    positionMs: Long = 0,
+    durationMs: Long = 0,
+    onPlayVoice: () -> Unit = {},
+    onRetranscribe: () -> Unit = {},
+    transcribing: Boolean = false,
+    imageUrl: String? = null,
+    onOpenImage: () -> Unit = {},
+) {
     val align = if (m.fromMe) Alignment.End else Alignment.Start
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
-    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 3.dp), horizontalAlignment = align) {
+    val shape = if (m.fromMe) OutBubbleShape else InBubbleShape
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalAlignment = align,
+    ) {
         Column(
-            Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(12.dp)).background(bg).padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier
+                .widthIn(max = 300.dp)
+                .clip(shape)
+                .background(bg)
+                .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {
             if (!m.fromMe && m.senderName != null) {
                 Text(m.senderName, color = Tokens.Primary, fontSize = 12.sp)
             }
-            Text(m.body ?: (if (m.type != "text") "[${m.type}]" else ""), color = Tokens.TextMain)
-            if (m.translated != null) {
-                Text(m.translated, color = Tokens.TextMut, fontSize = 13.sp)
+            if (m.type == "ptt" || m.type == "audio") {
+                VoiceBubble(
+                    m = m,
+                    isPlaying = isVoicePlaying,
+                    progress = voiceProgress,
+                    positionMs = positionMs,
+                    durationMs = durationMs,
+                    onPlayToggle = onPlayVoice,
+                    onSpeak = onSpeak,
+                    speaking = speaking,
+                    onRetranscribe = onRetranscribe,
+                    transcribing = transcribing,
+                )
+            } else if (m.type == "image") {
+                ImageBubble(m = m, imageUrl = imageUrl, onOpen = onOpenImage)
+            } else {
+                Text(m.body ?: (if (m.type != "text") "[${m.type}]" else ""), color = Tokens.TextMain)
+                if (!m.fromMe && m.translated != null && m.type == "text") {
+                    TranslationText(m.translated, onSpeak = onSpeak, speaking = speaking)
+                }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.align(Alignment.End)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.align(Alignment.End),
+            ) {
                 Text(hhmm(m.timestamp), color = Tokens.TextFaint, fontSize = 10.sp)
                 if (m.fromMe) {
                     Spacer(Modifier.width(4.dp))
                     when (m.ack) {
-                        AckTick.NONE, AckTick.SENT -> Icon(Icons.Default.Done, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
-                        AckTick.DELIVERED -> Icon(Icons.Default.DoneAll, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
-                        AckTick.READ -> Icon(Icons.Default.DoneAll, null, tint = Tokens.Tick, modifier = Modifier.size(14.dp))
+                        AckTick.NONE, AckTick.SENT ->
+                            Icon(Icons.Default.Done, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
+                        AckTick.DELIVERED ->
+                            Icon(Icons.Default.DoneAll, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
+                        AckTick.READ ->
+                            Icon(Icons.Default.DoneAll, null, tint = Tokens.Tick, modifier = Modifier.size(14.dp))
                     }
                 }
             }

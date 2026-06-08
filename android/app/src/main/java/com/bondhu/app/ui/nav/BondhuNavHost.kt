@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.bondhu.app.ui.account.AccountListScreen
 import com.bondhu.app.ui.account.PairScreen
 import com.bondhu.app.ui.auth.AuthScreen
+import com.bondhu.app.ui.settings.SettingsScreen
 
 @Composable
 fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
@@ -35,16 +36,30 @@ fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
             })
         }
         composable(Routes.CHAT_LIST) {
-            com.bondhu.app.ui.chatlist.ChatListScreen(onOpenChat = { jid -> nav.navigate(Routes.chat(jid)) })
+            com.bondhu.app.ui.chatlist.ChatListScreen(
+                onOpenChat = { jid, name -> nav.navigate(Routes.chat(jid, name)) },
+                onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                onSwitchAccount = { nav.navigate(Routes.ACCOUNTS) },
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                onBack = { nav.popBackStack() },
+                onLoggedOut = { nav.navigate(Routes.AUTH) { popUpTo(0) { inclusive = true } } },
+            )
         }
         composable(
             Routes.CHAT,
-            arguments = listOf(androidx.navigation.navArgument("chatId") { type = androidx.navigation.NavType.StringType }),
+            arguments = listOf(
+                androidx.navigation.navArgument("chatId") { type = androidx.navigation.NavType.StringType },
+                androidx.navigation.navArgument("name") { type = androidx.navigation.NavType.StringType; nullable = true; defaultValue = null },
+            ),
         ) { entry ->
             val chatId = android.net.Uri.decode(entry.arguments?.getString("chatId") ?: "")
+            val name = entry.arguments?.getString("name")?.let { android.net.Uri.decode(it) }
             com.bondhu.app.ui.chat.ChatScreen(
                 chatId = chatId,
-                title = "+" + chatId.substringBefore("@"),
+                title = name?.takeIf { it.isNotBlank() } ?: ("+" + chatId.substringBefore("@")),
                 onBack = { nav.popBackStack() },
             )
         }

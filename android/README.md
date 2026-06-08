@@ -24,3 +24,15 @@ Auth (email/password) → accounts → pair (QR / code) → chat list → text c
 real-time over Socket.IO while the app is foregrounded. Voice, image, reactions,
 reply/forward/edit/delete, translation UI, TTS, settings, and background push
 are deferred layers.
+
+## Layer 1 (translation & voice)
+- **Incoming voice playback** — `VoiceBubble` with ExoPlayer (Media3); waveform progress + duration.
+- **Transcript / translation display** — incoming audio shows Gemini transcript and auto-translated text inline.
+- **TTS speaker** — tap the speaker icon on any text/voice bubble to hear Gemini TTS audio.
+- **Outgoing translate** — composer send-mode toggle (Aa / speaker flag); text is translated before send when a target language is set.
+- **Outgoing voice note** — voice send-mode: text is sent as a Gemini TTS voice note (+ paired translated text bubble).
+- **Mic → transcribe** — hold mic button to record; Gemini transcribes speech into the draft field; send translates as normal.
+- **Per-chat language** — bottom-sheet language picker stores the chat's target language; falls back to global preference.
+- **Global language** — Settings screen exposes a global default language (18 languages + flags).
+- **Profile photos** — chat header and message avatars load tokenised profile-pic URLs via Coil with 24 h cache.
+- **RECORD_AUDIO** permission is requested at runtime before the first mic recording.
