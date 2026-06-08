@@ -27,6 +27,8 @@ export class WaConnection extends EventEmitter {
   private _pairingCode: string | null = null;
   private _stopping = false;
   private pairPhone?: string;
+  private _reconnectTimer?: ReturnType<typeof setTimeout>;
+  private _reconnectAttempts = 0;
 
   constructor(public accountId: string, private db: DB) {
     super();
@@ -42,9 +44,19 @@ export class WaConnection extends EventEmitter {
     return this._pairingCode;
   }
 
+  /** Detach listeners + close the previous socket so reconnects don't leak event
+   *  handlers / sockets across the life of a long-running process. */
+  private cleanupSocket(): void {
+    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = undefined; }
+    // Ending the old socket + dropping the reference lets its event emitter (and
+    // all our listeners closed over it) get GC'd — the new socket has its own `ev`.
+    try { this.sock?.end(undefined); } catch { /* ignore */ }
+  }
+
   /** Pass a phone number to request a pairing code instead of QR. */
   async start(pairPhone?: string): Promise<void> {
     this._stopping = false;
+    this.cleanupSocket();
     this.pairPhone = pairPhone;
     const { state, saveCreds } = await useSqliteAuthState(this.db, this.accountId);
     const { version } = await fetchLatestBaileysVersion();
@@ -107,6 +119,7 @@ export class WaConnection extends EventEmitter {
       if (connection === 'open') {
         this._qr = null;
         this._pairingCode = null;
+        this._reconnectAttempts = 0; // healthy connection — reset backoff
         this._status = 'connected';
         const phone = sock.user?.id?.split(':')[0]?.split('@')[0];
         if (phone) this.emit('phone', phone);
@@ -123,7 +136,15 @@ export class WaConnection extends EventEmitter {
           this.emit('logged_out');
           return;
         }
-        setTimeout(() => this.start(this.pairPhone).catch(() => {}), 3000);
+        // Exponential backoff with jitter, capped at 30s — a persistently failing
+        // account no longer hammers WhatsApp every 3s (ban risk). Reset on 'open'.
+        const delay = Math.min(30_000, 1000 * 2 ** this._reconnectAttempts) + Math.floor(Math.random() * 1000);
+        this._reconnectAttempts++;
+        if (this._reconnectTimer) clearTimeout(this._reconnectTimer);
+        this._reconnectTimer = setTimeout(() => {
+          if (this._stopping) return;
+          this.start(this.pairPhone).catch(() => {});
+        }, delay);
       }
     });
 
@@ -342,6 +363,7 @@ export class WaConnection extends EventEmitter {
 
   async stop(): Promise<void> {
     this._stopping = true;
+    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = undefined; }
     try {
       this.sock?.end(undefined);
     } catch {}

@@ -31,6 +31,36 @@ test('api key CRUD + language settings', async () => {
   expect(getLang.body.supported.length).toBeGreaterThan(5);
 });
 
+test('per-chat language requires account ownership (no IDOR)', async () => {
+  const ctx = createContext(':memory:');
+  const app = createApp(ctx);
+  // user A owns an account
+  const regA = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'secret1' });
+  const tokenA = regA.body.token;
+  const created = await request(app).post('/api/accounts').set('Authorization', `Bearer ${tokenA}`).send({});
+  const accA = created.body.accountId;
+  // user B is a different user
+  const regB = await request(app).post('/api/auth/register').send({ email: 'b@b.com', password: 'secret1' });
+  const tokenB = regB.body.token;
+
+  // missing account -> 400
+  const noAcc = await request(app).get('/api/chats/c1/language').set('Authorization', `Bearer ${tokenB}`);
+  expect(noAcc.status).toBe(400);
+
+  // B reads A's chat language -> 403
+  const readForeign = await request(app).get(`/api/chats/c1/language?account=${accA}`).set('Authorization', `Bearer ${tokenB}`);
+  expect(readForeign.status).toBe(403);
+
+  // B writes A's chat language -> 403
+  const writeForeign = await request(app).post(`/api/chats/c1/language?account=${accA}`)
+    .set('Authorization', `Bearer ${tokenB}`).send({ lang: 'en' });
+  expect(writeForeign.status).toBe(403);
+
+  // A can read its own -> 200
+  const ownRead = await request(app).get(`/api/chats/c1/language?account=${accA}`).set('Authorization', `Bearer ${tokenA}`);
+  expect(ownRead.status).toBe(200);
+});
+
 test('translate route uses injected service', async () => {
   const { ctx, app, token } = await authed();
   ctx.translation.translate = vi.fn(async () => 'অনুবাদ') as any;

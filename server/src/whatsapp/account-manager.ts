@@ -102,7 +102,7 @@ export class AccountManager extends EventEmitter {
 
     conn.on('reaction', (msgId: string, emoji: string, fromMe: boolean, sender: string) => {
       this.reactions.set(id, msgId, sender, emoji, fromMe);
-      this.emit('reaction', id, msgId, emoji, sender);
+      this.emit('reaction', id, msgId, emoji, fromMe, sender);
     });
 
     // Remote-side delete / edit: persist locally and re-emit so the gateway can
@@ -192,11 +192,14 @@ export class AccountManager extends EventEmitter {
 
   async forward(accountId: string, msgIds: string[], targetJids: string[]): Promise<number> {
     const conn = this.requireConn(accountId);
+    // Canonicalize targets so forwards land in the contact's existing @lid chat,
+    // not a split phone-jid chat (mirrors sendText/reply/sendImage/sendVoice).
+    const targets = await Promise.all(targetJids.map((j) => conn.canonicalJid(j)));
     let count = 0;
     for (const msgId of msgIds) {
       const raw = this.messages.getRaw(accountId, msgId);
       if (!raw) continue;
-      for (const jid of targetJids) {
+      for (const jid of targets) {
         try { await conn.forward(jid, raw); count++; } catch { /* skip */ }
       }
     }
@@ -231,7 +234,10 @@ export class AccountManager extends EventEmitter {
     this.chats.clearUnread(accountId, jid);
     const conn = this.conns.get(accountId);
     if (!conn) return;
-    const latest = this.messages.listByChat(accountId, jid, 1).find((x) => !x.fromMe);
+    // Look at a window of recent messages (DESC), not just the single newest row
+    // — if the newest is one of ours, limit-1 would never find the incoming msg
+    // to receipt, silently skipping read receipts.
+    const latest = this.messages.listByChat(accountId, jid, 30).find((x) => !x.fromMe);
     if (latest) {
       try { await conn.markRead(this.getStored(accountId, latest.msgId)); } catch { /* best-effort */ }
     }
@@ -298,8 +304,13 @@ export class AccountManager extends EventEmitter {
     try {
       const url = await this.profilePic(accountId, jid);
       if (url) {
-        const up = await fetch(url);
-        if (up.ok) result = { mime: up.headers.get('content-type') || 'image/jpeg', data: Buffer.from(await up.arrayBuffer()) };
+        // Cap the CDN fetch so a slow/hung response can't block the request.
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 6000);
+        try {
+          const up = await fetch(url, { signal: ctrl.signal });
+          if (up.ok) result = { mime: up.headers.get('content-type') || 'image/jpeg', data: Buffer.from(await up.arrayBuffer()) };
+        } finally { clearTimeout(t); }
       }
     } catch { /* ignore — store as negative */ }
     this.db.prepare('INSERT OR REPLACE INTO profile_pics (account_id,jid,mime,data,ok,fetched_at) VALUES (?,?,?,?,?,?)')

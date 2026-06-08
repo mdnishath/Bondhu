@@ -18,6 +18,15 @@ export function aiRoutes(ctx: AppContext): Router {
   r.delete('/settings/keys/:id', (req: AuthedRequest, res) => { ctx.apiKeys.remove(req.userId!, req.params.id); res.json({ success: true }); });
   r.post('/settings/keys/:id/activate', (req: AuthedRequest, res) => { ctx.apiKeys.activate(req.userId!, req.params.id); res.json({ success: true }); });
 
+  // Resolve + authorize the ?account= (or body.account) param against the caller.
+  // 400 when missing, 403 when the account isn't owned by this user.
+  const account = (req: AuthedRequest, res: any): string | null => {
+    const a = (req.query.account as string) || (req.body?.account as string);
+    if (!a) { res.status(400).json({ error: 'account required' }); return null; }
+    if (!ctx.accounts.isOwnedByUser(a, req.userId!)) { res.status(403).json({ error: 'forbidden' }); return null; }
+    return a;
+  };
+
   // --- Language ---
   r.get('/settings/language', (req: AuthedRequest, res) =>
     res.json({ lang: ctx.langs.getGlobal(req.userId!), supported: SUPPORTED_LANGS.map((l) => ({ code: l.code, name: l.name, flag: l.flag })) }));
@@ -26,23 +35,18 @@ export function aiRoutes(ctx: AppContext): Router {
     if (!isSupportedLang(lang)) return res.status(400).json({ error: 'unsupported lang' });
     ctx.langs.setGlobal(req.userId!, lang); res.json({ success: true });
   });
+  // Per-chat language is per-account state — must be ownership-checked (was IDOR).
   r.get('/chats/:chatId/language', (req: AuthedRequest, res) => {
-    const accountId = req.query.account as string;
+    const accountId = account(req, res); if (!accountId) return;
     res.json({ lang: ctx.langs.getChat(req.userId!, accountId, req.params.chatId) ?? null });
   });
   r.post('/chats/:chatId/language', (req: AuthedRequest, res) => {
-    const accountId = req.query.account as string;
+    const accountId = account(req, res); if (!accountId) return;
     const { lang } = req.body ?? {};
     if (lang === null) { ctx.langs.clearChat(req.userId!, accountId, req.params.chatId); return res.json({ success: true }); }
     if (!isSupportedLang(lang)) return res.status(400).json({ error: 'unsupported lang' });
     ctx.langs.setChat(req.userId!, accountId, req.params.chatId, lang); res.json({ success: true });
   });
-
-  const account = (req: AuthedRequest, res: any): string | null => {
-    const a = (req.query.account as string) || (req.body?.account as string);
-    if (!a || !ctx.accounts.isOwnedByUser(a, req.userId!)) { res.status(403).json({ error: 'forbidden' }); return null; }
-    return a;
-  };
 
   // --- On-demand translate (incoming text) ---
   r.post('/retranslate', async (req: AuthedRequest, res) => {

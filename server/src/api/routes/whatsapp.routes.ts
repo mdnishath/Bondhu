@@ -238,16 +238,18 @@ export function whatsappRoutes(ctx: AppContext): Router {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const id = req.query.id as string;
     if (!id) return res.status(400).json({ error: 'id required' });
-    const [about, phoneJid] = await Promise.all([
-      ctx.manager.profileAbout(accountId, id),
-      ctx.manager.resolvePhoneJid(accountId, id),
-    ]);
-    // Baileys returns e.g. "8801767591988:0@s.whatsapp.net" — strip the ":<device>"
-    // suffix so the contact panel shows just the phone digits.
-    const phone = phoneJid && phoneJid.endsWith('@s.whatsapp.net')
-      ? phoneJid.split('@')[0].split(':')[0]
-      : null;
-    res.json({ jid: id, about, phoneJid, phone });
+    try {
+      const [about, phoneJid] = await Promise.all([
+        ctx.manager.profileAbout(accountId, id),
+        ctx.manager.resolvePhoneJid(accountId, id),
+      ]);
+      // Baileys returns e.g. "8801767591988:0@s.whatsapp.net" — strip the ":<device>"
+      // suffix so the contact panel shows just the phone digits.
+      const phone = phoneJid && phoneJid.endsWith('@s.whatsapp.net')
+        ? phoneJid.split('@')[0].split(':')[0]
+        : null;
+      res.json({ jid: id, about, phoneJid, phone });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
   // Repair legacy split chats: any non-group phone-keyed chat whose `@lid` is now
@@ -299,11 +301,13 @@ export function whatsappRoutes(ctx: AppContext): Router {
     const accountId = ownAccount(req, res); if (!accountId) return;
     const id = req.query.id as string;
     if (!id) return res.status(400).end();
-    const pic = await ctx.manager.profilePicBytes(accountId, id);
-    if (!pic) return res.status(404).end();
-    res.setHeader('Content-Type', pic.mime);
-    res.setHeader('Cache-Control', 'private, max-age=86400');
-    res.send(pic.data);
+    try {
+      const pic = await ctx.manager.profilePicBytes(accountId, id);
+      if (!pic) return res.status(404).end();
+      res.setHeader('Content-Type', pic.mime);
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      res.send(pic.data);
+    } catch { res.status(404).end(); }
   });
 
   return r;
