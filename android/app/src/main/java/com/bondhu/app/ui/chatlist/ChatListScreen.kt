@@ -1,5 +1,6 @@
 package com.bondhu.app.ui.chatlist
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,9 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bondhu.app.data.model.ChatRow
@@ -168,6 +172,51 @@ fun ChatListScreen(
                 }
             }
         }
+    }
+
+    if (s.showOnboarding) {
+        Dialog(
+            onDismissRequest = { vm.dismissOnboarding() },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(Modifier.fillMaxSize().background(Tokens.AppBg), contentAlignment = Alignment.Center) {
+                Column(
+                    Modifier.padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Surface(color = Tokens.Primary, shape = RoundedCornerShape(18.dp), modifier = Modifier.size(68.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("B", color = Tokens.OnPrimary, fontWeight = FontWeight.Bold, fontSize = 34.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    Text("Welcome to Bondhu", color = Tokens.TextMain, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Chat across languages. Type or speak in Bangla — your contact reads it in theirs, and their replies come back to you translated.",
+                        color = Tokens.TextMut, textAlign = TextAlign.Center, fontSize = 14.sp,
+                    )
+                    Spacer(Modifier.height(22.dp))
+                    OnboardBullet("🌐", "Two-way live translation")
+                    OnboardBullet("🎤", "Voice → transcript → translated voice note")
+                    OnboardBullet("💬", "Reactions, replies, edit, forward & more")
+                    Spacer(Modifier.height(30.dp))
+                    BondhuButton("Get started", onClick = { vm.dismissOnboarding() }, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardBullet(emoji: String, text: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(emoji, fontSize = 18.sp)
+        Spacer(Modifier.width(12.dp))
+        Text(text, color = Tokens.TextMain, fontSize = 14.sp)
     }
 }
 

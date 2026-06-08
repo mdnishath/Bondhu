@@ -171,6 +171,28 @@ fun SettingsScreen(
                 }
             }
 
+            // --- Appearance ---
+            GlassCard {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Appearance", color = Tokens.Primary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("system" to "System", "light" to "Light", "dark" to "Dark").forEach { (mode, label) ->
+                            FilterChip(
+                                selected = s.theme == mode,
+                                onClick = { vm.setTheme(mode) },
+                                label = { Text(label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Tokens.Primary.copy(alpha = 0.2f),
+                                    selectedLabelColor = Tokens.Primary,
+                                    labelColor = Tokens.TextMut,
+                                    containerColor = Tokens.Field,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+
             // --- Account / Logout section ---
             GlassCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

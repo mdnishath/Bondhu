@@ -60,6 +60,14 @@ export function attachGateway(io: IOServer, ctx: AppContext): void {
     }
 
     toUserRoom(accountId, 'message', { ...m, transcript, translated, senderName });
+
+    // Background push for incoming messages (no-op until FCM is configured).
+    if (userId && !m.fromMe) {
+      const title = senderName || 'New message';
+      const preview = translated || (m.type === 'text' ? m.body : null)
+        || (m.type === 'ptt' || m.type === 'audio' ? '🎤 Voice message' : m.type === 'image' ? '📷 Photo' : 'New message');
+      ctx.push.notify(userId, title, String(preview), { chatJid: m.chatJid, accountId }).catch(() => {});
+    }
   });
   ctx.manager.on('status', (accountId: string, status: string, info?: any) =>
     toUserRoom(accountId, 'status', { status, ...(info ?? {}) }),

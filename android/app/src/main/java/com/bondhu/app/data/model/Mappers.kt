@@ -35,4 +35,6 @@ fun MessageDto.toUi(): Message = Message(
     transcript = transcript,
     senderName = senderName,
     reactions = reactions.map { ReactionUi(it.emoji, it.fromMe) },
+    quotedId = quotedId,
+    quotedText = quotedText,
 )

@@ -33,4 +33,8 @@ data class Message(
     val senderName: String?,
     val localImage: String? = null,  // local content-Uri string for an own just-sent image (session-only)
     val reactions: List<ReactionUi> = emptyList(),
+    val pending: Boolean = false,    // optimistic bubble awaiting server confirmation
+    val failed: Boolean = false,     // send failed — show retry affordance
+    val quotedId: String? = null,    // id of the message this one replies to
+    val quotedText: String? = null,  // preview text of the quoted message
 )

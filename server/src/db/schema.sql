@@ -58,6 +58,10 @@ ALTER TABLE messages ADD COLUMN raw TEXT;
 
 ALTER TABLE messages ADD COLUMN transcript TEXT;
 
+ALTER TABLE messages ADD COLUMN quoted_id TEXT;
+
+ALTER TABLE messages ADD COLUMN quoted_text TEXT;
+
 CREATE TABLE IF NOT EXISTS reactions (
   account_id TEXT NOT NULL,
   msg_id TEXT NOT NULL,
@@ -123,4 +127,11 @@ CREATE TABLE IF NOT EXISTS contacts (
   jid TEXT NOT NULL,
   name TEXT,
   PRIMARY KEY (account_id, jid)
+);
+
+CREATE TABLE IF NOT EXISTS device_tokens (
+  token TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  platform TEXT,
+  created_at INTEGER NOT NULL
 );

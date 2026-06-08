@@ -2,12 +2,15 @@ package com.bondhu.app.ui.chat
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,6 +62,10 @@ fun MessageBubble(
     imageUrl: String? = null,
     onOpenImage: () -> Unit = {},
     onLongPress: () -> Unit = {},
+    onRetry: () -> Unit = {},
+    selected: Boolean = false,
+    onTap: (() -> Unit)? = null,
+    onJumpToQuoted: (String) -> Unit = {},
 ) {
     val align = if (m.fromMe) Alignment.End else Alignment.Start
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
@@ -68,6 +75,7 @@ fun MessageBubble(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (selected) Tokens.Primary.copy(alpha = 0.12f) else androidx.compose.ui.graphics.Color.Transparent)
             .padding(horizontal = 12.dp, vertical = 4.dp),
         horizontalAlignment = align,
     ) {
@@ -76,11 +84,36 @@ fun MessageBubble(
                 .widthIn(max = 300.dp)
                 .clip(shape)
                 .background(bg)
-                .combinedClickable(onClick = { showFullTime = !showFullTime }, onLongClick = onLongPress)
+                .combinedClickable(
+                    onClick = { if (onTap != null) onTap() else showFullTime = !showFullTime },
+                    onLongClick = onLongPress,
+                )
                 .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {
             if (!m.fromMe && m.senderName != null) {
                 Text(m.senderName, color = Tokens.Primary, fontSize = 12.sp)
+            }
+            if (!m.quotedText.isNullOrBlank()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (m.fromMe) androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.18f) else Tokens.Field)
+                        .clickable(enabled = m.quotedId != null) { m.quotedId?.let(onJumpToQuoted) },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.width(3.dp).height(30.dp).background(Tokens.Primary))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        m.quotedText,
+                        color = Tokens.TextMut,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(vertical = 5.dp, horizontal = 2.dp),
+                    )
+                }
             }
             if (m.type == "ptt" || m.type == "audio") {
                 VoiceBubble(
@@ -112,13 +145,22 @@ fun MessageBubble(
                 Text(if (showFullTime) fullTime(m.timestamp) else hhmm(m.timestamp), color = Tokens.TextFaint, fontSize = 10.sp)
                 if (m.fromMe) {
                     Spacer(Modifier.width(4.dp))
-                    when (m.ack) {
-                        AckTick.NONE, AckTick.SENT ->
-                            Icon(Icons.Default.Done, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
-                        AckTick.DELIVERED ->
-                            Icon(Icons.Default.DoneAll, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
-                        AckTick.READ ->
-                            Icon(Icons.Default.DoneAll, null, tint = Tokens.Tick, modifier = Modifier.size(14.dp))
+                    when {
+                        m.failed -> Icon(
+                            Icons.Default.ErrorOutline, "Failed — tap to retry", tint = Tokens.Danger,
+                            modifier = Modifier.size(15.dp).clickable { onRetry() },
+                        )
+                        m.pending -> Icon(
+                            Icons.Default.Schedule, "Sending", tint = Tokens.TextFaint, modifier = Modifier.size(13.dp),
+                        )
+                        else -> when (m.ack) {
+                            AckTick.NONE, AckTick.SENT ->
+                                Icon(Icons.Default.Done, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
+                            AckTick.DELIVERED ->
+                                Icon(Icons.Default.DoneAll, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
+                            AckTick.READ ->
+                                Icon(Icons.Default.DoneAll, null, tint = Tokens.Tick, modifier = Modifier.size(14.dp))
+                        }
                     }
                 }
             }

@@ -74,5 +74,22 @@ export function normalizeMessage(accountId: string, m: any): UpsertMessage | nul
   const tsRaw = Number(m.messageTimestamp ?? 0);
   const timestamp = tsRaw < 1e12 ? tsRaw * 1000 : tsRaw; // seconds -> ms
 
-  return { accountId, msgId, chatJid, senderJid, fromMe, type, body, timestamp, ack: 0 };
+  // Reply context: the quoted message's id + a short text preview (for the
+  // "replying to" bubble + tap-to-jump on the client).
+  const ci: any =
+    content.extendedTextMessage?.contextInfo ||
+    content.imageMessage?.contextInfo ||
+    content.videoMessage?.contextInfo ||
+    content.audioMessage?.contextInfo ||
+    content.documentMessage?.contextInfo ||
+    content.stickerMessage?.contextInfo;
+  const quotedId: string | null = ci?.stanzaId ?? null;
+  const qm: any = ci?.quotedMessage;
+  const quotedText: string | null = qm
+    ? (qm.conversation ??
+       qm.extendedTextMessage?.text ??
+       (qm.imageMessage ? '📷 Photo' : qm.audioMessage ? '🎤 Voice' : qm.videoMessage ? '🎬 Video' : qm.stickerMessage ? 'Sticker' : null))
+    : null;
+
+  return { accountId, msgId, chatJid, senderJid, fromMe, type, body, timestamp, ack: 0, quotedId, quotedText };
 }

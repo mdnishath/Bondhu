@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -31,6 +32,7 @@ fun MessageActionSheet(
     onForward: () -> Unit,
     onCopy: () -> Unit,
     onEdit: () -> Unit,
+    onSelect: () -> Unit,
     onDeleteForMe: () -> Unit,
     onDeleteForEveryone: () -> Unit,
     onDismiss: () -> Unit,
@@ -84,6 +86,14 @@ fun MessageActionSheet(
                 label = "Forward",
                 tint = Tokens.TextMain,
                 onClick = { onForward(); onDismiss() },
+            )
+
+            // Select (enter multi-select mode)
+            ActionRow(
+                icon = Icons.Default.Checklist,
+                label = "Select",
+                tint = Tokens.TextMain,
+                onClick = { onSelect(); onDismiss() },
             )
 
             // Copy (only if body is available)

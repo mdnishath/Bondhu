@@ -60,6 +60,19 @@ export function whatsappRoutes(ctx: AppContext): Router {
     res.json({ success: true });
   });
 
+  // Register/unregister an FCM device token for background push (see PushService).
+  r.post('/devices/register', (req: AuthedRequest, res) => {
+    const { token, platform } = req.body ?? {};
+    if (!token) return res.status(400).json({ error: 'token required' });
+    ctx.devices.register(req.userId!, String(token), platform ? String(platform) : 'android');
+    res.json({ success: true });
+  });
+  r.post('/devices/unregister', (req: AuthedRequest, res) => {
+    const { token } = req.body ?? {};
+    if (token) ctx.devices.remove(String(token));
+    res.json({ success: true });
+  });
+
   r.get('/status', (req: AuthedRequest, res) => {
     const accountId = ownAccount(req, res);
     if (!accountId) return;

@@ -131,4 +131,8 @@ interface BondhuApi {
 
     @POST("api/presence/subscribe")
     suspend fun subscribePresence(@Query("account") account: String, @Body body: JidRequest): OkResponse
+
+    // FCM device-token registration (called once the Firebase SDK provides a token).
+    @POST("api/devices/register")
+    suspend fun registerDevice(@Body body: RegisterDeviceRequest): OkResponse
 }

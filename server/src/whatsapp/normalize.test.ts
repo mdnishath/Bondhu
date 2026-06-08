@@ -19,6 +19,8 @@ test('normalizes a plain text message', () => {
     body: 'hello',
     timestamp: 1700000,
     ack: 0,
+    quotedId: null,
+    quotedText: null,
   });
 });
 
@@ -38,6 +40,21 @@ test('extracts extended text and falls back to placeholder for media', () => {
   });
   expect(img!.type).toBe('image');
   expect(img!.body).toBe('pic');
+});
+
+test('extracts reply quoted id + text from contextInfo', () => {
+  const n = normalizeMessage('a1', {
+    key: { id: 'R', remoteJid: 'c@s.whatsapp.net', fromMe: false },
+    messageTimestamp: 1,
+    message: {
+      extendedTextMessage: {
+        text: 'yes!',
+        contextInfo: { stanzaId: 'ORIG1', quotedMessage: { conversation: 'are you coming?' } },
+      },
+    },
+  });
+  expect(n!.quotedId).toBe('ORIG1');
+  expect(n!.quotedText).toBe('are you coming?');
 });
 
 test('returns null for messages without a key id', () => {

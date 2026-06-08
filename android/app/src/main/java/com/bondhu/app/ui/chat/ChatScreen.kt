@@ -14,7 +14,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -61,6 +63,11 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     var searchActive by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     var showClearConfirm by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf(setOf<String>()) }
+    var showBulkDelete by remember { mutableStateOf(false) }
+    var flashId by remember { mutableStateOf<String?>(null) }
+    val selectionMode = selected.isNotEmpty()
+    fun toggleSelect(id: String) { selected = if (id in selected) selected - id else selected + id }
     val clipboard = LocalClipboardManager.current
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -91,6 +98,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         }
     }
     LaunchedEffect(atBottom) { if (atBottom) newCount = 0 }
+    LaunchedEffect(flashId) { if (flashId != null) { kotlinx.coroutines.delay(1500); flashId = null } }
     // Infinite older-history: page in when the user scrolls near the top.
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
@@ -113,6 +121,14 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         containerColor = Tokens.AppBg,
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
+          if (selectionMode) {
+            SelectionTopBar(
+                count = selected.size,
+                onClose = { selected = emptySet() },
+                onForward = { vm.openForwardIds(selected.toList()) },
+                onDelete = { showBulkDelete = true },
+            )
+          } else {
             Column {
                 TopAppBar(
                     title = {
@@ -214,6 +230,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
                 if (!connected) com.bondhu.app.ui.common.ReconnectingBanner()
             }
+          }
         },
         bottomBar = {
             Composer(
@@ -310,7 +327,14 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                             onCycleSpeed = { vm.cycleVoiceSpeed() },
                             imageUrl = imgUrl,
                             onOpenImage = { lightboxUrl = imgUrl },
-                            onLongPress = { actionTarget = msg },
+                            onLongPress = { if (selectionMode) toggleSelect(msg.id) else actionTarget = msg },
+                            onRetry = { vm.retrySend(msg) },
+                            selected = (msg.id in selected) || (msg.id == flashId),
+                            onTap = if (selectionMode) ({ toggleSelect(msg.id) }) else null,
+                            onJumpToQuoted = { qid ->
+                                val idx = shown.indexOfFirst { it.id == qid }
+                                if (idx >= 0) { scope.launch { listState.animateScrollToItem(idx) }; flashId = qid }
+                            },
                         )
                     }
                 }
@@ -359,6 +383,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         onForward = { actionTarget?.let { vm.openForward(it) } },
         onCopy = { actionTarget?.let { clipboard.setText(AnnotatedString(it.body ?: it.transcript ?: "")); scope.launch { snackbarHost.showSnackbar("Copied") } } },
         onEdit = { actionTarget?.let { vm.startEdit(it) } },
+        onSelect = { actionTarget?.let { selected = selected + it.id } },
         onDeleteForMe = { actionTarget?.let { vm.deleteForMe(it) } },
         onDeleteForEveryone = { actionTarget?.let { vm.deleteForEveryone(it) } },
         onDismiss = { actionTarget = null },
@@ -374,18 +399,35 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         onDismiss = { vm.closeContact() },
     )
 
-    // Forward sheet
-    val forwardTarget = s.forwardTarget
+    // Forward sheet (single message or bulk selection)
     ForwardSheet(
-        open = forwardTarget != null,
+        open = s.forwardIds.isNotEmpty(),
         chats = s.forwardChats,
         media = vm.mediaBuilder,
         onConfirm = { jids ->
-            forwardTarget?.let { vm.forward(it, jids) }
+            vm.forwardCurrent(jids)
             vm.closeForward()
+            selected = emptySet()
+            scope.launch { snackbarHost.showSnackbar("Forwarded") }
         },
         onDismiss = { vm.closeForward() },
     )
+
+    // Bulk delete confirmation
+    if (showBulkDelete) {
+        AlertDialog(
+            onDismissRequest = { showBulkDelete = false },
+            containerColor = Tokens.Header,
+            title = { Text("Delete ${selected.size} message(s)?", color = Tokens.TextMain) },
+            text = { Text("They'll be removed from this device.", color = Tokens.TextMut) },
+            confirmButton = {
+                TextButton(onClick = { showBulkDelete = false; vm.deleteForMeIds(selected); selected = emptySet() }) {
+                    Text("Delete", color = Tokens.Danger)
+                }
+            },
+            dismissButton = { TextButton(onClick = { showBulkDelete = false }) { Text("Cancel", color = Tokens.TextMut) } },
+        )
+    }
 
     // Clear chat confirmation
     if (showClearConfirm) {
@@ -471,6 +513,29 @@ private fun dayLabel(ts: Long): String {
     now.add(Calendar.DAY_OF_YEAR, -1)
     if (same(now, msg)) return "Yesterday"
     return SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(ts))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SelectionTopBar(count: Int, onClose: () -> Unit, onForward: () -> Unit, onDelete: () -> Unit) {
+    Column {
+        TopAppBar(
+            title = { Text("$count selected", fontWeight = FontWeight.SemiBold) },
+            navigationIcon = {
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Cancel selection", tint = Tokens.TextMain) }
+            },
+            actions = {
+                IconButton(onClick = onForward) { Icon(Icons.AutoMirrored.Filled.Forward, "Forward", tint = Tokens.TextMain) }
+                IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, "Delete", tint = Tokens.Danger) }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Tokens.Header,
+                titleContentColor = Tokens.TextMain,
+                navigationIconContentColor = Tokens.TextMain,
+            ),
+        )
+        HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
+    }
 }
 
 @Composable

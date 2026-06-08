@@ -81,6 +81,8 @@ data class MessageDto(
     val transcript: String? = null,
     val senderName: String? = null,
     val reactions: List<ReactionDto> = emptyList(),
+    val quotedId: String? = null,
+    val quotedText: String? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -126,3 +128,6 @@ data class JidRequest(val jid: String)
 
 @JsonClass(generateAdapter = true)
 data class TestKeyResponse(val ok: Boolean = false, val error: String? = null)
+
+@JsonClass(generateAdapter = true)
+data class RegisterDeviceRequest(val token: String, val platform: String = "android")

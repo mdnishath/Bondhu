@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -63,15 +64,29 @@ fun VoiceBubble(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            LinearProgressIndicator(
-                progress = { progress.coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(50)),
-                color = Tokens.Primary,
-                trackColor = Tokens.Divider,
-            )
+            // Stylized waveform: per-message bar shape (deterministic from id),
+            // filled up to the playback progress.
+            val bars = androidx.compose.runtime.remember(m.id) {
+                val rnd = java.util.Random(m.id.hashCode().toLong())
+                List(28) { 0.28f + rnd.nextFloat() * 0.72f }
+            }
+            Row(
+                modifier = Modifier.weight(1f).height(26.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                val p = progress.coerceIn(0f, 1f)
+                bars.forEachIndexed { i, h ->
+                    val filled = i.toFloat() / bars.size <= p
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight(h)
+                            .clip(RoundedCornerShape(50))
+                            .background(if (filled) Tokens.Primary else Tokens.Divider),
+                    )
+                }
+            }
             if (isPlaying) {
                 Spacer(Modifier.width(6.dp))
                 Surface(

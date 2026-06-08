@@ -48,6 +48,7 @@ data class ChatUiState(
     // Forward
     val forwardChats: List<ChatRow> = emptyList(),
     val forwardTarget: Message? = null,
+    val forwardIds: List<String> = emptyList(),
     // Search
     val searchQuery: String? = null,
     val searchResults: List<Message> = emptyList(),
@@ -169,6 +170,8 @@ class ChatViewModel @Inject constructor(
                     translated = payload.strOrNull("translated"),
                     transcript = payload.strOrNull("transcript"),
                     senderName = payload.strOrNull("senderName"),
+                    quotedId = payload.strOrNull("quotedId"),
+                    quotedText = payload.strOrNull("quotedText"),
                 )
                 upsert(m)
                 viewModelScope.launch { runCatching { repo.markRead(account, chatId) } }
@@ -363,21 +366,31 @@ class ChatViewModel @Inject constructor(
     }
 
     // --- Forward ---
-    fun openForward(msg: Message) {
-        _state.value = _state.value.copy(forwardTarget = msg)
+    fun openForward(msg: Message) = openForwardIds(listOf(msg.id))
+    fun openForwardIds(ids: List<String>) {
+        _state.value = _state.value.copy(forwardIds = ids)
         viewModelScope.launch {
             runCatching { _state.value = _state.value.copy(forwardChats = repo.chats(account, limit = 100)) }
         }
     }
-    fun closeForward() { _state.value = _state.value.copy(forwardTarget = null) }
-    fun forward(msg: Message, targetChatIds: List<String>) {
+    fun closeForward() { _state.value = _state.value.copy(forwardTarget = null, forwardIds = emptyList()) }
+    /** Forward the currently-staged message(s) to the chosen target chats. */
+    fun forwardCurrent(targetChatIds: List<String>) {
+        val ids = _state.value.forwardIds
+        if (ids.isEmpty() || targetChatIds.isEmpty()) return
         viewModelScope.launch {
-            try {
-                repo.forward(account, listOf(msg.id), targetChatIds)
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(error = e.message)
-            }
+            try { repo.forward(account, ids, targetChatIds) }
+            catch (e: Exception) { _state.value = _state.value.copy(error = e.message) }
         }
+    }
+
+    /** Bulk delete-for-me of the selected message ids. */
+    fun deleteForMeIds(ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        val idSet = ids.toSet()
+        _state.value = _state.value.copy(messages = _state.value.messages.filterNot { it.id in idSet })
+        cache.put(chatId, _state.value.messages)
+        viewModelScope.launch { ids.forEach { runCatching { repo.deleteForMe(account, it) } } }
     }
 
     // --- Search (backend-wide across the chat's full history, debounced) ---
@@ -486,28 +499,63 @@ class ChatViewModel @Inject constructor(
         val mode = _state.value.sendMode
         val tLang = _state.value.outLang
         val replyTarget = _state.value.replyTo
-        _state.value = _state.value.copy(draft = "", sending = true, replyTo = null)
+
+        // Voice mode keeps its own flow (two bubbles, no pending state).
+        if (mode == "voice" && tLang != null && replyTarget == null) {
+            _state.value = _state.value.copy(draft = "", sending = true)
+            viewModelScope.launch {
+                try {
+                    val r = repo.sendVoice(account, chatId, text, tLang)
+                    r.voiceMsgId?.let { upsert(Message(it, chatId, true, "ptt", null, now(), AckTick.SENT, null, r.sentText, null)) }
+                    r.textMsgId?.let { upsert(Message(it, chatId, true, "text", r.sentText ?: text, now(), AckTick.SENT, null, null, null)) }
+                    _state.value = _state.value.copy(sending = false)
+                } catch (e: Exception) {
+                    _state.value = _state.value.copy(sending = false, error = e.message, draft = text)
+                }
+            }
+            return
+        }
+
+        // Text / reply: show an optimistic "pending" bubble immediately, then confirm
+        // it (real id) or mark it failed with a tap-to-retry affordance.
+        val tmpId = "tmp${System.currentTimeMillis()}"
+        upsert(Message(tmpId, chatId, true, "text", text, now(), AckTick.NONE, null, null, null, pending = true, quotedId = replyTarget?.id, quotedText = replyTarget?.body))
+        _state.value = _state.value.copy(draft = "", replyTo = null)
         viewModelScope.launch {
             try {
-                if (replyTarget != null) {
-                    // Text reply (voice reply not supported)
-                    val r = repo.reply(account, chatId, replyTarget.id, text)
-                    r.msgId?.let { upsert(Message(it, chatId, true, "text", r.sentText ?: text, now(), AckTick.SENT, null, null, null)) }
-                } else if (mode == "voice" && tLang != null) {
-                    val r = repo.sendVoice(account, chatId, text, tLang)
-                    // optimistic ptt bubble — uses the real returned id so socket echo dedupes;
-                    // store sentText as transcript so the voice bubble shows the sent caption
-                    r.voiceMsgId?.let { upsert(Message(it, chatId, true, "ptt", null, now(), AckTick.SENT, null, r.sentText, null)) }
-                    // optimistic text bubble (translation)
-                    r.textMsgId?.let { upsert(Message(it, chatId, true, "text", r.sentText ?: text, now(), AckTick.SENT, null, null, null)) }
-                } else {
-                    val r = repo.send(account, chatId, text, tLang)
-                    // optimistic text bubble — real id ensures socket echo is a no-op replace
-                    r.msgId?.let { upsert(Message(it, chatId, true, "text", r.sentText ?: text, now(), AckTick.SENT, null, null, null)) }
-                }
-                _state.value = _state.value.copy(sending = false)
+                val r = if (replyTarget != null) repo.reply(account, chatId, replyTarget.id, text)
+                else repo.send(account, chatId, text, tLang)
+                confirmSent(tmpId, r.msgId, r.sentText ?: text)
             } catch (e: Exception) {
-                _state.value = _state.value.copy(sending = false, error = e.message, draft = text)
+                upsertPatch(tmpId) { it.copy(pending = false, failed = true) }
+                _state.value = _state.value.copy(error = e.message)
+            }
+        }
+    }
+
+    /** Replace an optimistic/failed bubble with the confirmed (real-id) message;
+     *  if a socket echo already added the real id, keep that one (no duplicate). */
+    private fun confirmSent(tmpId: String, realId: String?, body: String) {
+        val rid = realId ?: tmpId
+        val rest = _state.value.messages.filterNot { it.id == tmpId }
+        val merged = if (rest.any { it.id == rid }) rest
+        else rest + Message(rid, chatId, true, "text", body, now(), AckTick.SENT, null, null, null)
+        val sorted = merged.sortedBy { it.timestamp }
+        cache.put(chatId, sorted)
+        _state.value = _state.value.copy(messages = sorted)
+    }
+
+    fun retrySend(msg: Message) {
+        if (!msg.failed || account.isEmpty()) return
+        val text = msg.body ?: return
+        upsertPatch(msg.id) { it.copy(failed = false, pending = true) }
+        viewModelScope.launch {
+            try {
+                val r = repo.send(account, chatId, text, _state.value.outLang)
+                confirmSent(msg.id, r.msgId, r.sentText ?: text)
+            } catch (e: Exception) {
+                upsertPatch(msg.id) { it.copy(pending = false, failed = true) }
+                _state.value = _state.value.copy(error = e.message)
             }
         }
     }

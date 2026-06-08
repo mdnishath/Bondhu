@@ -10,6 +10,8 @@ export interface Message {
   timestamp: number;
   ack: number;
   transcript?: string | null;
+  quotedId?: string | null;
+  quotedText?: string | null;
 }
 
 export interface UpsertMessage {
@@ -23,6 +25,8 @@ export interface UpsertMessage {
   timestamp: number;
   ack: number;
   raw?: string | null;
+  quotedId?: string | null;
+  quotedText?: string | null;
 }
 
 export class MessagesRepo {
@@ -31,13 +35,18 @@ export class MessagesRepo {
   upsert(m: UpsertMessage): void {
     this.db
       .prepare(
-        `INSERT INTO messages (account_id,msg_id,chat_jid,sender_jid,from_me,type,body,timestamp,ack,raw)
-         VALUES (?,?,?,?,?,?,?,?,?,?)
+        `INSERT INTO messages (account_id,msg_id,chat_jid,sender_jid,from_me,type,body,timestamp,ack,raw,quoted_id,quoted_text)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(account_id,msg_id) DO UPDATE SET
            body=excluded.body, type=excluded.type, ack=MAX(messages.ack, excluded.ack),
-           raw=COALESCE(excluded.raw, messages.raw)`,
+           raw=COALESCE(excluded.raw, messages.raw),
+           quoted_id=COALESCE(excluded.quoted_id, messages.quoted_id),
+           quoted_text=COALESCE(excluded.quoted_text, messages.quoted_text)`,
       )
-      .run(m.accountId, m.msgId, m.chatJid, m.senderJid, m.fromMe ? 1 : 0, m.type, m.body, m.timestamp, m.ack, m.raw ?? null);
+      .run(
+        m.accountId, m.msgId, m.chatJid, m.senderJid, m.fromMe ? 1 : 0, m.type, m.body, m.timestamp, m.ack,
+        m.raw ?? null, m.quotedId ?? null, m.quotedText ?? null,
+      );
   }
 
   setAck(accountId: string, msgId: string, ack: number): void {
@@ -112,6 +121,8 @@ export class MessagesRepo {
       timestamp: r.timestamp,
       ack: r.ack,
       transcript: r.transcript ?? null,
+      quotedId: r.quoted_id ?? null,
+      quotedText: r.quoted_text ?? null,
     };
   }
 }

@@ -22,6 +22,7 @@ data class SettingsUiState(
     val error: String? = null,
     val notice: String? = null,
     val testing: Boolean = false,
+    val theme: String = "system",
     val newKeyValue: String = "",
     val newKeyLabel: String = "",
 )
@@ -37,7 +38,15 @@ class SettingsViewModel @Inject constructor(
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state
 
-    init { load() }
+    init {
+        _state.value = _state.value.copy(theme = prefs.themeBlocking())
+        load()
+    }
+
+    fun setTheme(mode: String) {
+        _state.value = _state.value.copy(theme = mode)
+        viewModelScope.launch { prefs.setTheme(mode) }
+    }
 
     fun load() {
         viewModelScope.launch {

@@ -1,6 +1,7 @@
 package com.bondhu.app.data.store
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -24,6 +25,7 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
         val ACTIVE_ACCOUNT = stringPreferencesKey("active_account")
         val BASE_URL = stringPreferencesKey("base_url")
         val THEME = stringPreferencesKey("theme")
+        val ONBOARDED = booleanPreferencesKey("onboarded")
     }
 
     val jwt: Flow<String?> = ds.data.map { it[Keys.JWT] }
@@ -45,6 +47,17 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
     fun jwtBlocking(): String? = cJwt
     fun baseUrlBlocking(): String = BuildConfig.BASE_URL
     fun activeAccountBlocking(): String? = cAccount
+
+    // Theme: "system" | "light" | "dark"
+    @Volatile private var cTheme: String = runBlocking { ds.data.first()[Keys.THEME] } ?: "system"
+    val theme: Flow<String> = ds.data.map { it[Keys.THEME] ?: "system" }
+    fun themeBlocking(): String = cTheme
+    suspend fun setTheme(v: String) { cTheme = v; ds.edit { it[Keys.THEME] = v } }
+
+    // First-launch onboarding seen flag.
+    @Volatile private var cOnboarded: Boolean = runBlocking { ds.data.first()[Keys.ONBOARDED] } ?: false
+    fun onboardedBlocking(): Boolean = cOnboarded
+    suspend fun setOnboarded() { cOnboarded = true; ds.edit { it[Keys.ONBOARDED] = true } }
 
     // per-chat composer prefs
     fun outLangKey(jid: String) = androidx.datastore.preferences.core.stringPreferencesKey("out_lang_${jid}")

@@ -20,6 +20,7 @@ data class ChatListUiState(
     val chats: List<ChatRow> = emptyList(),
     val account: String? = null,
     val error: String? = null,
+    val showOnboarding: Boolean = false,
 )
 
 @HiltViewModel
@@ -37,6 +38,7 @@ class ChatListViewModel @Inject constructor(
     private var lastReloadAt = 0L
 
     init {
+        _state.value = _state.value.copy(showOnboarding = !prefs.onboardedBlocking())
         viewModelScope.launch {
             _state.value = _state.value.copy(account = prefs.activeAccount.first())
             refresh()
@@ -68,6 +70,11 @@ class ChatListViewModel @Inject constructor(
         _state.value = _state.value.copy(refreshing = true)
         lastReloadAt = System.currentTimeMillis()
         refresh()
+    }
+
+    fun dismissOnboarding() {
+        _state.value = _state.value.copy(showOnboarding = false)
+        viewModelScope.launch { prefs.setOnboarded() }
     }
 
     /** Tokenised profile-pic URL for [jid]; null if not ready. Cheap string build — Coil caches the fetch. */
