@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +34,12 @@ private fun shortTime(ts: Long): String =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatListScreen(onOpenChat: (String, String) -> Unit, vm: ChatListViewModel = hiltViewModel()) {
+fun ChatListScreen(
+    onOpenChat: (String, String) -> Unit,
+    onOpenSettings: () -> Unit = {},
+    onSwitchAccount: () -> Unit = {},
+    vm: ChatListViewModel = hiltViewModel(),
+) {
     val s by vm.state.collectAsStateWithLifecycle()
     Scaffold(
         containerColor = Tokens.AppBg,
@@ -44,6 +51,22 @@ fun ChatListScreen(onOpenChat: (String, String) -> Unit, vm: ChatListViewModel =
                             "Bondhu",
                             fontWeight = FontWeight.SemiBold,
                         )
+                    },
+                    actions = {
+                        IconButton(onClick = onSwitchAccount) {
+                            Icon(
+                                Icons.Default.ManageAccounts,
+                                contentDescription = "Accounts",
+                                tint = Tokens.TextMain,
+                            )
+                        }
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = Tokens.TextMain,
+                            )
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Tokens.Header,

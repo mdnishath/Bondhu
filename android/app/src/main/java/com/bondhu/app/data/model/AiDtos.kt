@@ -30,3 +30,8 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true) data class ChatLanguageResponse(val lang: String? = null)
 @JsonClass(generateAdapter = true) data class SetChatLanguageRequest(val lang: String?)
 @JsonClass(generateAdapter = true) data class ProfileResponse(val jid: String, val about: String? = null, val phoneJid: String? = null, val phone: String? = null)
+
+// --- API Key settings ---
+@JsonClass(generateAdapter = true) data class ApiKeyDto(val id: String, val label: String? = null, val keyMasked: String, val isActive: Boolean)
+@JsonClass(generateAdapter = true) data class KeysResponse(val keys: List<ApiKeyDto>)
+@JsonClass(generateAdapter = true) data class AddKeyRequest(val keyValue: String, val label: String? = null)

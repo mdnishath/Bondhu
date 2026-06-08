@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.bondhu.app.ui.account.AccountListScreen
 import com.bondhu.app.ui.account.PairScreen
 import com.bondhu.app.ui.auth.AuthScreen
+import com.bondhu.app.ui.settings.SettingsScreen
 
 @Composable
 fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
@@ -35,7 +36,17 @@ fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
             })
         }
         composable(Routes.CHAT_LIST) {
-            com.bondhu.app.ui.chatlist.ChatListScreen(onOpenChat = { jid, name -> nav.navigate(Routes.chat(jid, name)) })
+            com.bondhu.app.ui.chatlist.ChatListScreen(
+                onOpenChat = { jid, name -> nav.navigate(Routes.chat(jid, name)) },
+                onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                onSwitchAccount = { nav.navigate(Routes.ACCOUNTS) },
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                onBack = { nav.popBackStack() },
+                onLoggedOut = { nav.navigate(Routes.AUTH) { popUpTo(0) { inclusive = true } } },
+            )
         }
         composable(
             Routes.CHAT,

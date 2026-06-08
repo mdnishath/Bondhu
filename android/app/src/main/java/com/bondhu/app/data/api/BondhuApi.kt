@@ -81,4 +81,16 @@ interface BondhuApi {
 
     @GET("api/profile")
     suspend fun profile(@Query("account") account: String, @Query("id") id: String): ProfileResponse
+
+    @GET("api/settings/keys")
+    suspend fun getKeys(): KeysResponse
+
+    @POST("api/settings/keys")
+    suspend fun addKey(@Body body: AddKeyRequest): ApiKeyDto
+
+    @DELETE("api/settings/keys/{id}")
+    suspend fun deleteKey(@Path("id") id: String): OkResponse
+
+    @POST("api/settings/keys/{id}/activate")
+    suspend fun activateKey(@Path("id") id: String): OkResponse
 }

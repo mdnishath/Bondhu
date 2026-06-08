@@ -7,6 +7,7 @@ object Routes {
     const val PAIR = "pair/{accountId}"
     const val CHAT_LIST = "chatlist"
     const val CHAT = "chat/{chatId}?name={name}"
+    const val SETTINGS = "settings"
 
     fun pair(accountId: String) = "pair/$accountId"
     fun chat(chatId: String, name: String = "") =
