@@ -294,6 +294,12 @@ export class WaConnection extends EventEmitter {
     return sent?.key?.id ?? null;
   }
 
+  async sendDocument(jid: string, buffer: Buffer, fileName: string, mimetype: string): Promise<string | null> {
+    if (!this.sock) throw new Error('Not connected');
+    const sent = await this.sock.sendMessage(jid, { document: buffer, fileName, mimetype });
+    return sent?.key?.id ?? null;
+  }
+
   async downloadMedia(rawMsg: string): Promise<{ buffer: Buffer; mime: string }> {
     const msg = this.parseRaw(rawMsg);
     const buffer = (await downloadMediaMessage(msg, 'buffer', {})) as Buffer;

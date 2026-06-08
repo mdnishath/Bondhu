@@ -21,6 +21,7 @@ data class ChatListUiState(
     val account: String? = null,
     val error: String? = null,
     val showOnboarding: Boolean = false,
+    val update: com.bondhu.app.data.update.UpdateInfo? = null,
 )
 
 @HiltViewModel
@@ -29,6 +30,7 @@ class ChatListViewModel @Inject constructor(
     private val prefs: Prefs,
     private val socket: SocketManager,
     private val media: MediaUrlBuilder,
+    private val updateManager: com.bondhu.app.data.update.UpdateManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatListUiState())
@@ -54,7 +56,11 @@ class ChatListViewModel @Inject constructor(
             }
         }
         viewModelScope.launch { socket.connects.collect { lastReloadAt = System.currentTimeMillis(); refresh() } }
+        viewModelScope.launch { runCatching { _state.value = _state.value.copy(update = updateManager.check()) } }
     }
+
+    fun runUpdate() { _state.value.update?.let { updateManager.startDownload(it) } }
+    fun dismissUpdate() { _state.value = _state.value.copy(update = null) }
 
     fun refresh() {
         val acc = _state.value.account ?: return

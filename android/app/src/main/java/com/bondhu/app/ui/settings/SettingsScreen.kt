@@ -171,6 +171,30 @@ fun SettingsScreen(
                 }
             }
 
+            // --- Updates ---
+            GlassCard {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Updates", color = Tokens.Primary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text("Current version: ${s.currentVersion}", color = Tokens.TextMut, fontSize = 13.sp)
+                    val upd = s.update
+                    if (upd != null) {
+                        Text("Update available: v${upd.versionName}", color = Tokens.TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        if (upd.notes.isNotBlank()) {
+                            Text(upd.notes.lineSequence().take(4).joinToString("\n"), color = Tokens.TextMut, fontSize = 12.sp)
+                        }
+                        BondhuButton("Download & install", onClick = { vm.runUpdate() }, modifier = Modifier.fillMaxWidth())
+                    } else {
+                        if (s.upToDate) Text("You're on the latest version ✓", color = Tokens.TextMut, fontSize = 13.sp)
+                        BondhuButton(
+                            if (s.checkingUpdate) "Checking…" else "Check for updates",
+                            onClick = { vm.checkUpdate() },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !s.checkingUpdate,
+                        )
+                    }
+                }
+            }
+
             // --- Appearance ---
             GlassCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = path.resolve(__dirname, '../../../web/dist');
 
 // Routes that legitimately carry large base64 media payloads.
-const MEDIA_PATHS = ['/api/send-image', '/api/send-recorded', '/api/transcribe', '/api/send-voice'];
+const MEDIA_PATHS = ['/api/send-image', '/api/send-recorded', '/api/transcribe', '/api/send-voice', '/api/send-document'];
 // Paid-API (Gemini) endpoints — moderate per-IP limit to cap cost/abuse.
 const AI_PATHS = ['/api/transcribe', '/api/tts', '/api/send-voice', '/api/retranscribe', '/api/retranslate'];
 
@@ -30,8 +30,9 @@ export function createApp(ctx: AppContext): Express {
     },
   }));
 
-  // Tiered body limits: big only on media routes, small everywhere else (incl. auth).
-  app.use(MEDIA_PATHS, express.json({ limit: '50mb' }));
+  // Tiered body limits: big only on media routes (documents/APKs can be large),
+  // small everywhere else (incl. auth).
+  app.use(MEDIA_PATHS, express.json({ limit: '100mb' }));
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));

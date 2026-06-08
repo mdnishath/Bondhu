@@ -43,6 +43,9 @@ class ChatRepository @Inject constructor(private val api: BondhuApi) {
     suspend fun sendImage(account: String, chatId: String, imageBase64: String, caption: String?) =
         api.sendImage(SendImageRequest(account, chatId, imageBase64, caption))
 
+    suspend fun sendDocument(account: String, chatId: String, fileBase64: String, fileName: String, mimeType: String) =
+        api.sendDocument(com.bondhu.app.data.model.SendDocumentRequest(account, chatId, fileBase64, fileName, mimeType))
+
     suspend fun profile(account: String, id: String) = api.profile(account, id)
 
     suspend fun react(account: String, msgId: String, emoji: String) =

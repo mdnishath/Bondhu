@@ -420,6 +420,23 @@ class ChatViewModel @Inject constructor(
     /** Tokenised media URL for an image message; null if not ready. */
     fun imageUrl(msgId: String): String? = media.media(msgId)
 
+    /** Tokenised media URL for any media/document message; null if not ready. */
+    fun fileUrl(msgId: String): String? = media.media(msgId)
+
+    fun sendDocument(base64: String, fileName: String, mime: String) {
+        if (account.isEmpty()) return
+        _state.value = _state.value.copy(sending = true)
+        viewModelScope.launch {
+            try {
+                val r = repo.sendDocument(account, chatId, base64, fileName, mime)
+                r.msgId?.let { upsert(Message(it, chatId, true, "document", fileName, now(), AckTick.SENT, null, null, null)) }
+                _state.value = _state.value.copy(sending = false)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(sending = false, error = e.message)
+            }
+        }
+    }
+
     fun sendImage(base64: String, localUri: String?, caption: String? = null) {
         if (account.isEmpty()) return
         val cap = caption?.trim()?.ifEmpty { null }

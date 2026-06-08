@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Settings
@@ -133,6 +134,22 @@ fun ChatListScreen(
                 )
                 HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
                 if (!connected) com.bondhu.app.ui.common.ReconnectingBanner()
+                s.update?.let { u ->
+                    Surface(color = Tokens.Primary.copy(alpha = 0.16f), modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Update available — v${u.versionName}",
+                                color = Tokens.Primary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { vm.runUpdate() }) { Text("Update", color = Tokens.Primary, fontWeight = FontWeight.SemiBold) }
+                            IconButton(onClick = { vm.dismissUpdate() }) { Icon(Icons.Default.Close, "Dismiss", tint = Tokens.TextMut) }
+                        }
+                    }
+                }
             }
         },
         floatingActionButton = {

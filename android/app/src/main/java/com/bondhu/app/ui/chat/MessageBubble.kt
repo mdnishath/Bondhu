@@ -7,11 +7,14 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,6 +69,7 @@ fun MessageBubble(
     selected: Boolean = false,
     onTap: (() -> Unit)? = null,
     onJumpToQuoted: (String) -> Unit = {},
+    onDownload: () -> Unit = {},
 ) {
     val align = if (m.fromMe) Alignment.End else Alignment.Start
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
@@ -132,6 +136,8 @@ fun MessageBubble(
                 )
             } else if (m.type == "image") {
                 ImageBubble(m = m, imageUrl = imageUrl, onOpen = onOpenImage)
+            } else if (m.type == "document") {
+                DocumentBubble(m = m, onDownload = onDownload)
             } else {
                 Text(m.body ?: (if (m.type != "text") "[${m.type}]" else ""), color = Tokens.TextMain)
                 if (!m.fromMe && m.translated != null && m.type == "text") {
@@ -186,6 +192,34 @@ fun MessageBubble(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DocumentBubble(m: Message, onDownload: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.widthIn(max = 270.dp),
+    ) {
+        Surface(color = Tokens.Field, shape = RoundedCornerShape(10.dp), modifier = Modifier.size(40.dp)) {
+            androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Description, contentDescription = null, tint = Tokens.Primary, modifier = Modifier.size(22.dp))
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(
+            m.body ?: "Document",
+            color = Tokens.TextMain,
+            fontSize = 14.sp,
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (!m.fromMe) {
+            IconButton(onClick = onDownload) {
+                Icon(Icons.Default.Download, contentDescription = "Download", tint = Tokens.Primary)
             }
         }
     }

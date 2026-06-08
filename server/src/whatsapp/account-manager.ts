@@ -259,6 +259,14 @@ export class AccountManager extends EventEmitter {
     return sentId;
   }
 
+  async sendDocument(accountId: string, jid: string, buffer: Buffer, fileName: string, mimetype: string): Promise<string | null> {
+    const conn = this.requireConn(accountId);
+    jid = await conn.canonicalJid(jid);
+    const sentId = await conn.sendDocument(jid, buffer, fileName, mimetype);
+    if (sentId) this.storeOutgoing(accountId, jid, sentId, fileName || '[document]', 'document');
+    return sentId;
+  }
+
   async downloadMedia(accountId: string, msgId: string): Promise<{ buffer: Buffer; mime: string }> {
     const conn = this.requireConn(accountId);
     const raw = this.messages.getRaw(accountId, msgId);

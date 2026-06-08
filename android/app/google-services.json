@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1251390693",
+    "project_id": "bondhu-255ad",
+    "storage_bucket": "bondhu-255ad.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1251390693:android:b3750a24de23723455d00c",
+        "android_client_info": {
+          "package_name": "com.bondhu.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAL5BPnsbg_GUo1qM2ohco2DyWue8aU34s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

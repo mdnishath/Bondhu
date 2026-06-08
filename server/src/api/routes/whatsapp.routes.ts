@@ -7,6 +7,26 @@ export function whatsappRoutes(ctx: AppContext): Router {
   const r = Router();
   r.use(requireAuth(ctx));
 
+  // Latest app version (proxies GitHub Releases, cached 1h) for in-app auto-update.
+  let verCache: { at: number; data: { versionName: string | null; url: string | null; notes: string } } | null = null;
+  r.get('/app/latest', async (_req: AuthedRequest, res) => {
+    try {
+      if (!verCache || Date.now() - verCache.at > 3600_000) {
+        const gh = await fetch('https://api.github.com/repos/mdnishath/Bondhu/releases/latest', {
+          headers: { 'User-Agent': 'Bondhu', Accept: 'application/vnd.github+json' },
+        });
+        const j: any = await gh.json();
+        const apk = (j.assets || []).find((a: any) => String(a.name).endsWith('.apk'));
+        verCache = { at: Date.now(), data: {
+          versionName: (String(j.tag_name || '').replace(/^v/, '')) || null,
+          url: apk?.browser_download_url ?? null,
+          notes: typeof j.body === 'string' ? j.body.slice(0, 1200) : '',
+        } };
+      }
+      res.json(verCache.data);
+    } catch { res.json({ versionName: null, url: null, notes: '' }); }
+  });
+
   // resolve + authorize the ?account= param against the caller
   const ownAccount = (req: AuthedRequest, res: any): string | null => {
     const accountId = (req.query.account as string) || (req.body?.account as string);
@@ -234,6 +254,17 @@ export function whatsappRoutes(ctx: AppContext): Router {
       const input = Buffer.from(imageBase64, 'base64');
       const jpeg = await sharp(input).resize(1280, 1280, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer();
       const id = await ctx.manager.sendImage(accountId, chatId, jpeg, caption);
+      res.json({ success: true, msgId: id });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  r.post('/send-document', async (req: AuthedRequest, res) => {
+    const accountId = ownAccount(req, res); if (!accountId) return;
+    const { chatId, fileBase64, fileName, mimeType } = req.body ?? {};
+    if (!chatId || !fileBase64 || !fileName) return res.status(400).json({ error: 'chatId, fileBase64, fileName required' });
+    try {
+      const buf = Buffer.from(fileBase64, 'base64');
+      const id = await ctx.manager.sendDocument(accountId, chatId, buf, fileName, mimeType || 'application/octet-stream');
       res.json({ success: true, msgId: id });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });

@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,6 +70,18 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     val selectionMode = selected.isNotEmpty()
     fun toggleSelect(id: String) { selected = if (id in selected) selected - id else selected + id }
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    fun downloadFile(msg: Message) {
+        val url = vm.fileUrl(msg.id) ?: return
+        val name = msg.body?.takeIf { it.isNotBlank() } ?: "bondhu_file"
+        try {
+            val req = android.app.DownloadManager.Request(android.net.Uri.parse(url))
+                .setTitle(name)
+                .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, name)
+            (context.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager).enqueue(req)
+        } catch (_: Exception) { /* surfaced below */ }
+    }
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     // Whether the list is scrolled to (near) the bottom.
@@ -194,6 +207,9 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                     },
                     actions = {
                         if (!searchActive) {
+                            IconButton(onClick = { searchActive = true }) {
+                                Icon(Icons.Default.Search, contentDescription = "Search in chat", tint = Tokens.TextMain)
+                            }
                             IconButton(onClick = { menuExpanded = true }) {
                                 Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = Tokens.TextMain)
                             }
@@ -251,6 +267,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 onTick = vm::tickRecording,
                 onOpenLangs = { vm.ensureLanguages() },
                 onSendImage = { b64, localUri, caption -> vm.sendImage(b64, localUri, caption) },
+                onSendDocument = { b64, name, mime -> vm.sendDocument(b64, name, mime) },
                 replyTo = s.replyTo,
                 onCancelReply = vm::clearReplyTo,
                 editing = s.editing,
@@ -335,6 +352,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                                 val idx = shown.indexOfFirst { it.id == qid }
                                 if (idx >= 0) { scope.launch { listState.animateScrollToItem(idx) }; flashId = qid }
                             },
+                            onDownload = { downloadFile(msg); scope.launch { snackbarHost.showSnackbar("Downloading… check notifications") } },
                         )
                     }
                 }

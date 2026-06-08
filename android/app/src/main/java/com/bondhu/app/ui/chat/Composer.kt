@@ -66,6 +66,7 @@ fun Composer(
     onTick: () -> Unit = {},
     onOpenLangs: () -> Unit = {},
     onSendImage: (String, String?, String) -> Unit = { _, _, _ -> },
+    onSendDocument: (String, String, String) -> Unit = { _, _, _ -> },
     replyTo: Message? = null,
     onCancelReply: () -> Unit = {},
     editing: Message? = null,
@@ -116,6 +117,23 @@ fun Composer(
                 // Stage the image and let the user add a caption before sending.
                 pendingImage = base64 to uri.toString()
                 imageCaption = ""
+            }
+        }
+    }
+
+    // Any-file picker → send as a document (apk, pdf, xlsx, csv, …).
+    val docPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            val cr = context.contentResolver
+            val bytes = cr.openInputStream(uri)?.use { it.readBytes() }
+            if (bytes != null) {
+                val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                val name = cr.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                    ?.use { c -> if (c.moveToFirst()) c.getString(0) else null } ?: "file"
+                val mime = cr.getType(uri) ?: "application/octet-stream"
+                onSendDocument(b64, name, mime)
             }
         }
     }
@@ -432,17 +450,34 @@ fun Composer(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            // Attach button — opens image picker
-                            IconButton(
-                                onClick = { imagePicker.launch("image/*") },
-                                modifier = Modifier.size(44.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.AttachFile,
-                                    contentDescription = "Attach",
-                                    tint = Tokens.TextMut,
-                                    modifier = Modifier.size(24.dp),
-                                )
+                            // Attach button — choose Photo or any Document/file
+                            var attachMenu by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(
+                                    onClick = { attachMenu = true },
+                                    modifier = Modifier.size(44.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Default.AttachFile,
+                                        contentDescription = "Attach",
+                                        tint = Tokens.TextMut,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = attachMenu,
+                                    onDismissRequest = { attachMenu = false },
+                                    containerColor = Tokens.Surface,
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Photo", color = Tokens.TextMain) },
+                                        onClick = { attachMenu = false; imagePicker.launch("image/*") },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Document / file", color = Tokens.TextMain) },
+                                        onClick = { attachMenu = false; docPicker.launch("*/*") },
+                                    )
+                                }
                             }
 
                             // Mic button — ghost, TextMut

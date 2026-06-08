@@ -131,3 +131,15 @@ data class TestKeyResponse(val ok: Boolean = false, val error: String? = null)
 
 @JsonClass(generateAdapter = true)
 data class RegisterDeviceRequest(val token: String, val platform: String = "android")
+
+@JsonClass(generateAdapter = true)
+data class SendDocumentRequest(
+    val account: String,
+    val chatId: String,
+    val fileBase64: String,
+    val fileName: String,
+    val mimeType: String,
+)
+
+@JsonClass(generateAdapter = true)
+data class LatestVersionResponse(val versionName: String? = null, val url: String? = null, val notes: String? = null)

@@ -74,6 +74,12 @@ interface BondhuApi {
     @POST("api/send-image")
     suspend fun sendImage(@Body body: SendImageRequest): SendResponse
 
+    @POST("api/send-document")
+    suspend fun sendDocument(@Body body: SendDocumentRequest): SendResponse
+
+    @GET("api/app/latest")
+    suspend fun latestVersion(): LatestVersionResponse
+
     @POST("api/send-voice")
     suspend fun sendVoice(@Body body: SendVoiceRequest): SendVoiceResponse
 

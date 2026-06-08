@@ -23,6 +23,10 @@ data class SettingsUiState(
     val notice: String? = null,
     val testing: Boolean = false,
     val theme: String = "system",
+    val currentVersion: String = "",
+    val update: com.bondhu.app.data.update.UpdateInfo? = null,
+    val checkingUpdate: Boolean = false,
+    val upToDate: Boolean = false,
     val newKeyValue: String = "",
     val newKeyLabel: String = "",
 )
@@ -33,14 +37,30 @@ class SettingsViewModel @Inject constructor(
     private val langRepo: LanguageRepository,
     private val prefs: Prefs,
     private val socket: SocketManager,
+    private val updateManager: com.bondhu.app.data.update.UpdateManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state
 
     init {
-        _state.value = _state.value.copy(theme = prefs.themeBlocking())
+        _state.value = _state.value.copy(theme = prefs.themeBlocking(), currentVersion = updateManager.currentVersion)
         load()
+    }
+
+    fun checkUpdate() {
+        _state.value = _state.value.copy(checkingUpdate = true, upToDate = false)
+        viewModelScope.launch {
+            val u = updateManager.check()
+            _state.value = _state.value.copy(checkingUpdate = false, update = u, upToDate = (u == null))
+        }
+    }
+
+    fun runUpdate() {
+        _state.value.update?.let {
+            updateManager.startDownload(it)
+            _state.value = _state.value.copy(notice = "Downloading update… check your notifications")
+        }
     }
 
     fun setTheme(mode: String) {
