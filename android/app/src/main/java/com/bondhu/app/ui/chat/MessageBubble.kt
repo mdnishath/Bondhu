@@ -45,6 +45,8 @@ fun MessageBubble(
     onPlayVoice: () -> Unit = {},
     onRetranscribe: () -> Unit = {},
     transcribing: Boolean = false,
+    imageUrl: String? = null,
+    onOpenImage: () -> Unit = {},
 ) {
     val align = if (m.fromMe) Alignment.End else Alignment.Start
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
@@ -79,6 +81,8 @@ fun MessageBubble(
                     onRetranscribe = onRetranscribe,
                     transcribing = transcribing,
                 )
+            } else if (m.type == "image") {
+                ImageBubble(m = m, imageUrl = imageUrl, onOpen = onOpenImage)
             } else {
                 Text(m.body ?: (if (m.type != "text") "[${m.type}]" else ""), color = Tokens.TextMain)
                 if (!m.fromMe && m.translated != null && m.type == "text") {

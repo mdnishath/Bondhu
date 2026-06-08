@@ -64,6 +64,9 @@ interface BondhuApi {
     @POST("api/retranslate")
     suspend fun retranslate(@Body body: RetranslateRequest): RetranslateResponse
 
+    @POST("api/send-image")
+    suspend fun sendImage(@Body body: SendImageRequest): SendResponse
+
     @POST("api/send-voice")
     suspend fun sendVoice(@Body body: SendVoiceRequest): SendVoiceResponse
 

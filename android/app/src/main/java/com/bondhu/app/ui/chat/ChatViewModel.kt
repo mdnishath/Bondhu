@@ -216,6 +216,23 @@ class ChatViewModel @Inject constructor(
     /** Tokenised profile-pic URL for the current chat; null if not ready. */
     fun headerAvatarUrl(): String? = media.profilePic(chatId)
 
+    /** Tokenised media URL for an image message; null if not ready. */
+    fun imageUrl(msgId: String): String? = media.media(msgId)
+
+    fun sendImage(base64: String, caption: String?) {
+        if (account.isEmpty()) return
+        _state.value = _state.value.copy(sending = true)
+        viewModelScope.launch {
+            try {
+                val r = repo.sendImage(account, chatId, base64, caption)
+                r.msgId?.let { upsert(Message(it, chatId, true, "image", caption?.ifBlank { null }, now(), AckTick.SENT, null, null, null)) }
+                _state.value = _state.value.copy(sending = false)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(sending = false, error = e.message)
+            }
+        }
+    }
+
     fun onDraft(v: String) { _state.value = _state.value.copy(draft = v) }
 
     fun startRecording(nowMs: Long) {

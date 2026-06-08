@@ -54,6 +54,7 @@ fun Composer(
     onCancelRecord: () -> Unit = {},
     onTick: () -> Unit = {},
     onOpenLangs: () -> Unit = {},
+    onSendImage: (String, String?) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     var showLangSheet by remember { mutableStateOf(false) }
@@ -82,6 +83,19 @@ fun Composer(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) onStartRecord(System.currentTimeMillis())
+    }
+
+    // Image picker launcher
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            if (bytes != null) {
+                val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                onSendImage(base64, null)
+            }
+        }
     }
 
     fun requestMic() {
@@ -284,11 +298,9 @@ fun Composer(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            // Attach button (placeholder — coming soon)
+                            // Attach button — opens image picker
                             IconButton(
-                                onClick = {
-                                    android.widget.Toast.makeText(context, "Coming soon", android.widget.Toast.LENGTH_SHORT).show()
-                                },
+                                onClick = { imagePicker.launch("image/*") },
                                 modifier = Modifier.size(44.dp),
                             ) {
                                 Icon(

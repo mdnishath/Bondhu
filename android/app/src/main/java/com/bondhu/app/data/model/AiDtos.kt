@@ -31,6 +31,9 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true) data class SetChatLanguageRequest(val lang: String?)
 @JsonClass(generateAdapter = true) data class ProfileResponse(val jid: String, val about: String? = null, val phoneJid: String? = null, val phone: String? = null)
 
+// --- Image send ---
+@JsonClass(generateAdapter = true) data class SendImageRequest(val account: String, val chatId: String, val imageBase64: String, val caption: String? = null)
+
 // --- API Key settings ---
 @JsonClass(generateAdapter = true) data class ApiKeyDto(val id: String, val label: String? = null, val keyMasked: String, val isActive: Boolean)
 @JsonClass(generateAdapter = true) data class KeysResponse(val keys: List<ApiKeyDto>)

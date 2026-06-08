@@ -1,5 +1,7 @@
 package com.bondhu.app.ui.chat
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,10 +13,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.bondhu.app.ui.common.RemoteAvatar
 import com.bondhu.app.ui.theme.Tokens
 
@@ -25,6 +31,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     val playback by vm.playback.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     var menuExpanded by remember { mutableStateOf(false) }
+    var lightboxUrl by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(chatId) { vm.bind(chatId) }
     LaunchedEffect(s.messages.size) { if (s.messages.isNotEmpty()) listState.animateScrollToItem(s.messages.lastIndex) }
 
@@ -93,6 +100,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 onCancelRecord = vm::cancelRecording,
                 onTick = vm::tickRecording,
                 onOpenLangs = { vm.ensureLanguages() },
+                onSendImage = { b64, cap -> vm.sendImage(b64, cap) },
             )
         },
     ) { pad ->
@@ -115,6 +123,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                     val positionMs = if (isVoiceActive) playback.positionMs else 0L
                     val durationMs = if (isVoiceActive) playback.durationMs else 0L
                     val isTranscribing = msg.id in s.retranscribing
+                    val imgUrl = if (msg.type == "image") vm.imageUrl(msg.id) else null
                     MessageBubble(
                         m = msg,
                         speaking = speaking,
@@ -126,6 +135,8 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                         onPlayVoice = { vm.playVoice(msg) },
                         onRetranscribe = { vm.retranscribe(msg) },
                         transcribing = isTranscribing,
+                        imageUrl = imgUrl,
+                        onOpenImage = { lightboxUrl = imgUrl },
                     )
                 }
             }
@@ -139,4 +150,24 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         onPick = { vm.setChatLanguage(it) },
         onDismiss = { vm.closeLangSheet() },
     )
+
+    // Fullscreen image lightbox
+    if (lightboxUrl != null) {
+        Dialog(onDismissRequest = { lightboxUrl = null }) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.95f))
+                    .clickable { lightboxUrl = null },
+                contentAlignment = Alignment.Center,
+            ) {
+                AsyncImage(
+                    model = lightboxUrl,
+                    contentDescription = "Full image",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
 }
