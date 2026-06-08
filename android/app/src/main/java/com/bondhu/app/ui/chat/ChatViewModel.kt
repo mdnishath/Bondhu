@@ -33,6 +33,7 @@ data class ChatUiState(
     val recordSecs: Int = 0,
     val chatLang: String? = null,
     val langSheetOpen: Boolean = false,
+    val retranscribing: Set<String> = emptySet(),
 )
 
 @HiltViewModel
@@ -116,6 +117,9 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    private fun org.json.JSONObject.strOrNull(key: String): String? =
+        if (!has(key) || isNull(key)) null else optString(key).ifEmpty { null }
+
     private fun onEvent(name: String, payload: org.json.JSONObject) {
         when (name) {
             "message" -> {
@@ -125,12 +129,12 @@ class ChatViewModel @Inject constructor(
                     chatJid = chatId,
                     fromMe = payload.optBoolean("fromMe"),
                     type = payload.optString("type", "text"),
-                    body = payload.optString("body").ifEmpty { null },
+                    body = payload.strOrNull("body"),
                     timestamp = payload.optLong("timestamp"),
                     ack = ackTick(if (payload.has("ack")) payload.optInt("ack") else 0),
-                    translated = payload.optString("translated").ifEmpty { null },
-                    transcript = payload.optString("transcript").ifEmpty { null },
-                    senderName = payload.optString("senderName").ifEmpty { null },
+                    translated = payload.strOrNull("translated"),
+                    transcript = payload.strOrNull("transcript"),
+                    senderName = payload.strOrNull("senderName"),
                 )
                 upsert(m)
                 viewModelScope.launch { runCatching { repo.markRead(account, chatId) } }
@@ -151,7 +155,7 @@ class ChatViewModel @Inject constructor(
 
     private fun load() {
         viewModelScope.launch {
-            try { _state.value = _state.value.copy(loading = false, messages = repo.messages(account, chatId), error = null) }
+            try { _state.value = _state.value.copy(loading = false, messages = repo.messages(account, chatId, limit = 30), error = null) }
             catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message) }
         }
     }
@@ -180,6 +184,7 @@ class ChatViewModel @Inject constructor(
 
     fun retranscribe(msg: Message) {
         viewModelScope.launch {
+            _state.value = _state.value.copy(retranscribing = _state.value.retranscribing + msg.id)
             try {
                 val t = repo.retranscribe(account, msg.id) ?: return@launch
                 upsertPatch(msg.id) { it.copy(transcript = t) }
@@ -187,6 +192,8 @@ class ChatViewModel @Inject constructor(
                 if (tr.translated != null) upsertPatch(msg.id) { it.copy(translated = tr.translated) }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
+            } finally {
+                _state.value = _state.value.copy(retranscribing = _state.value.retranscribing - msg.id)
             }
         }
     }

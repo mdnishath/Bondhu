@@ -86,6 +86,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                     val isVoicePlaying = playback.id == "voice-${msg.id}" && playback.isPlaying
                     val voiceProgress = if (playback.id == "voice-${msg.id}" && playback.durationMs > 0)
                         playback.positionMs.toFloat() / playback.durationMs else 0f
+                    val isTranscribing = msg.id in s.retranscribing
                     MessageBubble(
                         m = msg,
                         speaking = speaking,
@@ -94,6 +95,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                         voiceProgress = voiceProgress,
                         onPlayVoice = { vm.playVoice(msg) },
                         onRetranscribe = { vm.retranscribe(msg) },
+                        transcribing = isTranscribing,
                     )
                 }
             }

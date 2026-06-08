@@ -33,6 +33,7 @@ fun MessageBubble(
     voiceProgress: Float = 0f,
     onPlayVoice: () -> Unit = {},
     onRetranscribe: () -> Unit = {},
+    transcribing: Boolean = false,
 ) {
     val align = if (m.fromMe) Alignment.End else Alignment.Start
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
@@ -52,10 +53,11 @@ fun MessageBubble(
                     onSpeak = onSpeak,
                     speaking = speaking,
                     onRetranscribe = onRetranscribe,
+                    transcribing = transcribing,
                 )
             } else {
                 Text(m.body ?: (if (m.type != "text") "[${m.type}]" else ""), color = Tokens.TextMain)
-                if (m.translated != null && m.type == "text") {
+                if (!m.fromMe && m.translated != null && m.type == "text") {
                     TranslationText(m.translated, onSpeak = onSpeak, speaking = speaking)
                 }
             }

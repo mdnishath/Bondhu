@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
@@ -99,8 +100,8 @@ fun Composer(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             // Optional hint line (only when outLang != null)
             if (outLang != null) {
@@ -179,7 +180,7 @@ fun Composer(
                             .weight(1f)
                             .horizontalScroll(rememberScrollState()),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         // Segmented mode toggle: [Aa] [🎙️]
                         Surface(
@@ -263,29 +264,56 @@ fun Composer(
                         }
                     }
 
-                    Spacer(Modifier.width(8.dp))
-
-                    // Mic button
-                    IconButton(
-                        onClick = { requestMic() },
-                        modifier = Modifier.size(44.dp),
+                    // RIGHT group: attach + mic + send, tightly spaced
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Icon(
-                            Icons.Default.Mic,
-                            contentDescription = "Record",
-                            tint = Tokens.Primary,
-                            modifier = Modifier.size(26.dp),
-                        )
-                    }
+                        // Attach button (placeholder — coming soon)
+                        IconButton(
+                            onClick = {
+                                android.widget.Toast.makeText(context, "Coming soon", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.size(44.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.AttachFile,
+                                contentDescription = "Attach",
+                                tint = Tokens.TextMut,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
 
-                    // Send FAB
-                    FloatingActionButton(
-                        onClick = onSend,
-                        containerColor = Tokens.Primary,
-                        contentColor = Tokens.OnPrimary,
-                        modifier = Modifier.size(48.dp),
-                    ) {
-                        Icon(Icons.Default.Send, "Send")
+                        // Mic button
+                        IconButton(
+                            onClick = { requestMic() },
+                            modifier = Modifier.size(44.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = "Record",
+                                tint = Tokens.Primary,
+                                modifier = Modifier.size(26.dp),
+                            )
+                        }
+
+                        // Send FAB — shows spinner while sending
+                        FloatingActionButton(
+                            onClick = { if (!sending) onSend() },
+                            containerColor = Tokens.Primary,
+                            contentColor = Tokens.OnPrimary,
+                            modifier = Modifier.size(48.dp),
+                        ) {
+                            if (sending) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Tokens.OnPrimary,
+                                )
+                            } else {
+                                Icon(Icons.Default.Send, "Send")
+                            }
+                        }
                     }
                 }
             }

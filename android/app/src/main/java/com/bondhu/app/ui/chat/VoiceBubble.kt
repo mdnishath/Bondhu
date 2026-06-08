@@ -22,6 +22,7 @@ fun VoiceBubble(
     onSpeak: () -> Unit,
     speaking: Boolean,
     onRetranscribe: () -> Unit,
+    transcribing: Boolean = false,
 ) {
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -55,8 +56,23 @@ fun VoiceBubble(
                     TranslationText(m.translated, onSpeak = onSpeak, speaking = speaking)
                 }
             } else {
-                TextButton(onClick = onRetranscribe) {
-                    Text("Transcribe", color = Tokens.Primary)
+                if (transcribing) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
+                            color = Tokens.Primary,
+                        )
+                        Text("Transcribing…", color = Tokens.TextMut, fontSize = 12.sp)
+                    }
+                } else {
+                    TextButton(onClick = onRetranscribe) {
+                        Text("Transcribe", color = Tokens.Primary)
+                    }
                 }
             }
         }
