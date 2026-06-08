@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import type { Chat, LangOption, Message, Reaction } from '../../lib/types';
@@ -28,8 +28,12 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   const [chatLang, setChatLang] = useState('');
   const [msgReload, setMsgReload] = useState(0);
   const [presence, setPresence] = useState('');
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const presenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastIdRef = useRef('');
+  const loadingOlderRef = useRef(false);
 
   const name = chat ? displayName(jid, chat.name) : displayName(jid);
 
@@ -74,18 +78,50 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setHasMore(true); // fresh window — assume there may be older history to page in
     api
       .messages(accountId, jid)
       .then((r) => {
         if (!alive) return;
         setLang(r.lang || 'bn');
         setMessages(r.messages.slice().reverse());
+        if (r.messages.length < 50) setHasMore(false);
         setLoading(false);
         api.markRead(accountId, jid).catch(() => {});
       })
       .catch(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [accountId, jid, msgReload]);
+
+  /** Page in older history when the user scrolls near the top. Preserves scroll
+   *  position so the view doesn't jump, and de-dupes by msgId against what's loaded. */
+  async function loadOlder() {
+    if (loadingOlderRef.current || !hasMore || messages.length === 0) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    const el = scrollRef.current;
+    const prevHeight = el?.scrollHeight ?? 0;
+    try {
+      const r = await api.messages(accountId, jid, messages[0].timestamp);
+      const older = r.messages.slice().reverse();
+      setMessages((prev) => {
+        const have = new Set(prev.map((m) => m.msgId));
+        const fresh = older.filter((m) => !have.has(m.msgId));
+        return fresh.length ? [...fresh, ...prev] : prev;
+      });
+      if (older.length < 50) setHasMore(false);
+      requestAnimationFrame(() => {
+        const el2 = scrollRef.current;
+        if (el2) el2.scrollTop = el2.scrollHeight - prevHeight; // keep the same message under the cursor
+      });
+    } catch { /* ignore */ }
+    loadingOlderRef.current = false;
+    setLoadingOlder(false);
+  }
+
+  function onScroll(e: React.UIEvent<HTMLDivElement>) {
+    if (e.currentTarget.scrollTop < 60) loadOlder();
+  }
 
   useEffect(() => {
     const s = getSocket();
@@ -105,7 +141,9 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
           }
           return [...prev, m];
         });
-        api.markRead(accountId, jid).catch(() => {});
+        // Only mark read when this tab is actually visible — otherwise a message
+        // arriving in a background tab gets receipted as read while unseen.
+        if (document.visibilityState === 'visible') api.markRead(accountId, jid).catch(() => {});
       }
       onChatBump();
     };
@@ -122,7 +160,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     };
     const onAck = (e: { accountId: string; msgId: string; ack: number }) => {
       if (e.accountId !== accountId) return;
-      setMessages((prev) => prev.map((m) => (m.msgId === e.msgId ? { ...m, ack: Math.max(m.ack, e.ack) } : m)));
+      setMessages((prev) => prev.map((m) => (m.msgId === e.msgId ? { ...m, ack: Math.max(m.ack ?? 0, e.ack) } : m)));
     };
     const onDel = (e: { accountId: string; msgId: string }) => {
       if (e.accountId !== accountId) return;
@@ -162,9 +200,16 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     };
   }, [accountId, jid, onChatBump]);
 
+  // Stick to the bottom only when the LAST message changes (new message / initial
+  // load) — not when older history is prepended (that would yank the view down).
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const lastId = messages[messages.length - 1]?.msgId ?? '';
+    if (lastId !== lastIdRef.current) {
+      el.scrollTop = el.scrollHeight;
+      lastIdRef.current = lastId;
+    }
   }, [messages]);
 
   const outName = langs.find((l) => l.code === outLang)?.name ?? outLang;
@@ -292,7 +337,14 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     setMessages((prev) => [...prev, tmp]);
     try {
       const res = await api.sendImage(accountId, jid, imageBase64, caption || undefined);
-      setMessages((prev) => prev.map((m) => (m.msgId === id ? { ...m, msgId: res.msgId || id } : m)));
+      setMessages((prev) => {
+        const realId = res.msgId || id;
+        // Drop the optimistic tmp AND any WhatsApp echo that already arrived with
+        // the real id, then re-add our bubble (it carries localImage; the echo
+        // doesn't — own sent images aren't downloadable from WhatsApp).
+        const rest = prev.filter((m) => m.msgId !== id && m.msgId !== realId);
+        return [...rest, { ...tmp, msgId: realId }];
+      });
       onChatBump();
     } catch {
       setMessages((prev) => prev.filter((m) => m.msgId !== id));
@@ -300,7 +352,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     }
   }
 
-  const bubbleHandlers: MessageBubbleHandlers = {
+  const bubbleHandlers: MessageBubbleHandlers = useMemo(() => ({
     onReply: (m) => { setReplyTo(m); },
     onForward: (m) => { setForwardMsg(m); },
     onReact: async (m, emoji) => {
@@ -327,7 +379,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
         else await api.deleteLocal(accountId, m.msgId);
       } catch { alert('Delete failed'); }
     },
-  };
+  }), [accountId]);
 
   const sq = searchQuery.trim().toLowerCase();
   const shownMessages = sq
@@ -381,7 +433,8 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scroll px-3 sm:px-[6%] py-4 min-w-0">
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto overflow-x-hidden scroll px-3 sm:px-[6%] py-4 min-w-0">
+        {loadingOlder && <div className="text-center text-muted text-[12px] py-2">Loading older messages…</div>}
         {loading ? (
           <div className="text-center text-muted py-10">Loading…</div>
         ) : shownMessages.length === 0 ? (

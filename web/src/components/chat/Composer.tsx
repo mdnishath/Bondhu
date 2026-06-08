@@ -159,12 +159,16 @@ export function Composer({
       <div className="flex flex-col gap-2 px-3 sm:px-4 py-2.5">
         {/* text input — full width on top */}
         <div className="flex items-center bg-panel2 rounded-xl px-3 py-2">
-          <input
+          <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            onKeyDown={(e) => {
+              // Enter sends; Shift+Enter inserts a newline (multi-line messages).
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+            }}
             placeholder={placeholder}
-            className="flex-1 min-w-0 bg-transparent border-none outline-none text-txt text-[14.5px]"
+            rows={Math.min(5, Math.max(1, text.split('\n').length))}
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-txt text-[14.5px] resize-none leading-snug"
           />
         </div>
 

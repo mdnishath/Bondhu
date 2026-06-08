@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { api, auth } from '../lib/api';
 import { LogoIcon } from '../components/ui/icons';
 
@@ -13,8 +13,9 @@ export function Login() {
   const [busy, setBusy] = useState(false);
   const reg = mode === 'register';
 
+  // Already signed in — redirect declaratively (navigating during render warns/loops).
   if (auth.isAuthed()) {
-    nav('/', { replace: true });
+    return <Navigate to="/" replace />;
   }
 
   async function submit(e: React.FormEvent) {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type { Message } from '../../lib/types';
 import { clockTime } from '../../lib/format';
@@ -16,7 +16,7 @@ export interface MessageBubbleHandlers {
   onDelete: (msg: Message) => void;
 }
 
-export function MessageBubble({
+function MessageBubbleInner({
   msg,
   accountId,
   lang,
@@ -115,6 +115,10 @@ export function MessageBubble({
     </div>
   );
 }
+
+// Memoized: ChatView re-renders on every incoming message / ack / reaction; only
+// bubbles whose own props changed need to re-render (handlers are useMemo'd).
+export const MessageBubble = memo(MessageBubbleInner);
 
 function Meta({ msg }: { msg: Message }) {
   return (
@@ -314,15 +318,21 @@ function IncomingVoiceRetry({ msg, accountId, lang }: { msg: Message; accountId:
 
 function Speaker({ text, msgId, accountId, lang }: { text: string; msgId: string; accountId: string; lang: string }) {
   const [busy, setBusy] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => () => { audioRef.current?.pause(); audioRef.current = null; }, []);
   async function play() {
+    audioRef.current?.pause(); // stop any prior playback instead of overlapping
     setBusy(true);
     try {
       const r = await api.tts(accountId, msgId, text, lang);
-      new Audio('data:' + r.mime + ';base64,' + r.audioBase64).play();
+      const a = new Audio('data:' + r.mime + ';base64,' + r.audioBase64);
+      audioRef.current = a;
+      a.addEventListener('ended', () => setBusy(false));
+      a.addEventListener('error', () => setBusy(false));
+      await a.play();
     } catch {
-      /* ignore */
+      setBusy(false);
     }
-    setTimeout(() => setBusy(false), 1200);
   }
   return (
     <button onClick={play} className={`text-muted hover:text-teal flex-none ${busy ? 'text-teal animate-pulse' : ''}`} title="Listen">
@@ -339,10 +349,20 @@ function fmtDur(s: number): string {
 }
 
 function VoicePlayer({ src }: { src: string }) {
-  const [audio] = useState(() => new Audio(src));
+  const [audio, setAudio] = useState(() => new Audio(src));
   const [playing, setPlaying] = useState(false);
   const [dur, setDur] = useState(0);
   const [cur, setCur] = useState(0);
+  const firstRun = useRef(true);
+
+  // Rebuild the audio element when the source changes — e.g. an optimistic voice
+  // bubble's data-URI is replaced by the real /media URL once the send resolves
+  // (the old code captured the very first src forever and played stale audio).
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }
+    setAudio((prev) => { prev.pause(); return new Audio(src); });
+    setPlaying(false); setCur(0); setDur(0);
+  }, [src]);
 
   useEffect(() => {
     const onMeta = () => setDur(isFinite(audio.duration) ? audio.duration : 0);
