@@ -28,12 +28,12 @@ docs/design-reference/ bondhu-html = the original Claude Design vanilla export (
 ## Status
 - [x] **server/** — Foundation+Auth, WhatsApp Core (Baileys), Rich Messaging, AI (translate/TTS/STT). **53 tests, tsc clean, live-verified.**
 - [x] **web/** — React SPA: Login, ChatPage, LinkDevice (QR+pairing), Settings. Full **two-way translation + outgoing voice**. Rich messaging: reply, forward (dialog), edit, delete, reactions, image lightbox, per-message action menu. **Profile photos + saved contact names + profile view** (incl. `@lid` phone resolution). New-chat compose, account remove (sidebar ×). **Mic recording → transcribe (Gemini) → translated voice/text**. Perf: cached profile pics + lazy avatars. Mobile back nav.
-- [x] **android/** — **BUILT, on master, device-verified** (app id `com.bondhu.app`, current `versionName 0.4.7`). Kotlin/Compose, MVVM+Hilt+Retrofit+Moshi+Socket.IO+Media3 ExoPlayer+Coil+DataStore+ZXing. Auth (email/pw) → accounts → pair (QR/code) → chat list → text/voice/image chat. Voice (incoming playback + transcript/translation, TTS speaker, outgoing voice, mic→transcribe), two-way translation (per-chat/global language, 18 langs), message actions (reaction/reply/copy/delete/forward), contact info, search-in-chat, clear chat, Settings (keys/language/logout), account add/remove, new-chat-by-number, image send + lightbox. **lime-green + Inter + glassy design system** (see below). 24 unit tests.
+- [x] **android/** — **BUILT, on master, device-verified** (app id `com.bondhu.app`, current `versionName 0.5.0`). Kotlin/Compose, MVVM+Hilt+Retrofit+Moshi+Socket.IO+Media3 ExoPlayer+Coil+DataStore+ZXing. Auth (email/pw) → accounts → pair (QR/code) → chat list → text/voice/image chat. Voice (incoming playback + transcript/translation, TTS speaker, outgoing voice, mic→transcribe), two-way translation (per-chat/global language, 18 langs), message actions (reaction/reply/copy/**edit**/delete/**multi-target forward**), contact info, search-in-chat, clear chat, Settings (keys/language/logout), account add/remove, new-chat-by-number, image send (+caption) + lightbox, **infinite older-message scroll**, **pull-to-refresh**, **error snackbar**. **lime-green + Inter + glassy design system** (see below). 24 unit tests.
 - [x] **web/** also **re-skinned to the lime-green brand** (tailwind tokens `teal`→`#A3E635` + dark surfaces; Inter already used) and **deployed live**.
 - [x] **Deploy** — LIVE at **https://wa.client-flow.xyz** (VPS `144.79.218.148`, pm2 `bondhu` port 3060, nginx + LE SSL — websocket upgrade configured). Update with `ssh root@144.79.218.148 'bash /opt/bondhu/deploy.sh'` (git pull master → build server+web → pm2 reload; DB untouched). Old `whatsapp-mcp` stopped (code kept).
 - WhatsApp account is linked (`nishatbd3388`, +8801767591988) and used for live verification; API keys are in the DB for that user.
 
-> **Status note (current session end):** user confirms the Android app "sob thik ase and kaj kortece" (all working). Next session the user will bring more bugs/improvements. The app is feature-rich and near full web-parity. **Still NOT done vs web:** edit-message, group-specific UI, pull-to-refresh, infinite older-message scroll, image caption entry, FCM background push. The "Forward" picker is single-target (web allows multi).
+> **Status note (2026-06-08 audit pass):** Full-project audit (server+web+android) → fixed & deployed (commit `aa0bac7`, app `versionName 0.5.0`). **Server:** IDOR on `/chats/:chatId/language` closed, `markRead` window fix, Express error middleware + process handlers, CORS allowlist (`config.corsOrigins`/`CORS_ORIGINS` env) + in-memory rate-limit (`api/middleware/rate-limit.ts`, skipped under `NODE_ENV=test`) + tiered body limits, WaConnection exponential-backoff reconnect + socket cleanup + forward canonicalize + profilePicBytes timeout, KeyRing rotates on transport errors, normalize unwraps ephemeral/viewOnce, realtime reactions carry `fromMe`. **Web:** VoicePlayer stale-`src` fix, image echo de-dup, markRead visibility gate, ack NaN, `<Navigate>` login, TTS audio cleanup, 401→socket teardown, **infinite older-scroll**, memoized bubbles + multiline composer. **Android:** error snackbar, debounced chat-list refresh, account-spinner flicker fix, reaction-removal + socket reconnect-on-resume, **edit-message UI**, **multi-target forward**, **infinite older-scroll**, **pull-to-refresh**, **image caption**. **Still NOT done vs web/remaining:** group-specific UI, FCM background push, theme toggle (deferred — light mode = full palette redesign vs the dark lime brand).
 
 ## Run / build / test
 ```bash
@@ -86,6 +86,7 @@ cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, prox
 21. **Transcription must be VERBATIM in the spoken language/script** (no auto-translate to English). The `/transcribe` Gemini prompt was strengthened to "write exactly what's spoken in the same language & native script, never translate/romanize". Translation happens ONLY at send time (`translateTo`). Same backend serves web + app, so this fixed both.
 22. **Android media/profile-pic auth via `?token=` query** (not header); Coil/ExoPlayer load the absolute tokenised URL with their OWN client (NOT the app's OkHttp with host/auth interceptors). **Own sent images/voice aren't downloadable from WhatsApp** → carry a local content-Uri / `audioBase64` on the optimistic bubble for in-session display (mirrors the web's `localImage`/`localAudio`).
 23. **One contact must be ONE chat — canonicalize phone → `@lid`.** WhatsApp addresses the same person by both a privacy `@lid` and their phone jid, which split a contact into two chats (outgoing under phone, incoming under `@lid`). `WaConnection.canonicalJid` maps phone → `@lid` via `signalRepository.lidMapping.getLIDForPN` at **ingest** (`messages.upsert`) and on **every send** (`sendText`/`reply`/`sendImage`/`sendVoice` in account-manager). Direction matters: `getLIDForPN(bare phone)` resolves reliably, but the reverse `getPNForLID(@lid)` returns a **device-suffixed** `…:0@s.whatsapp.net` that does NOT match bare phone chats — that mismatch was the original split. `@lid`/`@g.us` pass through. Repair legacy splits with `POST /merge-lid-chats` (uses `ChatsRepo.mergeChat`, which also moves chat_lang + contact name and recomputes unread). **Auto-heal:** a brand-new typed number is sent before its lid is known (lands on a phone chat); when the reply arrives as `@lid`, the manager's `message` handler folds the sibling phone chat into it automatically (`mergeChat`, live messages only). One-off repair runner: `server/scripts/merge-lid-chats.mjs`.
+24. **CORS is now an allowlist, not `*`** (`config.corsOrigins`, defaults to `wa.client-flow.xyz` + localhost; override with env var `CORS_ORIGINS=comma,separated`). Applies to HTTP + Socket.IO. **Native apps / curl send no Origin → always allowed**; only browsers from unlisted origins are blocked. If you add a new web domain, add it here or browser calls silently lose CORS headers. **Rate-limiting** (`api/middleware/rate-limit.ts`, in-memory per-IP) is **skipped when `NODE_ENV=test`** so vitest stays deterministic — limits: auth 30/15min, AI routes 30/min. **Body limits are tiered**: 50mb only on media routes (`/send-image`,`/send-recorded`,`/transcribe`,`/send-voice`), 1mb everywhere else — a new large-payload route must be added to `MEDIA_PATHS` in `server.ts` or it'll 413.
 
 ## Conventions (how we work here)
 - Backend: **TDD** (test → fail → impl → pass → commit), one commit per plan task.
@@ -102,15 +103,19 @@ cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, prox
 - **Voice:** outgoing Gemini-TTS voice notes (mode toggle); own-voice replay; **mic recording → Gemini transcribe → translated voice/text** (key use case: Bangla speech → English to US clients).
 - Composer: send-mode toggle (flag + Aa/🎙️), language picker (flags), mic record. Sidebar: account remove, new-chat compose. Per-user keys w/ rotation, 18 languages.
 
-## Next steps (Android app is built & deployed; user will bring more next session)
-The user said everything works now and will return with more bugs/improvements.
-Likely areas (Android, vs web parity):
-1. **Edit message** (backend `/edit-message` exists; socket `message_edit` already handled — needs a UI action + composer edit mode).
-2. **Multi-target Forward** (current `ForwardSheet` picks ONE chat; web allows several).
-3. **Pull-to-refresh** on chat list + **infinite older-message scroll** in chat (repo `messages(before=)` cursor exists, UI trigger pending).
-4. **Image caption** entry before send; **group-specific UI** (member names beyond sender label).
-5. **Theme toggle** (currently dark-only) and any polish the user requests.
-6. **Background push (FCM)** — needs new backend (device-token store + push on incoming) + Firebase. Biggest remaining infra piece.
+## Next steps (post-audit, 2026-06-08; app deployed & v0.5.0 APK delivered)
+The 2026-06-08 audit pack shipped (edit-message, multi-forward, infinite scroll,
+pull-to-refresh, image caption, error snackbar + server security/robustness — see
+the status note above). **Remaining / awaiting on-device verification:**
+1. **On-device test** of the v0.5.0 features — user installs the APK and reports any
+   issues (esp. infinite-scroll position-keeping, multi-forward, edit, pull-to-refresh).
+2. **Group-specific UI** (member names beyond the sender label; group avatar handling).
+3. **Background push (FCM)** — needs new backend (device-token store + push on incoming)
+   + Firebase. Biggest remaining infra piece.
+4. **Theme toggle** — deliberately deferred (light mode = full palette redesign vs the
+   intentionally dark lime-green brand; revisit only if the user wants it).
+5. Web parity polish: web composer/edit already exist; web also got infinite-scroll +
+   memoized bubbles in this pass.
 - When the user reports a bug, prefer **diagnosing via the live server** (nginx access log `/var/log/nginx/*access*` on the VPS shows request status/timing; pm2 logs `pm2 logs bondhu`) before guessing — that's how the stuck-loading root cause (main-thread DataStore block) was found.
 
 ## User context
