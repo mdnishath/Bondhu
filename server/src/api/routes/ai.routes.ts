@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { AppContext } from '../../app-context.js';
 import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import { SUPPORTED_LANGS, isSupportedLang } from '../../ai/langs.js';
-import { wavToOpus } from '../../ai/transcode.js';
+import { wavToOpus, toWavForAsr } from '../../ai/transcode.js';
 
 export function aiRoutes(ctx: AppContext): Router {
   const r = Router();
@@ -72,9 +72,11 @@ export function aiRoutes(ctx: AppContext): Router {
     const { audioBase64, mimeType } = req.body ?? {};
     if (!audioBase64) return res.status(400).json({ error: 'audioBase64 required' });
     try {
-      // Browser recordings are webm/opus; transcode to ogg/opus (Gemini-friendly).
-      const ogg = await wavToOpus(Buffer.from(audioBase64, 'base64'));
-      const transcript = await ctx.transcription.transcribe(req.userId!, ogg.toString('base64'), 'audio/ogg');
+      // Normalize any recording (browser webm, Android m4a/AAC) to 16 kHz mono WAV
+      // — the highest-fidelity, ASR-friendly format. (Was 24 kbps Opus, which
+      // degraded speech and caused hallucinated/English transcripts.)
+      const wav = await toWavForAsr(Buffer.from(audioBase64, 'base64'));
+      const transcript = await ctx.transcription.transcribe(req.userId!, wav.toString('base64'), 'audio/wav');
       res.json({ transcript });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });

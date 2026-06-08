@@ -18,9 +18,13 @@ export class TranscriptionService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [
-            { text: 'You are a verbatim speech-to-text transcriber. Write down EXACTLY what the speaker says, word for word, in the SAME language and its native script that they actually spoke. If they speak Bengali, output Bengali (বাংলা) script. If Hindi, Devanagari. If Arabic, Arabic script. NEVER translate, NEVER romanize, NEVER convert to English — keep the original language. Output ONLY the raw transcript text: no quotes, no language labels, no notes, no translation.' },
+            { text: 'You are a verbatim speech-to-text transcriber. Write down EXACTLY what the speaker says, word for word, in the SAME language and its native script that they actually spoke. If they speak Bengali, output Bengali (বাংলা) script. If Hindi, Devanagari. If Arabic, Arabic script. NEVER translate, NEVER romanize, NEVER convert to English — keep the original language. Do NOT invent, summarize, paraphrase, or add greetings/words that were not actually spoken. If the audio is unclear, silent, or has no speech, output an empty string rather than guessing. Output ONLY the raw transcript text: no quotes, no language labels, no notes, no translation.' },
             { inlineData: { mimeType: baseMime, data: audioBase64 } },
           ] }],
+          // Deterministic, faithful transcription — temperature 0 stops the model
+          // from "creatively" hallucinating phrases (e.g. an English greeting) on
+          // longer/quieter clips instead of transcribing what was actually said.
+          generationConfig: { temperature: 0 },
         }),
       });
       if (!resp.ok) { const e: any = new Error(`stt ${resp.status}`); e.status = resp.status; throw e; }
