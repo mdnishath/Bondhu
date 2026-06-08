@@ -3,6 +3,9 @@ package com.bondhu.app.data.repository
 import com.bondhu.app.data.api.BondhuApi
 import com.bondhu.app.data.model.ChatRow
 import com.bondhu.app.data.model.Message
+import com.bondhu.app.data.model.MsgIdRequest
+import com.bondhu.app.data.model.ReactRequest
+import com.bondhu.app.data.model.ReplyRequest
 import com.bondhu.app.data.model.SendImageRequest
 import com.bondhu.app.data.model.SendRequest
 import com.bondhu.app.data.model.SendResponse
@@ -40,4 +43,16 @@ class ChatRepository @Inject constructor(private val api: BondhuApi) {
         api.sendImage(SendImageRequest(account, chatId, imageBase64, caption))
 
     suspend fun profile(account: String, id: String) = api.profile(account, id)
+
+    suspend fun react(account: String, msgId: String, emoji: String) =
+        api.react(ReactRequest(account, msgId, emoji))
+
+    suspend fun reply(account: String, chatId: String, msgId: String, text: String): SendResponse =
+        api.reply(ReplyRequest(account, chatId, msgId, text))
+
+    suspend fun deleteForEveryone(account: String, msgId: String) =
+        api.deleteMessage(MsgIdRequest(account, msgId))
+
+    suspend fun deleteForMe(account: String, msgId: String) =
+        api.deleteLocal(MsgIdRequest(account, msgId))
 }

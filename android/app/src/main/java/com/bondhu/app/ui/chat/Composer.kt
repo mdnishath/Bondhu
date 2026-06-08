@@ -36,7 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.compose.material.icons.automirrored.filled.Reply
 import com.bondhu.app.data.model.LangOption
+import com.bondhu.app.data.model.Message
 import com.bondhu.app.ui.theme.Tokens
 import kotlinx.coroutines.delay
 
@@ -63,6 +65,8 @@ fun Composer(
     onTick: () -> Unit = {},
     onOpenLangs: () -> Unit = {},
     onSendImage: (String, String?) -> Unit = { _, _ -> },
+    replyTo: Message? = null,
+    onCancelReply: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var showLangSheet by remember { mutableStateOf(false) }
@@ -135,6 +139,47 @@ fun Composer(
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                // Reply quoted bar (above everything when replying)
+                if (replyTo != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Tokens.Field)
+                            .padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier.width(3.dp).height(34.dp)
+                                .clip(RoundedCornerShape(50)).background(Tokens.Primary),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Reply, contentDescription = null,
+                                    tint = Tokens.Primary, modifier = Modifier.size(13.dp),
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    if (replyTo.fromMe) "Replying to yourself" else "Reply",
+                                    color = Tokens.Primary, fontSize = 11.sp,
+                                )
+                            }
+                            Text(
+                                replyTo.body ?: replyTo.transcript ?: "[${replyTo.type}]",
+                                color = Tokens.TextMut, fontSize = 13.sp, maxLines = 1,
+                            )
+                        }
+                        IconButton(onClick = onCancelReply) {
+                            Icon(
+                                Icons.Default.Close, contentDescription = "Cancel reply",
+                                tint = Tokens.TextMut, modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                }
+
                 // Optional hint line (only when outLang != null)
                 if (outLang != null) {
                     val hintText = if (isVoiceMode)

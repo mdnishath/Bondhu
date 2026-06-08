@@ -96,4 +96,17 @@ interface BondhuApi {
 
     @POST("api/settings/keys/{id}/activate")
     suspend fun activateKey(@Path("id") id: String): OkResponse
+
+    // --- Message actions ---
+    @POST("api/react")
+    suspend fun react(@Body body: ReactRequest): OkResponse
+
+    @POST("api/reply")
+    suspend fun reply(@Body body: ReplyRequest): SendResponse
+
+    @POST("api/delete-message")
+    suspend fun deleteMessage(@Body body: MsgIdRequest): OkResponse
+
+    @POST("api/delete-local")
+    suspend fun deleteLocal(@Body body: MsgIdRequest): OkResponse
 }

@@ -8,6 +8,7 @@ import com.bondhu.app.data.audio.VoiceRecorder
 import com.bondhu.app.data.model.AckTick
 import com.bondhu.app.data.model.LangOption
 import com.bondhu.app.data.model.Message
+import com.bondhu.app.data.model.ReactionUi
 import com.bondhu.app.data.model.ackTick
 import com.bondhu.app.data.repository.ChatRepository
 import com.bondhu.app.data.repository.LanguageRepository
@@ -34,6 +35,7 @@ data class ChatUiState(
     val chatLang: String? = null,
     val langSheetOpen: Boolean = false,
     val retranscribing: Set<String> = emptySet(),
+    val replyTo: Message? = null,
 )
 
 @HiltViewModel
@@ -148,6 +150,23 @@ class ChatViewModel @Inject constructor(
                 val id = payload.optString("msgId"); val ack = ackTick(payload.optInt("ack"))
                 _state.value = _state.value.copy(messages = _state.value.messages.map { if (it.id == id) it.copy(ack = ack) else it })
             }
+            "message_reaction" -> {
+                val msgId = payload.optString("msgId")
+                val emoji = payload.strOrNull("emoji") ?: return
+                upsertPatch(msgId) { msg ->
+                    val updated = msg.reactions.filterNot { it.emoji == emoji } + ReactionUi(emoji, false)
+                    msg.copy(reactions = updated)
+                }
+            }
+            "message_delete" -> {
+                val msgId = payload.optString("msgId")
+                upsertPatch(msgId) { it.copy(body = "🚫 This message was deleted", type = "deleted") }
+            }
+            "message_edit" -> {
+                val msgId = payload.optString("msgId")
+                val newText = payload.strOrNull("text") ?: return
+                upsertPatch(msgId) { it.copy(body = newText) }
+            }
         }
     }
 
@@ -219,6 +238,28 @@ class ChatViewModel @Inject constructor(
         _state.value = _state.value.copy(messages = _state.value.messages.map { if (it.id == id) f(it) else it })
     }
 
+    fun setReplyTo(msg: Message) { _state.value = _state.value.copy(replyTo = msg) }
+    fun clearReplyTo() { _state.value = _state.value.copy(replyTo = null) }
+
+    fun react(msg: Message, emoji: String) {
+        // Optimistically add/update the fromMe reaction
+        upsertPatch(msg.id) { m ->
+            val updated = m.reactions.filterNot { it.fromMe } + ReactionUi(emoji, true)
+            m.copy(reactions = updated)
+        }
+        viewModelScope.launch { runCatching { repo.react(account, msg.id, emoji) } }
+    }
+
+    fun deleteForMe(msg: Message) {
+        _state.value = _state.value.copy(messages = _state.value.messages.filter { it.id != msg.id })
+        viewModelScope.launch { runCatching { repo.deleteForMe(account, msg.id) } }
+    }
+
+    fun deleteForEveryone(msg: Message) {
+        upsertPatch(msg.id) { it.copy(body = "🚫 This message was deleted", type = "deleted") }
+        viewModelScope.launch { runCatching { repo.deleteForEveryone(account, msg.id) } }
+    }
+
     /** Tokenised profile-pic URL for the current chat; null if not ready. */
     fun headerAvatarUrl(): String? = media.profilePic(chatId)
 
@@ -283,10 +324,15 @@ class ChatViewModel @Inject constructor(
         if (text.isEmpty() || account.isEmpty()) return
         val mode = _state.value.sendMode
         val tLang = _state.value.outLang
-        _state.value = _state.value.copy(draft = "", sending = true)
+        val replyTarget = _state.value.replyTo
+        _state.value = _state.value.copy(draft = "", sending = true, replyTo = null)
         viewModelScope.launch {
             try {
-                if (mode == "voice" && tLang != null) {
+                if (replyTarget != null) {
+                    // Text reply (voice reply not supported)
+                    val r = repo.reply(account, chatId, replyTarget.id, text)
+                    r.msgId?.let { upsert(Message(it, chatId, true, "text", r.sentText ?: text, now(), AckTick.SENT, null, null, null)) }
+                } else if (mode == "voice" && tLang != null) {
                     val r = repo.sendVoice(account, chatId, text, tLang)
                     // optimistic ptt bubble — uses the real returned id so socket echo dedupes;
                     // store sentText as transcript so the voice bubble shows the sent caption

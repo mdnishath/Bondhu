@@ -1,12 +1,15 @@
 package com.bondhu.app.ui.chat
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,6 +36,7 @@ private val InBubbleShape = RoundedCornerShape(
     topStart = 20.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 6.dp,
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
     m: Message,
@@ -47,6 +51,7 @@ fun MessageBubble(
     transcribing: Boolean = false,
     imageUrl: String? = null,
     onOpenImage: () -> Unit = {},
+    onLongPress: () -> Unit = {},
 ) {
     val align = if (m.fromMe) Alignment.End else Alignment.Start
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
@@ -63,6 +68,7 @@ fun MessageBubble(
                 .widthIn(max = 300.dp)
                 .clip(shape)
                 .background(bg)
+                .combinedClickable(onClick = {}, onLongClick = onLongPress)
                 .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {
             if (!m.fromMe && m.senderName != null) {
@@ -103,6 +109,29 @@ fun MessageBubble(
                             Icon(Icons.Default.DoneAll, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
                         AckTick.READ ->
                             Icon(Icons.Default.DoneAll, null, tint = Tokens.Tick, modifier = Modifier.size(14.dp))
+                    }
+                }
+            }
+        }
+
+        // Reaction badges (below the bubble)
+        if (m.reactions.isNotEmpty()) {
+            val grouped = m.reactions.groupBy { it.emoji }
+            Row(
+                modifier = Modifier.padding(top = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                grouped.forEach { (emoji, list) ->
+                    Surface(
+                        color = Tokens.Field,
+                        shape = RoundedCornerShape(50),
+                    ) {
+                        Text(
+                            text = if (list.size > 1) "$emoji ${list.size}" else emoji,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            color = Tokens.TextMain,
+                        )
                     }
                 }
             }

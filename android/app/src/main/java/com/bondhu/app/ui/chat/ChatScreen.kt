@@ -15,9 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.bondhu.app.data.model.Message
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -33,6 +36,8 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     val listState = rememberLazyListState()
     var menuExpanded by remember { mutableStateOf(false) }
     var lightboxUrl by remember { mutableStateOf<String?>(null) }
+    var actionTarget by remember { mutableStateOf<Message?>(null) }
+    val clipboard = LocalClipboardManager.current
     LaunchedEffect(chatId) { vm.bind(chatId) }
     LaunchedEffect(s.messages.size) { if (s.messages.isNotEmpty()) listState.animateScrollToItem(s.messages.lastIndex) }
 
@@ -102,6 +107,8 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 onTick = vm::tickRecording,
                 onOpenLangs = { vm.ensureLanguages() },
                 onSendImage = { b64, localUri -> vm.sendImage(b64, localUri) },
+                replyTo = s.replyTo,
+                onCancelReply = vm::clearReplyTo,
             )
         },
     ) { pad ->
@@ -149,6 +156,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                             transcribing = isTranscribing,
                             imageUrl = imgUrl,
                             onOpenImage = { lightboxUrl = imgUrl },
+                            onLongPress = { actionTarget = msg },
                         )
                     }
                 }
@@ -162,6 +170,17 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         options = s.supported,
         onPick = { vm.setChatLanguage(it) },
         onDismiss = { vm.closeLangSheet() },
+    )
+
+    MessageActionSheet(
+        open = actionTarget != null,
+        message = actionTarget,
+        onReact = { emoji -> actionTarget?.let { vm.react(it, emoji) } },
+        onReply = { actionTarget?.let { vm.setReplyTo(it) } },
+        onCopy = { actionTarget?.let { clipboard.setText(AnnotatedString(it.body ?: "")) } },
+        onDeleteForMe = { actionTarget?.let { vm.deleteForMe(it) } },
+        onDeleteForEveryone = { actionTarget?.let { vm.deleteForEveryone(it) } },
+        onDismiss = { actionTarget = null },
     )
 
     // Fullscreen image lightbox

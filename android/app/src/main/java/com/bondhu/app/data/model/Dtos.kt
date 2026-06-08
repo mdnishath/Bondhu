@@ -58,8 +58,14 @@ data class ChatDto(
 @JsonClass(generateAdapter = true)
 data class ChatsResponse(val chats: List<ChatDto>)
 
-// Matches MessagesRepo.map() + route extras. `timestamp` is epoch SECONDS
-// (Baileys). Unknown keys (senderJid, reactions) are ignored by Moshi.
+@JsonClass(generateAdapter = true)
+data class ReactionDto(
+    val senderJid: String? = null,
+    val emoji: String,
+    val fromMe: Boolean = false,
+)
+
+// Matches MessagesRepo.map() + route extras. `timestamp` is epoch SECONDS (Baileys).
 @JsonClass(generateAdapter = true)
 data class MessageDto(
     val msgId: String,
@@ -72,6 +78,7 @@ data class MessageDto(
     val translated: String? = null,
     val transcript: String? = null,
     val senderName: String? = null,
+    val reactions: List<ReactionDto> = emptyList(),
 )
 
 @JsonClass(generateAdapter = true)
@@ -95,3 +102,13 @@ data class SendResponse(
 
 @JsonClass(generateAdapter = true)
 data class OkResponse(val success: Boolean = true)
+
+// --- Message action requests ---
+@JsonClass(generateAdapter = true)
+data class ReactRequest(val account: String, val msgId: String, val emoji: String)
+
+@JsonClass(generateAdapter = true)
+data class ReplyRequest(val account: String, val chatId: String, val msgId: String, val text: String)
+
+@JsonClass(generateAdapter = true)
+data class MsgIdRequest(val account: String, val msgId: String)
