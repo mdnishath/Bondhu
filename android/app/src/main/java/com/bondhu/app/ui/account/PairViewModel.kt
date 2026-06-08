@@ -32,7 +32,17 @@ class PairViewModel @Inject constructor(
     fun bind(accountId: String) {
         this.accountId = accountId
         socket.connect()
-        poll()
+        // Fallback status poll loop: the socket `connected` event can be missed
+        // (emitted before the socket joins the room, or while backgrounded), which
+        // left the screen stuck with no redirect/success. Poll every 2.5s until
+        // connected so the link is detected reliably even without the socket event.
+        viewModelScope.launch {
+            poll()
+            while (!_state.value.connected) {
+                kotlinx.coroutines.delay(2500)
+                poll()
+            }
+        }
         viewModelScope.launch {
             socket.events.collect { ev ->
                 if (ev.name != "status") return@collect
@@ -42,22 +52,21 @@ class PairViewModel @Inject constructor(
                     state = st,
                     qr = ev.payload.optString("qr").ifEmpty { _state.value.qr },
                     pairingCode = ev.payload.optString("code").ifEmpty { _state.value.pairingCode },
-                    connected = st == "connected",
+                    connected = st == "connected" || _state.value.connected,
                 )
             }
         }
     }
 
-    private fun poll() {
-        viewModelScope.launch {
-            try {
-                val s = repo.status(accountId)
-                _state.value = _state.value.copy(
-                    state = s.state, qr = s.qr ?: _state.value.qr,
-                    pairingCode = s.pairingCode ?: _state.value.pairingCode, connected = s.connected,
-                )
-            } catch (_: Exception) { /* socket will deliver updates */ }
-        }
+    private suspend fun poll() {
+        try {
+            val s = repo.status(accountId)
+            _state.value = _state.value.copy(
+                state = s.state, qr = s.qr ?: _state.value.qr,
+                pairingCode = s.pairingCode ?: _state.value.pairingCode,
+                connected = s.connected || _state.value.connected,
+            )
+        } catch (_: Exception) { /* socket / next poll will deliver updates */ }
     }
 
     fun onPhone(v: String) { _state.value = _state.value.copy(phone = v) }

@@ -3,11 +3,16 @@ package com.bondhu.app.ui.account
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -19,6 +24,7 @@ import com.bondhu.app.ui.common.BondhuField
 import com.bondhu.app.ui.common.QrImage
 import com.bondhu.app.ui.theme.InterFamily
 import com.bondhu.app.ui.theme.Tokens
+import kotlinx.coroutines.delay
 
 private val CardShape   = RoundedCornerShape(20.dp)
 private val DigitShape  = RoundedCornerShape(10.dp)
@@ -28,8 +34,12 @@ private val DigitShape  = RoundedCornerShape(10.dp)
 fun PairScreen(accountId: String, onConnected: () -> Unit, vm: PairViewModel = hiltViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(0) }
+    val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
     LaunchedEffect(accountId) { vm.bind(accountId) }
-    LaunchedEffect(s.connected) { if (s.connected) onConnected() }
+    // Show the "Connected!" success state briefly, then redirect.
+    LaunchedEffect(s.connected) { if (s.connected) { delay(1300); onConnected() } }
+    LaunchedEffect(copied) { if (copied) { delay(1500); copied = false } }
 
     Scaffold(
         containerColor = Tokens.AppBg,
@@ -90,6 +100,16 @@ fun PairScreen(accountId: String, onConnected: () -> Unit, vm: PairViewModel = h
                     Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                  if (s.connected) {
+                    // Success state — shown briefly before auto-redirect.
+                    Spacer(Modifier.height(8.dp))
+                    Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Tokens.Primary, modifier = Modifier.size(72.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Connected!", color = Tokens.TextMain, fontWeight = FontWeight.Bold, fontSize = 22.sp, fontFamily = InterFamily)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Your WhatsApp is linked. Taking you back…", color = Tokens.TextMut, fontFamily = InterFamily, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(8.dp))
+                  } else {
                     // Tab row: QR / Pairing code
                     TabRow(
                         selectedTabIndex = tab,
@@ -184,10 +204,20 @@ fun PairScreen(accountId: String, onConnected: () -> Unit, vm: PairViewModel = h
                                     }
                                 }
                             }
+                            Spacer(Modifier.height(16.dp))
+                            BondhuButton(
+                                if (copied) "Copied ✓" else "Copy code",
+                                {
+                                    clipboard.setText(AnnotatedString(s.pairingCode!!.replace("-", "")))
+                                    copied = true
+                                },
+                                Modifier.fillMaxWidth(),
+                            )
                         }
                     }
 
                     Spacer(Modifier.height(4.dp))
+                  }
                 }
             }
         }
