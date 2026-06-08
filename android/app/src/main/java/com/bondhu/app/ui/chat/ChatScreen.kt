@@ -46,7 +46,25 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     val snackbarHost = remember { SnackbarHostState() }
 
     LaunchedEffect(chatId) { vm.bind(chatId) }
-    LaunchedEffect(s.messages.size) { if (s.messages.isNotEmpty()) listState.animateScrollToItem(s.messages.lastIndex) }
+    // Stick to bottom only when a NEW last message arrives (keying on the last id),
+    // so deletes/edits and older-history prepends don't yank the view down.
+    val lastMsgId = s.messages.lastOrNull()?.id
+    LaunchedEffect(lastMsgId) {
+        if (s.searchQuery.isNullOrBlank() && s.messages.isNotEmpty()) listState.animateScrollToItem(s.messages.lastIndex)
+    }
+    // Infinite older-history: page in when the user scrolls near the top.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { idx -> if (idx <= 2) vm.loadOlder() }
+    }
+    // Surface transient action errors (send/react/delete/edit/forward) via snackbar
+    // — the empty-state Retry screen already covers the initial-load failure.
+    LaunchedEffect(s.error) {
+        if (s.error != null && s.messages.isNotEmpty()) {
+            snackbarHost.showSnackbar(s.error!!)
+            vm.clearError()
+        }
+    }
 
     // Filter messages when searching
     val shown = s.searchQuery?.takeIf { it.isNotBlank() }
@@ -170,9 +188,11 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 onCancelRecord = vm::cancelRecording,
                 onTick = vm::tickRecording,
                 onOpenLangs = { vm.ensureLanguages() },
-                onSendImage = { b64, localUri -> vm.sendImage(b64, localUri) },
+                onSendImage = { b64, localUri, caption -> vm.sendImage(b64, localUri, caption) },
                 replyTo = s.replyTo,
                 onCancelReply = vm::clearReplyTo,
+                editing = s.editing,
+                onCancelEdit = vm::cancelEdit,
             )
         },
     ) { pad ->
@@ -264,6 +284,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         onReply = { actionTarget?.let { vm.setReplyTo(it) } },
         onForward = { actionTarget?.let { vm.openForward(it) } },
         onCopy = { actionTarget?.let { clipboard.setText(AnnotatedString(it.body ?: "")) } },
+        onEdit = { actionTarget?.let { vm.startEdit(it) } },
         onDeleteForMe = { actionTarget?.let { vm.deleteForMe(it) } },
         onDeleteForEveryone = { actionTarget?.let { vm.deleteForEveryone(it) } },
         onDismiss = { actionTarget = null },
@@ -285,8 +306,8 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         open = forwardTarget != null,
         chats = s.forwardChats,
         media = vm.mediaBuilder,
-        onPick = { jid ->
-            forwardTarget?.let { vm.forward(it, listOf(jid)) }
+        onConfirm = { jids ->
+            forwardTarget?.let { vm.forward(it, jids) }
             vm.closeForward()
         },
         onDismiss = { vm.closeForward() },

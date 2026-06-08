@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Stop
@@ -64,17 +65,23 @@ fun Composer(
     onCancelRecord: () -> Unit = {},
     onTick: () -> Unit = {},
     onOpenLangs: () -> Unit = {},
-    onSendImage: (String, String?) -> Unit = { _, _ -> },
+    onSendImage: (String, String?, String) -> Unit = { _, _, _ -> },
     replyTo: Message? = null,
     onCancelReply: () -> Unit = {},
+    editing: Message? = null,
+    onCancelEdit: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var showLangSheet by remember { mutableStateOf(false) }
+    // Image pending a caption (base64, content-uri) — set by the picker, sent from the dialog.
+    var pendingImage by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var imageCaption by remember { mutableStateOf("") }
 
     val selectedLang = supported.firstOrNull { it.code == outLang }
     val isVoiceMode = sendMode == "voice" && outLang != null
 
     val placeholder = when {
+        editing != null -> "Edit message…"
         isVoiceMode -> "Type — sent as ${selectedLang?.name ?: outLang} voice 🔊"
         outLang != null -> "Type — sent in ${selectedLang?.name ?: outLang}"
         else -> "Type a message"
@@ -105,7 +112,9 @@ fun Composer(
             val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             if (bytes != null) {
                 val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-                onSendImage(base64, uri.toString())
+                // Stage the image and let the user add a caption before sending.
+                pendingImage = base64 to uri.toString()
+                imageCaption = ""
             }
         }
     }
@@ -139,6 +148,44 @@ fun Composer(
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                // Edit banner (above everything when editing an own message)
+                if (editing != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Tokens.Field)
+                            .padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            Modifier.width(3.dp).height(34.dp)
+                                .clip(RoundedCornerShape(50)).background(Tokens.Primary),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Edit, contentDescription = null,
+                                    tint = Tokens.Primary, modifier = Modifier.size(13.dp),
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Editing message", color = Tokens.Primary, fontSize = 11.sp)
+                            }
+                            Text(
+                                editing.body ?: "",
+                                color = Tokens.TextMut, fontSize = 13.sp, maxLines = 1,
+                            )
+                        }
+                        IconButton(onClick = onCancelEdit) {
+                            Icon(
+                                Icons.Default.Close, contentDescription = "Cancel edit",
+                                tint = Tokens.TextMut, modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                }
+
                 // Reply quoted bar (above everything when replying)
                 if (replyTo != null) {
                     Row(
@@ -451,4 +498,60 @@ fun Composer(
         },
         onDismiss = { showLangSheet = false },
     )
+
+    // Image caption dialog — preview the picked image and optionally add a caption.
+    val pending = pendingImage
+    if (pending != null) {
+        AlertDialog(
+            onDismissRequest = { pendingImage = null; imageCaption = "" },
+            containerColor = Tokens.Surface,
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("Send image", color = Tokens.TextMain, fontWeight = FontWeight.SemiBold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    coil.compose.AsyncImage(
+                        model = pending.second,
+                        contentDescription = "Selected image",
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 240.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                    )
+                    OutlinedTextField(
+                        value = imageCaption,
+                        onValueChange = { imageCaption = it },
+                        placeholder = { Text("Add a caption…", color = Tokens.TextMut) },
+                        maxLines = 3,
+                        shape = InputShape,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Tokens.Field,
+                            unfocusedContainerColor = Tokens.Field,
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            cursorColor = Tokens.Primary,
+                            focusedTextColor = Tokens.TextMain,
+                            unfocusedTextColor = Tokens.TextMain,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onSendImage(pending.first, pending.second, imageCaption.trim())
+                        pendingImage = null; imageCaption = ""
+                    },
+                    shape = PillShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = Tokens.Primary, contentColor = Tokens.OnPrimary),
+                ) { Text("Send") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingImage = null; imageCaption = "" }) {
+                    Text("Cancel", color = Tokens.TextMut)
+                }
+            },
+        )
+    }
 }

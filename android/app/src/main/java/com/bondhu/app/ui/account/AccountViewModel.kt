@@ -40,8 +40,11 @@ class AccountViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             try {
-                _state.value = _state.value.copy(loading = true, error = null)
-                _state.value = _state.value.copy(loading = false, accounts = repo.list())
+                // Only show the full-screen spinner on the very first load — later
+                // refreshes (e.g. streamed `status` events during pairing) update the
+                // list in place instead of flickering a spinner over it.
+                if (_state.value.accounts.isEmpty()) _state.value = _state.value.copy(loading = true, error = null)
+                _state.value = _state.value.copy(loading = false, accounts = repo.list(), error = null)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(loading = false, error = e.message)
             }

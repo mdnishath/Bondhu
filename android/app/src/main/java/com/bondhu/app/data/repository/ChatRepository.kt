@@ -62,4 +62,7 @@ class ChatRepository @Inject constructor(private val api: BondhuApi) {
 
     suspend fun forward(account: String, msgIds: List<String>, targetChatIds: List<String>) =
         api.forward(ForwardRequest(account, msgIds, targetChatIds))
+
+    suspend fun editMessage(account: String, msgId: String, text: String) =
+        api.editMessage(com.bondhu.app.data.model.EditMessageRequest(account, msgId, text))
 }
