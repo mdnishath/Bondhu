@@ -65,7 +65,9 @@ data class ReactionDto(
     val fromMe: Boolean = false,
 )
 
-// Matches MessagesRepo.map() + route extras. `timestamp` is epoch SECONDS (Baileys).
+// Matches MessagesRepo.map() + route extras. `timestamp` is epoch MILLISECONDS
+// (normalize.ts converts Baileys seconds→ms; outgoing uses Date.now()). Format with
+// Date(ts) directly — do NOT multiply by 1000.
 @JsonClass(generateAdapter = true)
 data class MessageDto(
     val msgId: String,
@@ -115,3 +117,6 @@ data class MsgIdRequest(val account: String, val msgId: String)
 
 @JsonClass(generateAdapter = true)
 data class ForwardRequest(val account: String, val msgIds: List<String>, val targetChatIds: List<String>)
+
+@JsonClass(generateAdapter = true)
+data class EditMessageRequest(val account: String, val msgId: String, val text: String)

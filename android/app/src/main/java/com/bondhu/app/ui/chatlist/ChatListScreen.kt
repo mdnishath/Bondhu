@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -138,22 +139,28 @@ fun ChatListScreen(
             }
         },
     ) { pad ->
-        when {
-            s.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
-                CircularProgressIndicator(color = Tokens.Primary)
-            }
-            s.chats.isEmpty() -> EmptyState("No chats yet.", Modifier.padding(pad))
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(pad),
-                contentPadding = PaddingValues(vertical = 6.dp),
-            ) {
-                items(s.chats, key = { it.jid }) { row ->
-                    ChatRowItem(
-                        row = row,
-                        account = s.account,
-                        vm = vm,
-                        onClick = { onOpenChat(row.jid, row.title) },
-                    )
+        PullToRefreshBox(
+            isRefreshing = s.refreshing,
+            onRefresh = { vm.manualRefresh() },
+            modifier = Modifier.fillMaxSize().padding(pad),
+        ) {
+            when {
+                s.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    CircularProgressIndicator(color = Tokens.Primary)
+                }
+                s.chats.isEmpty() -> EmptyState("No chats yet.")
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 6.dp),
+                ) {
+                    items(s.chats, key = { it.jid }) { row ->
+                        ChatRowItem(
+                            row = row,
+                            account = s.account,
+                            vm = vm,
+                            onClick = { onOpenChat(row.jid, row.title) },
+                        )
+                    }
                 }
             }
         }

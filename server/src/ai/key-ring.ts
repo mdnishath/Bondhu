@@ -12,13 +12,17 @@ export class KeyRing {
       try {
         return await fn(key);
       } catch (e: any) {
-        const status = e?.status ?? e?.code;
         lastErr = e;
+        const httpStatus = typeof e?.status === 'number' ? e.status : NaN;
         // Rotate on quota (429), server errors (5xx), and 403 — a 403
         // API_KEY_SERVICE_BLOCKED means this key isn't allowed to call this
         // service, so another key (scoped to a different service) may succeed.
-        if (status === 429 || status === 403 || (status >= 500 && status < 600)) continue;
-        throw e; // non-retryable (e.g. 400 bad request)
+        const httpRetryable = httpStatus === 429 || httpStatus === 403 || (httpStatus >= 500 && httpStatus < 600);
+        // No numeric HTTP status = a transport error (ECONNRESET / DNS / timeout /
+        // "fetch failed") — transient, so try the next key instead of giving up.
+        const isTransport = !Number.isFinite(httpStatus);
+        if (httpRetryable || isTransport) continue;
+        throw e; // genuine non-retryable HTTP error (e.g. 400 bad request)
       }
     }
     throw lastErr;

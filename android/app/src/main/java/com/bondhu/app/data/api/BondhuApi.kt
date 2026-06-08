@@ -115,4 +115,7 @@ interface BondhuApi {
 
     @POST("api/delete-local")
     suspend fun deleteLocal(@Body body: MsgIdRequest): OkResponse
+
+    @POST("api/edit-message")
+    suspend fun editMessage(@Body body: EditMessageRequest): OkResponse
 }

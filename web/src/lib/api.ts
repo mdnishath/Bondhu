@@ -28,6 +28,9 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   });
   if (res.status === 401) {
     auth.clear();
+    // Tear down the JWT-bound socket so it can't silently reconnect with the
+    // now-cleared token (dynamic import avoids a circular module dependency).
+    import('./socket').then((m) => m.disconnectSocket()).catch(() => {});
     if (!location.pathname.startsWith('/login')) location.href = '/login';
     throw new HttpError('Session expired', 401);
   }
@@ -62,8 +65,10 @@ export const api = {
 
   // chats + messages
   chats: (acc: string) => get<{ chats: Chat[] }>(`/api/chats?account=${enc(acc)}&limit=100`),
-  messages: (acc: string, jid: string) =>
-    get<{ lang: string; messages: Message[] }>(`/api/messages/${enc(jid)}?account=${enc(acc)}&limit=50`),
+  messages: (acc: string, jid: string, before?: number) =>
+    get<{ lang: string; messages: Message[] }>(
+      `/api/messages/${enc(jid)}?account=${enc(acc)}&limit=50${before ? `&before=${before}` : ''}`,
+    ),
   send: (acc: string, chatId: string, message: string, translateTo?: string) =>
     post<{ success: boolean; msgId: string | null; sentText?: string; original?: string }>(
       `/api/send?account=${enc(acc)}`,

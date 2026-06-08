@@ -8,7 +8,20 @@ export function normalizeMessage(accountId: string, m: any): UpsertMessage | nul
   if (!msgId || !chatJid) return null;
 
   const fromMe = !!m.key.fromMe;
-  const content = m.message ?? {};
+  // Unwrap container messages (disappearing / view-once) — the real content sits
+  // one level deeper, so without this their text/media is lost as a bare
+  // "[message]" bubble. Unwrap a few levels (they can nest).
+  let content = m.message ?? {};
+  for (let i = 0; i < 3; i++) {
+    const inner =
+      content.ephemeralMessage?.message ??
+      content.viewOnceMessage?.message ??
+      content.viewOnceMessageV2?.message ??
+      content.viewOnceMessageV2Extension?.message ??
+      content.documentWithCaptionMessage?.message;
+    if (!inner) break;
+    content = inner;
+  }
 
   // Control / protocol messages must NEVER show up as a chat bubble:
   //  - protocolMessage: delete-for-everyone (REVOKE=0), edit (MESSAGE_EDIT=14),

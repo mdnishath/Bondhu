@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,6 +30,7 @@ fun MessageActionSheet(
     onReply: () -> Unit,
     onForward: () -> Unit,
     onCopy: () -> Unit,
+    onEdit: () -> Unit,
     onDeleteForMe: () -> Unit,
     onDeleteForEveryone: () -> Unit,
     onDismiss: () -> Unit,
@@ -91,6 +93,16 @@ fun MessageActionSheet(
                     label = "Copy",
                     tint = Tokens.TextMain,
                     onClick = { onCopy(); onDismiss() },
+                )
+            }
+
+            // Edit (own text messages only — backend supports WhatsApp message edit)
+            if (message.fromMe && message.type == "text" && !message.body.isNullOrBlank()) {
+                ActionRow(
+                    icon = Icons.Default.Edit,
+                    label = "Edit",
+                    tint = Tokens.TextMain,
+                    onClick = { onEdit(); onDismiss() },
                 )
             }
 

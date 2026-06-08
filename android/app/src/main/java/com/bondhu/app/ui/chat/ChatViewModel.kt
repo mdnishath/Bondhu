@@ -38,6 +38,9 @@ data class ChatUiState(
     val langSheetOpen: Boolean = false,
     val retranscribing: Set<String> = emptySet(),
     val replyTo: Message? = null,
+    val editing: Message? = null,
+    val loadingOlder: Boolean = false,
+    val hasMore: Boolean = true,
     // Contact info
     val contact: ProfileResponse? = null,
     val contactOpen: Boolean = false,
@@ -171,9 +174,12 @@ class ChatViewModel @Inject constructor(
             }
             "message_reaction" -> {
                 val msgId = payload.optString("msgId")
-                val emoji = payload.strOrNull("emoji") ?: return
+                val emoji = payload.strOrNull("emoji") // null/empty = the reaction was removed
+                val fromMe = payload.optBoolean("fromMe")
                 upsertPatch(msgId) { msg ->
-                    val updated = msg.reactions.filterNot { it.emoji == emoji } + ReactionUi(emoji, false)
+                    // Drop this side's prior reaction, then re-add unless it was a removal.
+                    val base = msg.reactions.filterNot { it.fromMe == fromMe }
+                    val updated = if (emoji != null) base + ReactionUi(emoji, fromMe) else base
                     msg.copy(reactions = updated)
                 }
             }
@@ -215,10 +221,33 @@ class ChatViewModel @Inject constructor(
             try {
                 val msgs = repo.messages(account, chatId, limit = 30)
                 cache.put(chatId, msgs)
-                _state.value = _state.value.copy(loading = false, messages = msgs, error = null)
+                _state.value = _state.value.copy(loading = false, messages = msgs, error = null, hasMore = msgs.size >= 30)
             } catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message ?: "Couldn't load messages") }
         }
     }
+
+    /** Page in older history when the user scrolls to the top. Prepends + de-dupes
+     *  by id; the LazyColumn's stable keys keep the view anchored on the same message. */
+    fun loadOlder() {
+        val cur = _state.value
+        if (cur.loadingOlder || !cur.hasMore || cur.messages.isEmpty() || account.isEmpty()) return
+        val oldest = cur.messages.first().timestamp
+        _state.value = cur.copy(loadingOlder = true)
+        viewModelScope.launch {
+            try {
+                val older = repo.messages(account, chatId, before = oldest, limit = 30)
+                val have = _state.value.messages.map { it.id }.toSet()
+                val fresh = older.filterNot { it.id in have }
+                val merged = (fresh + _state.value.messages).sortedBy { it.timestamp }
+                cache.put(chatId, merged)
+                _state.value = _state.value.copy(messages = merged, loadingOlder = false, hasMore = older.size >= 30)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(loadingOlder = false)
+            }
+        }
+    }
+
+    fun clearError() { _state.value = _state.value.copy(error = null) }
 
     /** Re-attempt the initial message load after an error/timeout (retry button). */
     fun retry() {
@@ -271,6 +300,10 @@ class ChatViewModel @Inject constructor(
 
     fun setReplyTo(msg: Message) { _state.value = _state.value.copy(replyTo = msg) }
     fun clearReplyTo() { _state.value = _state.value.copy(replyTo = null) }
+
+    /** Enter edit mode for one's own text message — prefills the composer draft. */
+    fun startEdit(msg: Message) { _state.value = _state.value.copy(editing = msg, replyTo = null, draft = msg.body ?: "") }
+    fun cancelEdit() { _state.value = _state.value.copy(editing = null, draft = "") }
 
     fun react(msg: Message, emoji: String) {
         // Optimistically add/update the fromMe reaction
@@ -339,13 +372,14 @@ class ChatViewModel @Inject constructor(
     /** Tokenised media URL for an image message; null if not ready. */
     fun imageUrl(msgId: String): String? = media.media(msgId)
 
-    fun sendImage(base64: String, localUri: String?) {
+    fun sendImage(base64: String, localUri: String?, caption: String? = null) {
         if (account.isEmpty()) return
+        val cap = caption?.trim()?.ifEmpty { null }
         _state.value = _state.value.copy(sending = true)
         viewModelScope.launch {
             try {
-                val r = repo.sendImage(account, chatId, base64, null)
-                r.msgId?.let { upsert(Message(it, chatId, true, "image", null, now(), AckTick.SENT, null, null, null, localUri)) }
+                val r = repo.sendImage(account, chatId, base64, cap)
+                r.msgId?.let { upsert(Message(it, chatId, true, "image", cap, now(), AckTick.SENT, null, null, null, localUri)) }
                 _state.value = _state.value.copy(sending = false)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(sending = false, error = e.message)
@@ -395,6 +429,25 @@ class ChatViewModel @Inject constructor(
     fun send() {
         val text = _state.value.draft.trim()
         if (text.isEmpty() || account.isEmpty()) return
+
+        // Edit mode: update an existing own message instead of sending a new one.
+        val editTarget = _state.value.editing
+        if (editTarget != null) {
+            _state.value = _state.value.copy(draft = "", editing = null, sending = true)
+            viewModelScope.launch {
+                try {
+                    if (text != editTarget.body) {
+                        repo.editMessage(account, editTarget.id, text)
+                        upsertPatch(editTarget.id) { it.copy(body = text) }
+                    }
+                    _state.value = _state.value.copy(sending = false)
+                } catch (e: Exception) {
+                    _state.value = _state.value.copy(sending = false, error = e.message, draft = text, editing = editTarget)
+                }
+            }
+            return
+        }
+
         val mode = _state.value.sendMode
         val tLang = _state.value.outLang
         val replyTarget = _state.value.replyTo

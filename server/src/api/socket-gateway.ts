@@ -68,8 +68,8 @@ export function attachGateway(io: IOServer, ctx: AppContext): void {
   ctx.manager.on('pairing', (accountId: string, code: string) => toUserRoom(accountId, 'status', { status: 'pairing', code }));
   ctx.manager.on('ack', (accountId: string, msgId: string, ack: number) => toUserRoom(accountId, 'message_ack', { msgId, ack }));
   ctx.manager.on('chat_update', (accountId: string, jid: string) => toUserRoom(accountId, 'chat_update', { jid }));
-  ctx.manager.on('reaction', (accountId: string, msgId: string, emoji: string, sender: string) =>
-    toUserRoom(accountId, 'message_reaction', { msgId, emoji, sender }),
+  ctx.manager.on('reaction', (accountId: string, msgId: string, emoji: string, fromMe: boolean, sender: string) =>
+    toUserRoom(accountId, 'message_reaction', { msgId, emoji, fromMe, sender }),
   );
   ctx.manager.on('message_delete', (accountId: string, msgId: string) =>
     toUserRoom(accountId, 'message_delete', { msgId }),
