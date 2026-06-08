@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bondhu foreground — lime-green adaptive icon foreground.
+  Canvas: 108×108dp. Safe zone: centered 66×66dp (starts at 21,21).
+  Content: rounded-rect speech bubble (dark fill) + bold "B" glyph (lime cutout via XOR),
+  rendered fully in dark #0B1207 on the lime background for a clean brand look.
+  The "B" is represented by a simplified path in the near-black color.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!--
+      Bubble body: rounded rect ~56×46, centered at (54,51),
+      i.e. rect from (26,28) to (82,74), corner radius 12.
+      Tail: small triangle pointing down-left from bottom of bubble.
+    -->
+    <path
+        android:fillColor="#0B1207"
+        android:pathData="
+M38,28
+L70,28
+Q82,28 82,40
+L82,62
+Q82,74 70,74
+L46,74
+L38,82
+L40,74
+L38,74
+Q26,74 26,62
+L26,40
+Q26,28 38,28
+Z" />
+
+    <!--
+      Bold letter "B" centered within the bubble (~54,51 center).
+      Drawn as two filled rounded lobes + vertical spine.
+      Spine: rect from (43,36) to (50,66) — left vertical bar
+      Top lobe: rounded rect from (50,36) to (64,50), R=7
+      Bottom lobe: rounded rect from (50,50) to (66,64), R=7
+    -->
+    <!-- Spine (vertical bar of B) -->
+    <path
+        android:fillColor="#A3E635"
+        android:pathData="M43,36 L50,36 L50,66 L43,66 Z" />
+    <!-- Top lobe of B -->
+    <path
+        android:fillColor="#A3E635"
+        android:pathData="
+M50,36
+L58,36
+Q65,36 65,43
+Q65,50 58,50
+L50,50
+Z" />
+    <!-- Bottom lobe of B (slightly wider) -->
+    <path
+        android:fillColor="#A3E635"
+        android:pathData="
+M50,50
+L59,50
+Q67,50 67,58
+Q67,66 59,66
+L50,66
+Z" />
+</vector>

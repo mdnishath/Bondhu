@@ -21,6 +21,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.bondhu.app.ui.common.EmptyState
 import com.bondhu.app.ui.common.RemoteAvatar
 import com.bondhu.app.ui.theme.Tokens
 
@@ -104,40 +105,52 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
             )
         },
     ) { pad ->
-        if (s.loading) {
-            Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
-                CircularProgressIndicator(color = Tokens.Primary)
-            }
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().padding(pad),
-                contentPadding = PaddingValues(vertical = 8.dp),
-            ) {
-                items(s.messages, key = { it.id }) { msg ->
-                    val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
-                    val isVoiceActive = playback.id == "voice-${msg.id}"
-                    val isVoicePlaying = isVoiceActive && playback.isPlaying
-                    val voiceProgress = if (isVoiceActive && playback.durationMs > 0)
-                        playback.positionMs.toFloat() / playback.durationMs else 0f
-                    val positionMs = if (isVoiceActive) playback.positionMs else 0L
-                    val durationMs = if (isVoiceActive) playback.durationMs else 0L
-                    val isTranscribing = msg.id in s.retranscribing
-                    val imgUrl = msg.localImage ?: (if (msg.type == "image") vm.imageUrl(msg.id) else null)
-                    MessageBubble(
-                        m = msg,
-                        speaking = speaking,
-                        onSpeak = { vm.speak(msg) },
-                        isVoicePlaying = isVoicePlaying,
-                        voiceProgress = voiceProgress,
-                        positionMs = positionMs,
-                        durationMs = durationMs,
-                        onPlayVoice = { vm.playVoice(msg) },
-                        onRetranscribe = { vm.retranscribe(msg) },
-                        transcribing = isTranscribing,
-                        imageUrl = imgUrl,
-                        onOpenImage = { lightboxUrl = imgUrl },
+        when {
+            s.loading && s.messages.isEmpty() -> {
+                // First-load: small subtle spinner, NOT a full-screen block
+                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = Tokens.Primary,
+                        strokeWidth = 2.dp,
                     )
+                }
+            }
+            !s.loading && s.messages.isEmpty() -> {
+                EmptyState("No messages yet", Modifier.padding(pad))
+            }
+            else -> {
+                // Messages list — shown immediately if messages exist (even if a background refresh runs)
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().padding(pad),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                ) {
+                    items(s.messages, key = { it.id }) { msg ->
+                        val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
+                        val isVoiceActive = playback.id == "voice-${msg.id}"
+                        val isVoicePlaying = isVoiceActive && playback.isPlaying
+                        val voiceProgress = if (isVoiceActive && playback.durationMs > 0)
+                            playback.positionMs.toFloat() / playback.durationMs else 0f
+                        val positionMs = if (isVoiceActive) playback.positionMs else 0L
+                        val durationMs = if (isVoiceActive) playback.durationMs else 0L
+                        val isTranscribing = msg.id in s.retranscribing
+                        val imgUrl = msg.localImage ?: (if (msg.type == "image") vm.imageUrl(msg.id) else null)
+                        MessageBubble(
+                            m = msg,
+                            speaking = speaking,
+                            onSpeak = { vm.speak(msg) },
+                            isVoicePlaying = isVoicePlaying,
+                            voiceProgress = voiceProgress,
+                            positionMs = positionMs,
+                            durationMs = durationMs,
+                            onPlayVoice = { vm.playVoice(msg) },
+                            onRetranscribe = { vm.retranscribe(msg) },
+                            transcribing = isTranscribing,
+                            imageUrl = imgUrl,
+                            onOpenImage = { lightboxUrl = imgUrl },
+                        )
+                    }
                 }
             }
         }

@@ -15,12 +15,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bondhu.app.data.model.ChatRow
+import com.bondhu.app.ui.common.BondhuButton
+import com.bondhu.app.ui.common.BondhuField
 import com.bondhu.app.ui.common.EmptyState
 import com.bondhu.app.ui.common.RemoteAvatar
 import com.bondhu.app.ui.theme.Tokens
@@ -41,6 +44,44 @@ fun ChatListScreen(
     vm: ChatListViewModel = hiltViewModel(),
 ) {
     val s by vm.state.collectAsStateWithLifecycle()
+    var showNewChat by remember { mutableStateOf(false) }
+    var newChatPhone by remember { mutableStateOf("") }
+
+    if (showNewChat) {
+        AlertDialog(
+            onDismissRequest = { showNewChat = false; newChatPhone = "" },
+            containerColor = Tokens.Surface,
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("New chat", color = Tokens.TextMain, fontWeight = FontWeight.SemiBold) },
+            text = {
+                BondhuField(
+                    value = newChatPhone,
+                    onValueChange = { newChatPhone = it },
+                    label = "Phone number (with country code)",
+                    keyboardType = KeyboardType.Phone,
+                )
+            },
+            confirmButton = {
+                BondhuButton(
+                    text = "Start chat",
+                    onClick = {
+                        val digits = newChatPhone.filter { it.isDigit() }
+                        if (digits.isNotEmpty()) {
+                            onOpenChat("${digits}@s.whatsapp.net", "+$digits")
+                        }
+                        showNewChat = false
+                        newChatPhone = ""
+                    },
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewChat = false; newChatPhone = "" }) {
+                    Text("Cancel", color = Tokens.TextMut)
+                }
+            },
+        )
+    }
+
     Scaffold(
         containerColor = Tokens.AppBg,
         topBar = {
@@ -78,7 +119,7 @@ fun ChatListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* new chat – deferred layer */ },
+                onClick = { showNewChat = true },
                 containerColor = Tokens.Primary,
                 contentColor = Tokens.OnPrimary,
             ) {

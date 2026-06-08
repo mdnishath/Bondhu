@@ -55,7 +55,12 @@ class ChatViewModel @Inject constructor(
     fun bind(chatId: String) {
         this.chatId = chatId
         viewModelScope.launch {
-            account = prefs.activeAccount.first() ?: return@launch
+            val acct = prefs.activeAccount.first()
+            if (acct == null) {
+                _state.value = _state.value.copy(loading = false, error = "No active account")
+                return@launch
+            }
+            account = acct
             load()
             loadComposerPrefs()
             runCatching { repo.markRead(account, chatId) }

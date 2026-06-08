@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,7 +83,11 @@ fun AccountListScreen(
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {
                 items(s.accounts, key = { it.id }) { acc ->
-                    AccountRow(acc, onClick = { vm.selectAccount(acc.id) { onOpenAccount() } })
+                    AccountRow(
+                        acc,
+                        onClick = { vm.selectAccount(acc.id) { onOpenAccount() } },
+                        onRemove = { vm.removeAccount(acc.id) },
+                    )
                 }
             }
         }
@@ -90,7 +95,30 @@ fun AccountListScreen(
 }
 
 @Composable
-private fun AccountRow(acc: Account, onClick: () -> Unit) {
+private fun AccountRow(acc: Account, onClick: () -> Unit, onRemove: () -> Unit) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showConfirm by remember { mutableStateOf(false) }
+
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            containerColor = Tokens.Surface,
+            shape = RoundedCornerShape(20.dp),
+            title = { Text("Remove account?", color = Tokens.TextMain, fontWeight = FontWeight.SemiBold) },
+            text = { Text("This unlinks ${acc.label} from Bondhu.", color = Tokens.TextMut) },
+            confirmButton = {
+                TextButton(onClick = { showConfirm = false; onRemove() }) {
+                    Text("Remove", color = Tokens.Danger, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) {
+                    Text("Cancel", color = Tokens.TextMut)
+                }
+            },
+        )
+    }
+
     Surface(
         color = Tokens.Surface,
         shape = RowCardShape,
@@ -122,6 +150,21 @@ private fun AccountRow(acc: Account, onClick: () -> Unit) {
                 )
             }
             StatusChip(statusToUi(acc.status))
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = Tokens.TextMut)
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    containerColor = Tokens.Surface,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Remove account", color = Tokens.Danger, fontWeight = FontWeight.SemiBold) },
+                        onClick = { menuExpanded = false; showConfirm = true },
+                    )
+                }
+            }
         }
     }
 }
