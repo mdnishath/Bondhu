@@ -202,8 +202,15 @@ class ChatViewModel @Inject constructor(
     private fun load() {
         viewModelScope.launch {
             try { _state.value = _state.value.copy(loading = false, messages = repo.messages(account, chatId, limit = 30), error = null) }
-            catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message) }
+            catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message ?: "Couldn't load messages") }
         }
+    }
+
+    /** Re-attempt the initial message load after an error/timeout (retry button). */
+    fun retry() {
+        if (account.isEmpty()) { bind(chatId); return }
+        _state.value = _state.value.copy(loading = true, error = null)
+        load()
     }
 
     val playback get() = audio.state

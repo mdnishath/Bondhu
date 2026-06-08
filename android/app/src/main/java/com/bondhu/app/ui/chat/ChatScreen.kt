@@ -177,6 +177,21 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         },
     ) { pad ->
         when {
+            s.error != null && s.messages.isEmpty() -> {
+                Column(
+                    Modifier.fillMaxSize().padding(pad).padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        s.error ?: "Couldn't load messages",
+                        color = Tokens.TextMut,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    com.bondhu.app.ui.common.BondhuButton("Retry", onClick = { vm.retry() })
+                }
+            }
             s.loading && s.messages.isEmpty() -> {
                 Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
                     CircularProgressIndicator(

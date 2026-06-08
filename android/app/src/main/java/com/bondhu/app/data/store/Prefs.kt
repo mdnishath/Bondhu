@@ -32,13 +32,19 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
     // Always emit it, ignoring any value persisted by older builds.
     val baseUrl: Flow<String> = ds.data.map { BuildConfig.BASE_URL }
 
-    suspend fun setJwt(v: String?) = ds.edit { p -> if (v == null) p.remove(Keys.JWT) else p[Keys.JWT] = v }
-    suspend fun setActiveAccount(v: String?) = ds.edit { p -> if (v == null) p.remove(Keys.ACTIVE_ACCOUNT) else p[Keys.ACTIVE_ACCOUNT] = v }
+    // In-memory cache so the OkHttp interceptors NEVER block on DataStore per
+    // request (runBlocking on the OkHttp threads was a hang/contention source).
+    // Seeded once at construction; kept fresh by every setter below.
+    @Volatile private var cJwt: String? = runBlocking { jwt.first() }
+    @Volatile private var cAccount: String? = runBlocking { activeAccount.first() }
 
-    // Blocking reads for OkHttp interceptors (called off the main thread).
-    fun jwtBlocking(): String? = runBlocking { jwt.first() }
-    fun baseUrlBlocking(): String = runBlocking { baseUrl.first() }
-    fun activeAccountBlocking(): String? = runBlocking { activeAccount.first() }
+    suspend fun setJwt(v: String?) { cJwt = v; ds.edit { p -> if (v == null) p.remove(Keys.JWT) else p[Keys.JWT] = v } }
+    suspend fun setActiveAccount(v: String?) { cAccount = v; ds.edit { p -> if (v == null) p.remove(Keys.ACTIVE_ACCOUNT) else p[Keys.ACTIVE_ACCOUNT] = v } }
+
+    // Non-blocking reads for OkHttp interceptors (return the cached value).
+    fun jwtBlocking(): String? = cJwt
+    fun baseUrlBlocking(): String = BuildConfig.BASE_URL
+    fun activeAccountBlocking(): String? = cAccount
 
     // per-chat composer prefs
     fun outLangKey(jid: String) = androidx.datastore.preferences.core.stringPreferencesKey("out_lang_${jid}")

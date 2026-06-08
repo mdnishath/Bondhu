@@ -88,10 +88,21 @@ fun ChatListScreen(
             Column {
                 TopAppBar(
                     title = {
-                        Text(
-                            "Bondhu",
-                            fontWeight = FontWeight.SemiBold,
-                        )
+                        // Brand logo (lime "B" badge) instead of a plain title
+                        Surface(
+                            color = Tokens.Primary,
+                            shape = RoundedCornerShape(9.dp),
+                            modifier = Modifier.size(34.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    "B",
+                                    color = Tokens.OnPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                )
+                            }
+                        }
                     },
                     actions = {
                         IconButton(onClick = onSwitchAccount) {
