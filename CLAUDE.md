@@ -18,9 +18,9 @@ whatsapp-web.js (puppeteer/Chrome) with **Baileys** (WebSocket, no Chrome).
 ```
 server/   Node+TS backend (Baileys, SQLite, REST, Socket.IO, AI). 48 tests.
 web/      React SPA (Vite+TS+Tailwind), modular. Built dist/ served by backend.
-android/  Compose app — DESIGN.md only, NOT implemented yet.
-docs/specs/            3 design specs (core, web, app)
-docs/plans/            5 implementation plans (server 1, 2, 3a, 3b, web 4)
+android/  Kotlin/Compose app — BUILT & on master (v1 slice + Layer 1 voice/translation + lime-green redesign + Layer 2 message actions). See "Android app" section below.
+docs/specs/            design specs (core, web, app) + docs/superpowers/specs/ (android v1, layer1)
+docs/plans/            implementation plans + docs/superpowers/plans/ (android v1, layer1)
 docs/design-reference/ bondhu-html = the original Claude Design vanilla export (visual reference only; superseded by the React SPA)
 .local/secrets.md      gitignored — API keys + test phone numbers (see there)
 ```
@@ -28,9 +28,12 @@ docs/design-reference/ bondhu-html = the original Claude Design vanilla export (
 ## Status
 - [x] **server/** — Foundation+Auth, WhatsApp Core (Baileys), Rich Messaging, AI (translate/TTS/STT). **53 tests, tsc clean, live-verified.**
 - [x] **web/** — React SPA: Login, ChatPage, LinkDevice (QR+pairing), Settings. Full **two-way translation + outgoing voice**. Rich messaging: reply, forward (dialog), edit, delete, reactions, image lightbox, per-message action menu. **Profile photos + saved contact names + profile view** (incl. `@lid` phone resolution). New-chat compose, account remove (sidebar ×). **Mic recording → transcribe (Gemini) → translated voice/text**. Perf: cached profile pics + lazy avatars. Mobile back nav.
-- [ ] **android/** — design done (`android/DESIGN.md`), Compose NOT started. **Main remaining work.**
-- [x] **Deploy** — LIVE at **https://wa.client-flow.xyz** (VPS `144.79.218.148`, pm2 `bondhu` port 3060, nginx + LE SSL). See `DEPLOY.md`. Update with `ssh root@144.79.218.148 'bash /opt/bondhu/deploy.sh'`. Old `whatsapp-mcp` stopped (code kept).
+- [x] **android/** — **BUILT, on master, device-verified** (app id `com.bondhu.app`, current `versionName 0.4.7`). Kotlin/Compose, MVVM+Hilt+Retrofit+Moshi+Socket.IO+Media3 ExoPlayer+Coil+DataStore+ZXing. Auth (email/pw) → accounts → pair (QR/code) → chat list → text/voice/image chat. Voice (incoming playback + transcript/translation, TTS speaker, outgoing voice, mic→transcribe), two-way translation (per-chat/global language, 18 langs), message actions (reaction/reply/copy/delete/forward), contact info, search-in-chat, clear chat, Settings (keys/language/logout), account add/remove, new-chat-by-number, image send + lightbox. **lime-green + Inter + glassy design system** (see below). 24 unit tests.
+- [x] **web/** also **re-skinned to the lime-green brand** (tailwind tokens `teal`→`#A3E635` + dark surfaces; Inter already used) and **deployed live**.
+- [x] **Deploy** — LIVE at **https://wa.client-flow.xyz** (VPS `144.79.218.148`, pm2 `bondhu` port 3060, nginx + LE SSL — websocket upgrade configured). Update with `ssh root@144.79.218.148 'bash /opt/bondhu/deploy.sh'` (git pull master → build server+web → pm2 reload; DB untouched). Old `whatsapp-mcp` stopped (code kept).
 - WhatsApp account is linked (`nishatbd3388`, +8801767591988) and used for live verification; API keys are in the DB for that user.
+
+> **Status note (current session end):** user confirms the Android app "sob thik ase and kaj kortece" (all working). Next session the user will bring more bugs/improvements. The app is feature-rich and near full web-parity. **Still NOT done vs web:** edit-message, group-specific UI, pull-to-refresh, infinite older-message scroll, image caption entry, FCM background push. The "Forward" picker is single-target (web allows multi).
 
 ## Run / build / test
 ```bash
@@ -42,6 +45,16 @@ cd "E:/New Whatsapp/web" && npm run build           # -> web/dist
 cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, proxies /api to :3050
 ```
 - DB file `server/bondhu.db` is gitignored and contains live WhatsApp creds; delete it for a clean slate. After editing server files, tsx watch restarts; if it hits `EADDRINUSE` on :3050, kill the stale node via PowerShell `Get-NetTCPConnection -LocalPort 3050 | Stop-Process` then restart.
+
+## Android app (built — `android/`, package `com.bondhu.app`)
+- **No Gradle/Java on PATH.** Use Android Studio's bundled JBR. Always:
+  `$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"; cd "E:\New Whatsapp\android"; .\gradlew.bat <task>` (PowerShell). SDK at `C:\Users\nisha\AppData\Local\Android\Sdk` (platforms 34/35/36).
+- Build: `.\gradlew.bat :app:assembleDebug` → APK at `android/app/build/outputs/apk/debug/app-debug.apk`. Tests: `.\gradlew.bat :app:testDebugUnitTest` (24 JUnit + MockWebServer tests). First build downloads ~hundreds of MB (use long timeouts).
+- **Deliver to the user as the APK path** above (they install manually; bump `versionCode`/`versionName` in `app/build.gradle.kts` each build). The user's phone has the SDK but USB-debugging is usually OFF, so adb often shows no device — give them the APK path.
+- **Server URL is hardcoded** to `BuildConfig.BASE_URL` (debug+release both `https://wa.client-flow.xyz`); no in-app server field. Login = email/password (same backend user as web).
+- **Design system = lime-green + Inter + glassy.** Tokens in `ui/theme/Tokens.kt` (Primary `#A3E635`, AppBg `#0A0C0B`, Surface `#14181A`, OutBubble `#2A3A1E`, Tick lime). Inter bundled in `res/font/`. Glassy = dark `Surface` + 1dp `Tokens.Divider` border + rounded 18–20dp (NO real blur, minSdk 26). Pill buttons, lime "B" app icon + chat-list header logo.
+- **Architecture:** `data/{api,model,repository,store,socket,audio,cache}` + `ui/{theme,common,nav,auth,account,chatlist,chat,settings}`. `ChatViewModel` is the big one. `MessageCache` (singleton, chatId→messages) makes re-opens instant. `SocketManager` (one JWT-handshake socket, `events`+`connects` SharedFlows).
+- Specs/plans: `docs/superpowers/specs/2026-06-0{7,8}-*.md`, `docs/superpowers/plans/2026-06-0{7,8}-*.md`. Built subagent-driven (per-task build-gate + spec/code review + final integration review).
 
 ## Architecture quick map (backend)
 - `db/` SQLite (better-sqlite3, WAL). Tables: users, accounts, auth_state, chats, messages, reactions, api_keys, user_lang, chat_lang, translations, tts_cache, **profile_pics** (cached avatar bytes), **contacts** (saved names). Schema runs statement-by-statement so idempotent `ALTER TABLE ADD COLUMN` is tolerated.
@@ -65,7 +78,14 @@ cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, prox
 13. **Contact names** from `messaging-history.set`/`contacts.upsert` → `contacts` table; chat list `COALESCE`s saved name over pushName. `@lid` privacy jids have no phone — resolved via Baileys lid mapping in `/profile`.
 14. **`normalize` must NOT skip on a bare `content.messageContextInfo`.** Modern WhatsApp (multi-device / `@lid`) attaches `messageContextInfo` (deviceListMetadata) to ORDINARY incoming texts — skipping on its mere presence silently drops EVERY incoming message (outgoing still works because it's stored directly via `storeOutgoing`, not `normalize`). Only skip when it's the sole field. Symptom: "can send but receive nothing." Debug trick: log `messages.upsert` in wa-connection — if `[RX] ... keys=[messageContextInfo+conversation]` arrives but isn't stored, it's a normalize drop, NOT a session/re-link issue.
 15. **Realtime needs re-sync on (re)connect.** socket.io doesn't replay events missed while disconnected (server restart / blip), so ChatPage/ChatView refetch on the socket `connect` event. The socket auth token is in the handshake (`auth.token`); same-origin (`io('/')`), Vite dev proxies `/socket.io` (ws:true).
-16. **One contact must be ONE chat — canonicalize phone → `@lid`.** WhatsApp addresses the same person by both a privacy `@lid` and their phone jid, which split a contact into two chats (outgoing under phone, incoming under `@lid`). `WaConnection.canonicalJid` maps phone → `@lid` via `signalRepository.lidMapping.getLIDForPN` at **ingest** (`messages.upsert`) and on **every send** (`sendText`/`reply`/`sendImage`/`sendVoice` in account-manager). Direction matters: `getLIDForPN(bare phone)` resolves reliably, but the reverse `getPNForLID(@lid)` returns a **device-suffixed** `…:0@s.whatsapp.net` that does NOT match bare phone chats — that mismatch was the original split. `@lid`/`@g.us` pass through. Repair legacy splits with `POST /merge-lid-chats` (uses `ChatsRepo.mergeChat`, which also moves chat_lang + contact name and recomputes unread). **Auto-heal:** a brand-new typed number is sent before its lid is known (lands on a phone chat); when the reply arrives as `@lid`, the manager's `message` handler folds the sibling phone chat into it automatically (`mergeChat`, live messages only). One-off repair runner: `server/scripts/merge-lid-chats.mjs`.
+**Android-specific gotchas (learned building the app):**
+17. **Backend timestamps are MILLISECONDS** (`normalize.ts` does `tsRaw*1000`; outgoing uses `Date.now()`). Android formats with `Date(ts)` (NOT `ts*1000`) and optimistic bubbles use `System.currentTimeMillis()` (NOT `/1000`). Sorting is unit-agnostic; the C1 "oldest-first" reversal is still needed (server returns DESC).
+18. **Auth routes mount at `/api/auth`** (`app.use('/api/auth', authRoutes)`) — so `/api/auth/login|register|me`. EVERYTHING else is `/api/*`. Android hitting `/api/login` fell through to `whatsappRoutes`' `requireAuth` → 401 `"Authorization token required"` (the symptom for BOTH login & register). Always verify mount prefixes in `server.ts`, not just the route file.
+19. **NEVER `runBlocking{ DataStore }` on the main thread** (Android). The OkHttp interceptors + the chat-open path (`loadComposerPrefs`) did this; on a cold DataStore it FROZE the UI thread so a successful load's result never rendered → **the loading spinner stuck forever on first chat open** (re-open was fine = warm). Fix: cache jwt/active-account in memory (no per-request DataStore read), use SUSPEND DataStore reads, and give OkHttp explicit timeouts (`callTimeout(30s)`) so no request can hang forever. Diagnosed via nginx access log (`/api/messages` was 200/fast → ruled out server).
+20. **Android `JSONObject.optString(key)` returns the literal string `"null"`** when the JSON value is null (org.json quirk) → showed "Translated **null**". Use a `strOrNull` helper that checks `isNull(key)` first. (Only the SOCKET path; REST via Moshi is fine.)
+21. **Transcription must be VERBATIM in the spoken language/script** (no auto-translate to English). The `/transcribe` Gemini prompt was strengthened to "write exactly what's spoken in the same language & native script, never translate/romanize". Translation happens ONLY at send time (`translateTo`). Same backend serves web + app, so this fixed both.
+22. **Android media/profile-pic auth via `?token=` query** (not header); Coil/ExoPlayer load the absolute tokenised URL with their OWN client (NOT the app's OkHttp with host/auth interceptors). **Own sent images/voice aren't downloadable from WhatsApp** → carry a local content-Uri / `audioBase64` on the optimistic bubble for in-session display (mirrors the web's `localImage`/`localAudio`).
+23. **One contact must be ONE chat — canonicalize phone → `@lid`.** WhatsApp addresses the same person by both a privacy `@lid` and their phone jid, which split a contact into two chats (outgoing under phone, incoming under `@lid`). `WaConnection.canonicalJid` maps phone → `@lid` via `signalRepository.lidMapping.getLIDForPN` at **ingest** (`messages.upsert`) and on **every send** (`sendText`/`reply`/`sendImage`/`sendVoice` in account-manager). Direction matters: `getLIDForPN(bare phone)` resolves reliably, but the reverse `getPNForLID(@lid)` returns a **device-suffixed** `…:0@s.whatsapp.net` that does NOT match bare phone chats — that mismatch was the original split. `@lid`/`@g.us` pass through. Repair legacy splits with `POST /merge-lid-chats` (uses `ChatsRepo.mergeChat`, which also moves chat_lang + contact name and recomputes unread). **Auto-heal:** a brand-new typed number is sent before its lid is known (lands on a phone chat); when the reply arrives as `@lid`, the manager's `message` handler folds the sibling phone chat into it automatically (`mergeChat`, live messages only). One-off repair runner: `server/scripts/merge-lid-chats.mjs`.
 
 ## Conventions (how we work here)
 - Backend: **TDD** (test → fail → impl → pass → commit), one commit per plan task.
@@ -82,10 +102,16 @@ cd "E:/New Whatsapp/web" && npm run dev              # hot reload on :5173, prox
 - **Voice:** outgoing Gemini-TTS voice notes (mode toggle); own-voice replay; **mic recording → Gemini transcribe → translated voice/text** (key use case: Bangla speech → English to US clients).
 - Composer: send-mode toggle (flag + Aa/🎙️), language picker (flags), mic record. Sidebar: account remove, new-chat compose. Per-user keys w/ rotation, 18 languages.
 
-## Next steps (in priority order)
-1. **Android app** — implement `android/DESIGN.md` in Kotlin/Compose against the same backend API (MVVM + Hilt + Retrofit + Socket.IO + ExoPlayer). Biggest remaining piece.
-2. **Deploy** Bondhu to the VPS (build server + web, pm2, nginx) when ready.
-3. Web polish as needed (per-chat language dialog, group handling, search).
+## Next steps (Android app is built & deployed; user will bring more next session)
+The user said everything works now and will return with more bugs/improvements.
+Likely areas (Android, vs web parity):
+1. **Edit message** (backend `/edit-message` exists; socket `message_edit` already handled — needs a UI action + composer edit mode).
+2. **Multi-target Forward** (current `ForwardSheet` picks ONE chat; web allows several).
+3. **Pull-to-refresh** on chat list + **infinite older-message scroll** in chat (repo `messages(before=)` cursor exists, UI trigger pending).
+4. **Image caption** entry before send; **group-specific UI** (member names beyond sender label).
+5. **Theme toggle** (currently dark-only) and any polish the user requests.
+6. **Background push (FCM)** — needs new backend (device-token store + push on incoming) + Firebase. Biggest remaining infra piece.
+- When the user reports a bug, prefer **diagnosing via the live server** (nginx access log `/var/log/nginx/*access*` on the VPS shows request status/timing; pm2 logs `pm2 logs bondhu`) before guessing — that's how the stuck-loading root cause (main-thread DataStore block) was found.
 
 ## User context
 - Replies in **Bengali/Banglish**; wants concise, result-first answers.
