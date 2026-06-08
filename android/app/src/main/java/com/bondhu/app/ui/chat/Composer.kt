@@ -101,7 +101,7 @@ fun Composer(
             val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             if (bytes != null) {
                 val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-                onSendImage(base64, null)
+                onSendImage(base64, uri.toString())
             }
         }
     }

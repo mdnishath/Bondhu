@@ -156,6 +156,7 @@ class ChatViewModel @Inject constructor(
             val merged = m.copy(
                 transcript = m.transcript ?: existing.transcript,
                 translated = m.translated ?: existing.translated,
+                localImage = m.localImage ?: existing.localImage,
             )
             cur.toMutableList().also { it[idx] = merged }
         } else {
@@ -219,13 +220,13 @@ class ChatViewModel @Inject constructor(
     /** Tokenised media URL for an image message; null if not ready. */
     fun imageUrl(msgId: String): String? = media.media(msgId)
 
-    fun sendImage(base64: String, caption: String?) {
+    fun sendImage(base64: String, localUri: String?) {
         if (account.isEmpty()) return
         _state.value = _state.value.copy(sending = true)
         viewModelScope.launch {
             try {
-                val r = repo.sendImage(account, chatId, base64, caption)
-                r.msgId?.let { upsert(Message(it, chatId, true, "image", caption?.ifBlank { null }, now(), AckTick.SENT, null, null, null)) }
+                val r = repo.sendImage(account, chatId, base64, null)
+                r.msgId?.let { upsert(Message(it, chatId, true, "image", null, now(), AckTick.SENT, null, null, null, localUri)) }
                 _state.value = _state.value.copy(sending = false)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(sending = false, error = e.message)

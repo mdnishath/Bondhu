@@ -100,7 +100,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 onCancelRecord = vm::cancelRecording,
                 onTick = vm::tickRecording,
                 onOpenLangs = { vm.ensureLanguages() },
-                onSendImage = { b64, cap -> vm.sendImage(b64, cap) },
+                onSendImage = { b64, localUri -> vm.sendImage(b64, localUri) },
             )
         },
     ) { pad ->
@@ -123,7 +123,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                     val positionMs = if (isVoiceActive) playback.positionMs else 0L
                     val durationMs = if (isVoiceActive) playback.durationMs else 0L
                     val isTranscribing = msg.id in s.retranscribing
-                    val imgUrl = if (msg.type == "image") vm.imageUrl(msg.id) else null
+                    val imgUrl = msg.localImage ?: (if (msg.type == "image") vm.imageUrl(msg.id) else null)
                     MessageBubble(
                         m = msg,
                         speaking = speaking,

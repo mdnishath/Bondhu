@@ -29,4 +29,5 @@ data class Message(
     val translated: String?,
     val transcript: String?,
     val senderName: String?,
+    val localImage: String? = null,  // local content-Uri string for an own just-sent image (session-only)
 )
