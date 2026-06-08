@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,9 @@ import androidx.core.content.ContextCompat
 import com.bondhu.app.data.model.LangOption
 import com.bondhu.app.ui.theme.Tokens
 import kotlinx.coroutines.delay
+
+private val PillShape = RoundedCornerShape(50)
+private val InputShape = RoundedCornerShape(24.dp)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,224 +98,237 @@ fun Composer(
         return "$m:${s.toString().padStart(2, '0')}"
     }
 
-    Surface(color = Tokens.Header) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+    // Outer surface: Header background + top hairline border
+    Column {
+        HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
+        Surface(
+            color = Tokens.Header,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            // Optional hint line (only when outLang != null)
-            if (outLang != null) {
-                val hintText = if (isVoiceMode)
-                    "Sent as ${selectedLang?.name ?: outLang} voice note (+ text)"
-                else
-                    "Translated to ${selectedLang?.name ?: outLang} before sending"
-                Text(
-                    text = hintText,
-                    color = Tokens.Primary,
-                    fontSize = 11.sp,
-                )
-            }
-
-            // ROW 1 — text input, full width, ON TOP
-            OutlinedTextField(
-                value = draft,
-                onValueChange = onDraft,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(placeholder, color = Tokens.TextMut) },
-                maxLines = 5,
-                shape = RoundedCornerShape(22.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Tokens.Field,
-                    unfocusedContainerColor = Tokens.Field,
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = Tokens.Primary,
-                    focusedTextColor = Tokens.TextMain,
-                    unfocusedTextColor = Tokens.TextMain,
-                ),
-            )
-
-            if (recording) {
-                // Recording row INSTEAD of ROW 2 when recording
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    // Red dot + timer
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                // Optional hint line (only when outLang != null)
+                if (outLang != null) {
+                    val hintText = if (isVoiceMode)
+                        "Sent as ${selectedLang?.name ?: outLang} voice note (+ text)"
+                    else
+                        "Translated to ${selectedLang?.name ?: outLang} before sending"
                     Text(
-                        text = "● ${formatTimer(recordSecs)}",
-                        color = Color(0xFFE53935),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
+                        text = hintText,
+                        color = Tokens.Primary,
+                        fontSize = 11.sp,
                     )
-                    // Cancel button
-                    OutlinedButton(
-                        onClick = onCancelRecord,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Tokens.TextMut),
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel", modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Cancel")
-                    }
-                    // Stop/Send button
-                    Button(
-                        onClick = onStopRecord,
-                        colors = ButtonDefaults.buttonColors(containerColor = Tokens.Primary, contentColor = Tokens.OnPrimary),
-                    ) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Send")
-                    }
                 }
-            } else {
-                // ROW 2 — actions row, BELOW the input
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // LEFT group: scrollable, contains mode toggle + language chip
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .horizontalScroll(rememberScrollState()),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        // Segmented mode toggle: [Aa] [🎙️]
-                        Surface(
-                            color = Tokens.Field,
-                            shape = RoundedCornerShape(10.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(3.dp),
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                // "Aa" text mode segment
-                                val textSelected = sendMode == "text"
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { onSetMode("text") }
-                                        .background(
-                                            if (textSelected) Tokens.Primary.copy(alpha = 0.25f) else Color.Transparent
-                                        )
-                                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = "Aa",
-                                        color = if (textSelected) Tokens.Primary else Tokens.TextMut,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                }
-                                // "🎙️" voice mode segment (disabled when outLang == null)
-                                val voiceEnabled = outLang != null
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable(enabled = voiceEnabled) { onSetMode("voice") }
-                                        .background(
-                                            if (isVoiceMode) Tokens.Primary.copy(alpha = 0.25f) else Color.Transparent
-                                        )
-                                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = "🎙️",
-                                        color = if (isVoiceMode) Tokens.Primary
-                                                else if (voiceEnabled) Tokens.TextMut
-                                                else Tokens.TextMut.copy(alpha = 0.4f),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                }
-                            }
-                        }
 
-                        // Language chip
-                        val langLabel = if (selectedLang != null) "${selectedLang.flag} ${selectedLang.name}" else "Language"
-                        Surface(
-                            color = if (outLang != null) Tokens.Primary.copy(alpha = 0.15f) else Tokens.Field,
-                            shape = RoundedCornerShape(10.dp),
+                // ROW 1 — text input, full width, ON TOP
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = onDraft,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(placeholder, color = Tokens.TextMut) },
+                    maxLines = 5,
+                    shape = InputShape,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Tokens.Field,
+                        unfocusedContainerColor = Tokens.Field,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        cursorColor = Tokens.Primary,
+                        focusedTextColor = Tokens.TextMain,
+                        unfocusedTextColor = Tokens.TextMain,
+                    ),
+                )
+
+                if (recording) {
+                    // Recording row INSTEAD of ROW 2 when recording
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // Red dot + timer
+                        Text(
+                            text = "● ${formatTimer(recordSecs)}",
+                            color = Color(0xFFE53935),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // Cancel button
+                        OutlinedButton(
+                            onClick = onCancelRecord,
+                            shape = PillShape,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Tokens.TextMut),
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .clickable {
-                                        showLangSheet = true
-                                        onOpenLangs()
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Text(
-                                    text = "🌐",
-                                    fontSize = 12.sp,
-                                )
-                                Text(
-                                    text = langLabel,
-                                    color = if (outLang != null) Tokens.Primary else Tokens.TextMut,
-                                    fontSize = 12.sp,
-                                    maxLines = 1,
-                                )
-                            }
+                            Icon(Icons.Default.Close, contentDescription = "Cancel", modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Cancel")
+                        }
+                        // Stop/Send button
+                        Button(
+                            onClick = onStopRecord,
+                            shape = PillShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Tokens.Primary,
+                                contentColor = Tokens.OnPrimary,
+                            ),
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Send")
                         }
                     }
-
-                    // RIGHT group: attach + mic + send, tightly spaced
+                } else {
+                    // ROW 2 — actions row, BELOW the input
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        // Attach button (placeholder — coming soon)
-                        IconButton(
-                            onClick = {
-                                android.widget.Toast.makeText(context, "Coming soon", android.widget.Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.size(44.dp),
+                        // LEFT group: scrollable, contains mode toggle + language chip
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(rememberScrollState()),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Icon(
-                                Icons.Default.AttachFile,
-                                contentDescription = "Attach",
-                                tint = Tokens.TextMut,
-                                modifier = Modifier.size(24.dp),
-                            )
+                            // Segmented mode toggle: [Aa] [🎙️] — pill container
+                            Surface(
+                                color = Tokens.Field,
+                                shape = PillShape,
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(3.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    // "Aa" text mode segment
+                                    val textSelected = sendMode == "text"
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(PillShape)
+                                            .clickable { onSetMode("text") }
+                                            .background(
+                                                if (textSelected) Tokens.Primary.copy(alpha = 0.25f) else Color.Transparent,
+                                            )
+                                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = "Aa",
+                                            color = if (textSelected) Tokens.Primary else Tokens.TextMut,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                    }
+                                    // "🎙️" voice mode segment (disabled when outLang == null)
+                                    val voiceEnabled = outLang != null
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(PillShape)
+                                            .clickable(enabled = voiceEnabled) { onSetMode("voice") }
+                                            .background(
+                                                if (isVoiceMode) Tokens.Primary.copy(alpha = 0.25f) else Color.Transparent,
+                                            )
+                                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = "🎙️",
+                                            color = if (isVoiceMode) Tokens.Primary
+                                            else if (voiceEnabled) Tokens.TextMut
+                                            else Tokens.TextMut.copy(alpha = 0.4f),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Language chip — pill
+                            val langLabel = if (selectedLang != null) "${selectedLang.flag} ${selectedLang.name}" else "Language"
+                            Surface(
+                                color = if (outLang != null) Tokens.Primary.copy(alpha = 0.15f) else Tokens.Field,
+                                shape = PillShape,
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .clickable {
+                                            showLangSheet = true
+                                            onOpenLangs()
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        text = "🌐",
+                                        fontSize = 12.sp,
+                                    )
+                                    Text(
+                                        text = langLabel,
+                                        color = if (outLang != null) Tokens.Primary else Tokens.TextMut,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
                         }
 
-                        // Mic button
-                        IconButton(
-                            onClick = { requestMic() },
-                            modifier = Modifier.size(44.dp),
+                        // RIGHT group: attach + mic + send, tightly spaced
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            Icon(
-                                Icons.Default.Mic,
-                                contentDescription = "Record",
-                                tint = Tokens.Primary,
-                                modifier = Modifier.size(26.dp),
-                            )
-                        }
-
-                        // Send FAB — shows spinner while sending
-                        FloatingActionButton(
-                            onClick = { if (!sending) onSend() },
-                            containerColor = Tokens.Primary,
-                            contentColor = Tokens.OnPrimary,
-                            modifier = Modifier.size(48.dp),
-                        ) {
-                            if (sending) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(22.dp),
-                                    strokeWidth = 2.dp,
-                                    color = Tokens.OnPrimary,
+                            // Attach button (placeholder — coming soon)
+                            IconButton(
+                                onClick = {
+                                    android.widget.Toast.makeText(context, "Coming soon", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(44.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.AttachFile,
+                                    contentDescription = "Attach",
+                                    tint = Tokens.TextMut,
+                                    modifier = Modifier.size(24.dp),
                                 )
-                            } else {
-                                Icon(Icons.Default.Send, "Send")
+                            }
+
+                            // Mic button — ghost, TextMut
+                            IconButton(
+                                onClick = { requestMic() },
+                                modifier = Modifier.size(44.dp),
+                            ) {
+                                Icon(
+                                    Icons.Default.Mic,
+                                    contentDescription = "Record",
+                                    tint = Tokens.TextMut,
+                                    modifier = Modifier.size(26.dp),
+                                )
+                            }
+
+                            // Send FAB — circular lime, shows spinner while sending
+                            FloatingActionButton(
+                                onClick = { if (!sending) onSend() },
+                                containerColor = Tokens.Primary,
+                                contentColor = Tokens.OnPrimary,
+                                modifier = Modifier.size(48.dp),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                            ) {
+                                if (sending) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(22.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Tokens.OnPrimary,
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Send, "Send")
+                                }
                             }
                         }
                     }

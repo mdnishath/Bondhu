@@ -1,9 +1,11 @@
 package com.bondhu.app.ui.chatlist
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -34,44 +36,103 @@ fun ChatListScreen(onOpenChat: (String, String) -> Unit, vm: ChatListViewModel =
     val s by vm.state.collectAsStateWithLifecycle()
     Scaffold(
         containerColor = Tokens.AppBg,
-        topBar = { TopAppBar(title = { Text("Bondhu") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Tokens.Header, titleContentColor = Tokens.TextMain)) },
+        topBar = {
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            "Bondhu",
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Tokens.Header,
+                        titleContentColor = Tokens.TextMain,
+                    ),
+                )
+                HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
+            }
+        },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* new chat – deferred layer */ }, containerColor = Tokens.Primary, contentColor = Tokens.OnPrimary) {
+            FloatingActionButton(
+                onClick = { /* new chat – deferred layer */ },
+                containerColor = Tokens.Primary,
+                contentColor = Tokens.OnPrimary,
+            ) {
                 Icon(Icons.Default.Edit, "New chat")
             }
         },
     ) { pad ->
         when {
-            s.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator(color = Tokens.Primary) }
+            s.loading -> Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
+                CircularProgressIndicator(color = Tokens.Primary)
+            }
             s.chats.isEmpty() -> EmptyState("No chats yet.", Modifier.padding(pad))
-            else -> LazyColumn(Modifier.fillMaxSize().padding(pad)) {
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(pad),
+                contentPadding = PaddingValues(vertical = 6.dp),
+            ) {
                 items(s.chats, key = { it.jid }) { row ->
-                    ChatRowItem(row, s.account, vm = vm, onClick = { onOpenChat(row.jid, row.title) })
-                    HorizontalDivider(color = Tokens.Divider)
+                    ChatRowItem(
+                        row = row,
+                        account = s.account,
+                        vm = vm,
+                        onClick = { onOpenChat(row.jid, row.title) },
+                    )
                 }
             }
         }
     }
 }
 
+private val CardShape = RoundedCornerShape(18.dp)
+
 @Composable
 private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        color = Tokens.Surface,
+        shape = CardShape,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .border(1.dp, Tokens.Divider, CardShape),
     ) {
-        RemoteAvatar(name = row.title, url = vm.avatarUrl(row.jid))
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(row.title, color = Tokens.TextMain, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(row.preview, color = Tokens.TextMut, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Spacer(Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.End) {
-            Text(shortTime(row.timestamp), color = Tokens.TextMut, fontSize = 11.sp)
-            if (row.unread > 0) {
-                Spacer(Modifier.height(4.dp))
-                Badge(containerColor = Tokens.Primary, contentColor = Tokens.OnPrimary) { Text(row.unread.toString()) }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RemoteAvatar(name = row.title, url = vm.avatarUrl(row.jid))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    row.title,
+                    color = Tokens.TextMain,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    row.preview,
+                    color = Tokens.TextMut,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(shortTime(row.timestamp), color = Tokens.TextMut, fontSize = 11.sp)
+                if (row.unread > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    Badge(
+                        containerColor = Tokens.Primary,
+                        contentColor = Tokens.OnPrimary,
+                    ) {
+                        Text(row.unread.toString())
+                    }
+                }
             }
         }
     }

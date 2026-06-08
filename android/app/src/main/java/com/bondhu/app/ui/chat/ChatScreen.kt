@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,31 +31,49 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     Scaffold(
         containerColor = Tokens.AppBg,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RemoteAvatar(name = title, url = vm.headerAvatarUrl(), size = 36)
-                        Spacer(Modifier.width(10.dp))
-                        Text(title)
-                    }
-                },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                actions = {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = Tokens.TextMain)
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Chat language") },
-                            onClick = { menuExpanded = false; vm.openLangSheet() },
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Tokens.Header, titleContentColor = Tokens.TextMain, navigationIconContentColor = Tokens.TextMain),
-            )
+            Column {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RemoteAvatar(name = title, url = vm.headerAvatarUrl(), size = 36)
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = title,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Tokens.TextMain,
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = Tokens.TextMain)
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Chat language") },
+                                onClick = { menuExpanded = false; vm.openLangSheet() },
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Tokens.Header,
+                        titleContentColor = Tokens.TextMain,
+                        navigationIconContentColor = Tokens.TextMain,
+                    ),
+                )
+                HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
+            }
         },
         bottomBar = {
             Composer(
@@ -78,9 +97,15 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         },
     ) { pad ->
         if (s.loading) {
-            Box(Modifier.fillMaxSize().padding(pad), androidx.compose.ui.Alignment.Center) { CircularProgressIndicator(color = Tokens.Primary) }
+            Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
+                CircularProgressIndicator(color = Tokens.Primary)
+            }
         } else {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(vertical = 8.dp)) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().padding(pad),
+                contentPadding = PaddingValues(vertical = 8.dp),
+            ) {
                 items(s.messages, key = { it.id }) { msg ->
                     val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
                     val isVoiceActive = playback.id == "voice-${msg.id}"
