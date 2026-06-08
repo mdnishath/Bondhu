@@ -112,3 +112,6 @@ data class ReplyRequest(val account: String, val chatId: String, val msgId: Stri
 
 @JsonClass(generateAdapter = true)
 data class MsgIdRequest(val account: String, val msgId: String)
+
+@JsonClass(generateAdapter = true)
+data class ForwardRequest(val account: String, val msgIds: List<String>, val targetChatIds: List<String>)

@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -26,6 +27,7 @@ fun MessageActionSheet(
     message: Message?,
     onReact: (String) -> Unit,
     onReply: () -> Unit,
+    onForward: () -> Unit,
     onCopy: () -> Unit,
     onDeleteForMe: () -> Unit,
     onDeleteForEveryone: () -> Unit,
@@ -72,6 +74,14 @@ fun MessageActionSheet(
                 label = "Reply",
                 tint = Tokens.TextMain,
                 onClick = { onReply(); onDismiss() },
+            )
+
+            // Forward
+            ActionRow(
+                icon = Icons.AutoMirrored.Filled.Forward,
+                label = "Forward",
+                tint = Tokens.TextMain,
+                onClick = { onForward(); onDismiss() },
             )
 
             // Copy (only if body is available)

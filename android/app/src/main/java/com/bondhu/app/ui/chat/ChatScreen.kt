@@ -8,7 +8,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,46 +39,108 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     var menuExpanded by remember { mutableStateOf(false) }
     var lightboxUrl by remember { mutableStateOf<String?>(null) }
     var actionTarget by remember { mutableStateOf<Message?>(null) }
+    var searchActive by remember { mutableStateOf(false) }
+    var searchText by remember { mutableStateOf("") }
+    var showClearConfirm by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
+    val snackbarHost = remember { SnackbarHostState() }
+
     LaunchedEffect(chatId) { vm.bind(chatId) }
     LaunchedEffect(s.messages.size) { if (s.messages.isNotEmpty()) listState.animateScrollToItem(s.messages.lastIndex) }
 
+    // Filter messages when searching
+    val shown = s.searchQuery?.takeIf { it.isNotBlank() }
+        ?.let { q -> s.messages.filter { (it.body ?: it.transcript ?: "").contains(q, ignoreCase = true) } }
+        ?: s.messages
+
     Scaffold(
         containerColor = Tokens.AppBg,
+        snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             Column {
                 TopAppBar(
                     title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RemoteAvatar(name = title, url = vm.headerAvatarUrl(), size = 36)
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                text = title,
-                                fontWeight = FontWeight.SemiBold,
+                        if (searchActive) {
+                            TextField(
+                                value = searchText,
+                                onValueChange = { searchText = it; vm.setSearch(it) },
+                                placeholder = { Text("Search…", color = Tokens.TextMut) },
+                                singleLine = true,
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Tokens.Primary,
+                                    unfocusedIndicatorColor = Tokens.Divider,
+                                    cursorColor = Tokens.Primary,
+                                    focusedTextColor = Tokens.TextMain,
+                                    unfocusedTextColor = Tokens.TextMain,
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
                             )
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { vm.openContact() },
+                            ) {
+                                RemoteAvatar(name = title, url = vm.headerAvatarUrl(), size = 36)
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = title,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Tokens.TextMain,
-                            )
+                        if (searchActive) {
+                            IconButton(onClick = {
+                                searchActive = false
+                                searchText = ""
+                                vm.setSearch(null)
+                            }) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Close search",
+                                    tint = Tokens.TextMain,
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = onBack) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Tokens.TextMain,
+                                )
+                            }
                         }
                     },
                     actions = {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = Tokens.TextMain)
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Chat language") },
-                                onClick = { menuExpanded = false; vm.openLangSheet() },
-                            )
+                        if (!searchActive) {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = Tokens.TextMain)
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Contact info") },
+                                    onClick = { menuExpanded = false; vm.openContact() },
+                                )
+                                DropdownMenuItem(
+                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Tokens.TextMain) },
+                                    text = { Text("Search in chat") },
+                                    onClick = { menuExpanded = false; searchActive = true },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Clear chat", color = Tokens.Danger) },
+                                    onClick = { menuExpanded = false; showClearConfirm = true },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Chat language") },
+                                    onClick = { menuExpanded = false; vm.openLangSheet() },
+                                )
+                            }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -114,7 +178,6 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
     ) { pad ->
         when {
             s.loading && s.messages.isEmpty() -> {
-                // First-load: small subtle spinner, NOT a full-screen block
                 Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(28.dp),
@@ -123,17 +186,19 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                     )
                 }
             }
-            !s.loading && s.messages.isEmpty() -> {
-                EmptyState("No messages yet", Modifier.padding(pad))
+            !s.loading && shown.isEmpty() -> {
+                EmptyState(
+                    if (s.searchQuery?.isNotBlank() == true) "No results" else "No messages yet",
+                    Modifier.padding(pad),
+                )
             }
             else -> {
-                // Messages list — shown immediately if messages exist (even if a background refresh runs)
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().padding(pad),
                     contentPadding = PaddingValues(vertical = 8.dp),
                 ) {
-                    items(s.messages, key = { it.id }) { msg ->
+                    items(shown, key = { it.id }) { msg ->
                         val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
                         val isVoiceActive = playback.id == "voice-${msg.id}"
                         val isVoicePlaying = isVoiceActive && playback.isPlaying
@@ -164,6 +229,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         }
     }
 
+    // Language sheet
     LanguageSheet(
         open = s.langSheetOpen,
         current = s.chatLang,
@@ -172,16 +238,61 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         onDismiss = { vm.closeLangSheet() },
     )
 
+    // Message actions (long press)
     MessageActionSheet(
         open = actionTarget != null,
         message = actionTarget,
         onReact = { emoji -> actionTarget?.let { vm.react(it, emoji) } },
         onReply = { actionTarget?.let { vm.setReplyTo(it) } },
+        onForward = { actionTarget?.let { vm.openForward(it) } },
         onCopy = { actionTarget?.let { clipboard.setText(AnnotatedString(it.body ?: "")) } },
         onDeleteForMe = { actionTarget?.let { vm.deleteForMe(it) } },
         onDeleteForEveryone = { actionTarget?.let { vm.deleteForEveryone(it) } },
         onDismiss = { actionTarget = null },
     )
+
+    // Contact info sheet
+    ContactSheet(
+        open = s.contactOpen,
+        name = title,
+        avatarUrl = vm.headerAvatarUrl(),
+        contact = s.contact,
+        onCopyNumber = { phone -> clipboard.setText(AnnotatedString(phone)) },
+        onDismiss = { vm.closeContact() },
+    )
+
+    // Forward sheet
+    val forwardTarget = s.forwardTarget
+    ForwardSheet(
+        open = forwardTarget != null,
+        chats = s.forwardChats,
+        media = vm.mediaBuilder,
+        onPick = { jid ->
+            forwardTarget?.let { vm.forward(it, listOf(jid)) }
+            vm.closeForward()
+        },
+        onDismiss = { vm.closeForward() },
+    )
+
+    // Clear chat confirmation
+    if (showClearConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirm = false },
+            containerColor = Tokens.Header,
+            title = { Text("Clear chat?", color = Tokens.TextMain) },
+            text = { Text("All messages will be removed from this chat.", color = Tokens.TextMut) },
+            confirmButton = {
+                TextButton(onClick = { showClearConfirm = false; vm.clearChat() }) {
+                    Text("Clear", color = Tokens.Danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirm = false }) {
+                    Text("Cancel", color = Tokens.TextMut)
+                }
+            },
+        )
+    }
 
     // Fullscreen image lightbox
     if (lightboxUrl != null) {

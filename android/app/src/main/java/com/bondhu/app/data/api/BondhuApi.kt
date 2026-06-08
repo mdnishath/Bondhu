@@ -97,6 +97,12 @@ interface BondhuApi {
     @POST("api/settings/keys/{id}/activate")
     suspend fun activateKey(@Path("id") id: String): OkResponse
 
+    @POST("api/chats/{chatId}/clear")
+    suspend fun clearChat(@Path("chatId") chatId: String, @Query("account") account: String): OkResponse
+
+    @POST("api/forward")
+    suspend fun forward(@Body body: ForwardRequest): OkResponse
+
     // --- Message actions ---
     @POST("api/react")
     suspend fun react(@Body body: ReactRequest): OkResponse

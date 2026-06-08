@@ -6,8 +6,10 @@ import com.bondhu.app.data.api.MediaUrlBuilder
 import com.bondhu.app.data.audio.AudioPlayer
 import com.bondhu.app.data.audio.VoiceRecorder
 import com.bondhu.app.data.model.AckTick
+import com.bondhu.app.data.model.ChatRow
 import com.bondhu.app.data.model.LangOption
 import com.bondhu.app.data.model.Message
+import com.bondhu.app.data.model.ProfileResponse
 import com.bondhu.app.data.model.ReactionUi
 import com.bondhu.app.data.model.ackTick
 import com.bondhu.app.data.repository.ChatRepository
@@ -36,6 +38,14 @@ data class ChatUiState(
     val langSheetOpen: Boolean = false,
     val retranscribing: Set<String> = emptySet(),
     val replyTo: Message? = null,
+    // Contact info
+    val contact: ProfileResponse? = null,
+    val contactOpen: Boolean = false,
+    // Forward
+    val forwardChats: List<ChatRow> = emptyList(),
+    val forwardTarget: Message? = null,
+    // Search
+    val searchQuery: String? = null,
 )
 
 @HiltViewModel
@@ -259,6 +269,47 @@ class ChatViewModel @Inject constructor(
         upsertPatch(msg.id) { it.copy(body = "🚫 This message was deleted", type = "deleted") }
         viewModelScope.launch { runCatching { repo.deleteForEveryone(account, msg.id) } }
     }
+
+    // --- Contact info ---
+    fun openContact() {
+        _state.value = _state.value.copy(contactOpen = true)
+        viewModelScope.launch {
+            runCatching { _state.value = _state.value.copy(contact = repo.profile(account, chatId)) }
+        }
+    }
+    fun closeContact() { _state.value = _state.value.copy(contactOpen = false) }
+
+    // --- Clear chat ---
+    fun clearChat() {
+        viewModelScope.launch {
+            runCatching { repo.clearChat(account, chatId) }
+            _state.value = _state.value.copy(messages = emptyList())
+        }
+    }
+
+    // --- Forward ---
+    fun openForward(msg: Message) {
+        _state.value = _state.value.copy(forwardTarget = msg)
+        viewModelScope.launch {
+            runCatching { _state.value = _state.value.copy(forwardChats = repo.chats(account, limit = 100)) }
+        }
+    }
+    fun closeForward() { _state.value = _state.value.copy(forwardTarget = null) }
+    fun forward(msg: Message, targetChatIds: List<String>) {
+        viewModelScope.launch {
+            try {
+                repo.forward(account, listOf(msg.id), targetChatIds)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = e.message)
+            }
+        }
+    }
+
+    // --- Search ---
+    fun setSearch(q: String?) { _state.value = _state.value.copy(searchQuery = q) }
+
+    /** Expose the media builder so ForwardSheet can build profile-pic URLs. */
+    val mediaBuilder: MediaUrlBuilder get() = media
 
     /** Tokenised profile-pic URL for the current chat; null if not ready. */
     fun headerAvatarUrl(): String? = media.profilePic(chatId)

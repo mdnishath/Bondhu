@@ -3,6 +3,7 @@ package com.bondhu.app.data.repository
 import com.bondhu.app.data.api.BondhuApi
 import com.bondhu.app.data.model.ChatRow
 import com.bondhu.app.data.model.Message
+import com.bondhu.app.data.model.ForwardRequest
 import com.bondhu.app.data.model.MsgIdRequest
 import com.bondhu.app.data.model.ReactRequest
 import com.bondhu.app.data.model.ReplyRequest
@@ -55,4 +56,10 @@ class ChatRepository @Inject constructor(private val api: BondhuApi) {
 
     suspend fun deleteForMe(account: String, msgId: String) =
         api.deleteLocal(MsgIdRequest(account, msgId))
+
+    suspend fun clearChat(account: String, chatId: String) =
+        api.clearChat(chatId, account)
+
+    suspend fun forward(account: String, msgIds: List<String>, targetChatIds: List<String>) =
+        api.forward(ForwardRequest(account, msgIds, targetChatIds))
 }
