@@ -44,7 +44,7 @@ export function Login() {
         }}
       >
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-[14px] grid place-items-center" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }}>
+          <div className="w-11 h-11 rounded-[14px] grid place-items-center" style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635)' }}>
             <LogoIcon className="w-6 h-6" />
           </div>
           <span className="text-[21px] font-bold tracking-tight">Bondhu</span>
@@ -53,7 +53,7 @@ export function Login() {
           <h1 className="text-[42px] font-bold leading-[1.12] tracking-tight mb-4">
             Talk to anyone,
             <br />
-            in <span className="text-[#4fd1ab]">any language</span>.
+            in <span className="text-[#A3E635]">any language</span>.
           </h1>
           <p className="text-[16px] text-txtsoft leading-relaxed">
             Real-time message translation, voice-note transcripts, and crisp end-to-end encrypted chats — beautifully simple.
@@ -88,7 +88,7 @@ export function Login() {
             type="submit"
             disabled={busy}
             className="mt-6 w-full py-[15px] rounded-xl font-semibold text-[#06291f] disabled:opacity-60 transition"
-            style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }}
+            style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635)' }}
           >
             {busy ? 'Please wait…' : reg ? 'Create account' : 'Log in'}
           </button>

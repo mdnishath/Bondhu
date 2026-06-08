@@ -104,7 +104,7 @@ export function SettingsPage() {
                 <div key={k.id} className="flex items-center gap-3 bg-panel2 rounded-[10px] px-3.5 py-2.5">
                   <span className="font-mono text-[13.5px] text-txtsoft flex-1">{k.keyMasked}</span>
                   {k.isActive ? (
-                    <span className="text-[11px] font-semibold text-[#4fd1ab] bg-teal/15 rounded-md px-2 py-1">Active</span>
+                    <span className="text-[11px] font-semibold text-[#A3E635] bg-teal/15 rounded-md px-2 py-1">Active</span>
                   ) : (
                     <button onClick={() => activate(k.id)} className="text-[12px] text-muted hover:text-txt">Activate</button>
                   )}
@@ -114,11 +114,11 @@ export function SettingsPage() {
             </div>
             <div className="flex gap-2">
               <input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="AIza…" className="bondhu-input flex-1 font-mono" />
-              <button onClick={addKey} className="px-4 rounded-[10px] font-semibold text-[#06291f]" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }}>Add key</button>
+              <button onClick={addKey} className="px-4 rounded-[10px] font-semibold text-[#06291f]" style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635)' }}>Add key</button>
             </div>
           </Section>
 
-          {msg && <div className="text-[13px] text-[#4fd1ab] mb-6">{msg}</div>}
+          {msg && <div className="text-[13px] text-[#A3E635] mb-6">{msg}</div>}
 
           <button onClick={logout} className="text-[#ff6b6b] font-semibold text-[15px]">Log out</button>
         </div>

@@ -103,7 +103,7 @@ export function ChatListPanel({
             />
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowNew(false)} className="text-muted text-[13px] px-3 py-1.5">Cancel</button>
-              <button onClick={startNew} className="text-[#06291f] font-semibold text-[13px] px-3 py-1.5 rounded-lg" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }}>Start chat</button>
+              <button onClick={startNew} className="text-[#06291f] font-semibold text-[13px] px-3 py-1.5 rounded-lg" style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635)' }}>Start chat</button>
             </div>
           </div>
         </div>

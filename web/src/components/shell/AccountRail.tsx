@@ -37,7 +37,7 @@ export function AccountRail({ onCloseDrawer }: { onCloseDrawer?: () => void } = 
 
   return (
     <nav className="bg-panel border-r border-line flex flex-col items-center pt-3.5 pb-4 gap-1.5 w-[72px] h-full">
-      <button onClick={() => goTo('/')} title="Home — chats" className="w-[42px] h-[42px] rounded-[13px] grid place-items-center mb-2 cursor-pointer" style={{ background: 'linear-gradient(145deg,#25D366,#00A884 60%,#017561)', boxShadow: '0 4px 14px rgba(0,168,132,.35)' }}>
+      <button onClick={() => goTo('/')} title="Home — chats" className="w-[42px] h-[42px] rounded-[13px] grid place-items-center mb-2 cursor-pointer" style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635 60%,#017561)', boxShadow: '0 4px 14px rgba(0,168,132,.35)' }}>
         <LogoIcon className="w-6 h-6" />
       </button>
       <div className="w-[34px] h-px bg-line my-1.5" />
@@ -60,12 +60,12 @@ export function AccountRail({ onCloseDrawer }: { onCloseDrawer?: () => void } = 
                   onCloseDrawer?.();
                 }}
                 className={`relative rounded-full block ${active ? 'p-[3px]' : ''}`}
-                style={active ? { boxShadow: '0 0 0 2px #00A884' } : undefined}
+                style={active ? { boxShadow: '0 0 0 2px #A3E635' } : undefined}
               >
                 <div className="rounded-full grid place-items-center text-white font-semibold" style={{ width: active ? 40 : 42, height: active ? 40 : 42, background: avatarGradient(a.id), fontSize: 15 }}>
                   {initials(nm)}
                 </div>
-                <span className="absolute -right-px -bottom-px w-[13px] h-[13px] rounded-full border-[2.5px] border-panel" style={{ background: on ? '#25D366' : '#667781' }} />
+                <span className="absolute -right-px -bottom-px w-[13px] h-[13px] rounded-full border-[2.5px] border-panel" style={{ background: on ? '#38EC48' : '#667781' }} />
               </button>
               <button
                 onClick={(e) => removeAccount(a.id, e)}

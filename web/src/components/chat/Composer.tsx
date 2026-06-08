@@ -149,7 +149,7 @@ export function Composer({
         </div>
       )}
       {outLang && (
-        <div className="px-4 pt-2 text-[12px] text-[#4fd1ab] flex items-center gap-1.5">
+        <div className="px-4 pt-2 text-[12px] text-[#A3E635] flex items-center gap-1.5">
           <GlobeIcon className="w-3.5 h-3.5" />
           {voice
             ? <>Your messages are sent as a <b className="font-semibold">{outName}</b> voice note (+ text).</>
@@ -236,7 +236,7 @@ export function Composer({
               <MicIcon className="w-[22px] h-[22px]" />
             </button>
 
-            <button onClick={submit} className="w-11 h-11 rounded-full grid place-items-center text-[#06291f] flex-none" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }} title="Send">
+            <button onClick={submit} className="w-11 h-11 rounded-full grid place-items-center text-[#06291f] flex-none" style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635)' }} title="Send">
               <SendIcon className="w-6 h-6" />
             </button>
           </div>

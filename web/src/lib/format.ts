@@ -1,5 +1,5 @@
 const GRADS = [
-  'linear-gradient(145deg,#00A884,#017a63)',
+  'linear-gradient(145deg,#A3E635,#017a63)',
   'linear-gradient(145deg,#7c5cff,#4b2fb0)',
   'linear-gradient(145deg,#f0883e,#b85c1f)',
   'linear-gradient(145deg,#ec4d8e,#a02360)',

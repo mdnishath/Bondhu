@@ -88,7 +88,7 @@ export function ForwardDialog({
             onClick={go}
             disabled={!picked.size || busy}
             className="px-4 py-1.5 rounded-lg text-[#06291f] font-semibold disabled:opacity-40"
-            style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }}
+            style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635)' }}
           >
             {busy ? 'Forwarding…' : 'Forward'}
           </button>

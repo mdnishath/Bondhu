@@ -63,10 +63,10 @@ export function MessageBubble({
       <div className="relative max-w-[85%] sm:max-w-[75%] md:max-w-[65%] min-w-0">
         <div
           className="rounded-[10px] px-2.5 py-1.5 text-[14.2px] leading-snug shadow"
-          style={{ background: out ? '#005C4B' : '#202C33' }}
+          style={{ background: out ? '#2A3A1E' : '#202C33' }}
         >
           {!out && msg.senderName && (
-            <div className="text-[12px] font-semibold text-[#4fd1ab] mb-0.5">{msg.senderName}</div>
+            <div className="text-[12px] font-semibold text-[#A3E635] mb-0.5">{msg.senderName}</div>
           )}
           {editing ? (
             <EditEditor
@@ -154,7 +154,7 @@ function renderContent(msg: Message, accountId: string, lang: string) {
             <div className="text-[13.5px] text-txt break-words">{msg.transcript}</div>
             {msg.translated && (
               <>
-                <div className="flex items-center gap-1 mt-1 text-[11px] text-[#4fd1ab]">
+                <div className="flex items-center gap-1 mt-1 text-[11px] text-[#A3E635]">
                   <GlobeIcon className="w-3 h-3" /> Translated
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -175,7 +175,7 @@ function renderContent(msg: Message, accountId: string, lang: string) {
     return (
       <div>
         <div className="text-txt">{msg.body}</div>
-        <div className="flex items-center gap-1 mt-1 text-[11px] text-[#4fd1ab]">
+        <div className="flex items-center gap-1 mt-1 text-[11px] text-[#A3E635]">
           <GlobeIcon className="w-3 h-3" /> Translated
         </div>
         <div className="flex items-center gap-2 mt-0.5">
@@ -288,7 +288,7 @@ function IncomingVoiceRetry({ msg, accountId, lang }: { msg: Message; accountId:
         <div className="text-[13.5px] text-txt break-words">{transcript}</div>
         {translated && (
           <>
-            <div className="flex items-center gap-1 mt-1 text-[11px] text-[#4fd1ab]">
+            <div className="flex items-center gap-1 mt-1 text-[11px] text-[#A3E635]">
               <GlobeIcon className="w-3 h-3" /> Translated
             </div>
             <div className="flex items-center gap-2 mt-0.5">
@@ -385,7 +385,7 @@ function VoicePlayer({ src }: { src: string }) {
         <div className="h-7 flex items-center gap-0.5 cursor-pointer" onClick={seek}>
           {Array.from({ length: 26 }).map((_, i) => {
             const filled = i / 26 <= pct;
-            return <span key={i} className="rounded-full flex-1 max-w-[3px]" style={{ height: 6 + ((i * 7) % 18), background: filled ? '#4fd1ab' : 'rgba(255,255,255,.28)' }} />;
+            return <span key={i} className="rounded-full flex-1 max-w-[3px]" style={{ height: 6 + ((i * 7) % 18), background: filled ? '#A3E635' : 'rgba(255,255,255,.28)' }} />;
           })}
         </div>
         <div className="text-[11px] text-muted mt-0.5 tabular-nums">{fmtDur(label)}</div>

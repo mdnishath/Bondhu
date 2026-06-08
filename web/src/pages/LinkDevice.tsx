@@ -91,7 +91,7 @@ export function LinkDevice() {
     <div className="h-full w-full grid place-items-center bg-bg relative">
       <button onClick={() => nav('/')} className="absolute top-7 left-9 icon-btn"><BackIcon className="w-5 h-5" /></button>
       <div className="absolute top-7 left-20 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl grid place-items-center" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }}><LogoIcon className="w-6 h-6" /></div>
+        <div className="w-10 h-10 rounded-xl grid place-items-center" style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635)' }}><LogoIcon className="w-6 h-6" /></div>
         <span className="text-lg font-bold">Bondhu</span>
       </div>
 
@@ -102,7 +102,7 @@ export function LinkDevice() {
           <ol className="flex flex-col gap-5 mb-7">
             {['Open WhatsApp on your phone', 'Tap Menu ⋮ then Linked devices', 'Tap Link a device and scan the QR — or use the phone-number code'].map((t, i) => (
               <li key={i} className="flex gap-4 items-start">
-                <span className="w-[30px] h-[30px] rounded-full grid place-items-center bg-teal/15 text-[#4fd1ab] font-bold text-sm flex-none">{i + 1}</span>
+                <span className="w-[30px] h-[30px] rounded-full grid place-items-center bg-teal/15 text-[#A3E635] font-bold text-sm flex-none">{i + 1}</span>
                 <span className="text-[15px] text-txtsoft leading-snug pt-1">{t}</span>
               </li>
             ))}
@@ -119,13 +119,13 @@ export function LinkDevice() {
             <div className="text-[12.5px] text-[#cfe9e2] mb-2 text-center">Or link with your phone number</div>
             <div className="flex gap-2">
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="8801XXXXXXXXX" className="bondhu-input flex-1" />
-              <button onClick={getCode} className="px-3.5 rounded-[10px] font-semibold text-[#06291f]" style={{ background: 'linear-gradient(145deg,#25D366,#00A884)' }}>Get code</button>
+              <button onClick={getCode} className="px-3.5 rounded-[10px] font-semibold text-[#06291f]" style={{ background: 'linear-gradient(145deg,#38EC48,#A3E635)' }}>Get code</button>
             </div>
             {pairCode && (
               <div className="mt-3 text-center">
                 <div className="text-[12px] text-muted mb-1.5">Enter this code in WhatsApp → Linked devices → <b>Link with phone number</b></div>
                 <div className="flex items-center justify-center gap-2">
-                  <div className="text-[26px] font-bold tracking-[4px] text-[#4fd1ab] bg-black/25 rounded-[10px] px-3.5 py-1.5 select-all">{pairDisplay}</div>
+                  <div className="text-[26px] font-bold tracking-[4px] text-[#A3E635] bg-black/25 rounded-[10px] px-3.5 py-1.5 select-all">{pairDisplay}</div>
                   <button
                     onClick={copyCode}
                     title="Copy code"
