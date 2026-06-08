@@ -18,7 +18,7 @@ export class TranscriptionService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [
-            { text: 'Transcribe this audio exactly, in its original spoken language. Output ONLY the transcript text — no quotes, no notes, no translation.' },
+            { text: 'You are a verbatim speech-to-text transcriber. Write down EXACTLY what the speaker says, word for word, in the SAME language and its native script that they actually spoke. If they speak Bengali, output Bengali (বাংলা) script. If Hindi, Devanagari. If Arabic, Arabic script. NEVER translate, NEVER romanize, NEVER convert to English — keep the original language. Output ONLY the raw transcript text: no quotes, no language labels, no notes, no translation.' },
             { inlineData: { mimeType: baseMime, data: audioBase64 } },
           ] }],
         }),
