@@ -193,11 +193,14 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 }
             }
             s.loading && s.messages.isEmpty() -> {
-                Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp),
+                // Subtle thin top bar (not a jarring centered spinner). Only the
+                // truly-first load of a chat reaches here — re-opens are instant
+                // via the message cache.
+                Box(Modifier.fillMaxSize().padding(pad)) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
                         color = Tokens.Primary,
-                        strokeWidth = 2.dp,
+                        trackColor = Tokens.Divider,
                     )
                 }
             }

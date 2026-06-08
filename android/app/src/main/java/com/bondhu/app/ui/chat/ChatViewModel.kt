@@ -57,6 +57,7 @@ class ChatViewModel @Inject constructor(
     private val media: MediaUrlBuilder,
     private val lang: LanguageRepository,
     private val recorder: VoiceRecorder,
+    private val cache: com.bondhu.app.data.cache.MessageCache,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
@@ -66,6 +67,9 @@ class ChatViewModel @Inject constructor(
 
     fun bind(chatId: String) {
         this.chatId = chatId
+        // Seed instantly from the app-scoped cache so a re-opened chat shows its
+        // messages with no spinner; the background load() then refreshes them.
+        cache.get(chatId)?.let { _state.value = _state.value.copy(messages = it, loading = false) }
         viewModelScope.launch {
             val acct = prefs.activeAccount.first()
             if (acct == null) {
@@ -196,13 +200,18 @@ class ChatViewModel @Inject constructor(
         } else {
             cur + m
         }
-        _state.value = _state.value.copy(messages = next.sortedBy { it.timestamp })
+        val sorted = next.sortedBy { it.timestamp }
+        cache.put(chatId, sorted)
+        _state.value = _state.value.copy(messages = sorted)
     }
 
     private fun load() {
         viewModelScope.launch {
-            try { _state.value = _state.value.copy(loading = false, messages = repo.messages(account, chatId, limit = 30), error = null) }
-            catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message ?: "Couldn't load messages") }
+            try {
+                val msgs = repo.messages(account, chatId, limit = 30)
+                cache.put(chatId, msgs)
+                _state.value = _state.value.copy(loading = false, messages = msgs, error = null)
+            } catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message ?: "Couldn't load messages") }
         }
     }
 
@@ -290,6 +299,7 @@ class ChatViewModel @Inject constructor(
     fun clearChat() {
         viewModelScope.launch {
             runCatching { repo.clearChat(account, chatId) }
+            cache.clear(chatId)
             _state.value = _state.value.copy(messages = emptyList())
         }
     }
