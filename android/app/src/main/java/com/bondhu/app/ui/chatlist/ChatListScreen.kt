@@ -30,7 +30,7 @@ private fun shortTime(ts: Long): String =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatListScreen(onOpenChat: (String) -> Unit, vm: ChatListViewModel = hiltViewModel()) {
+fun ChatListScreen(onOpenChat: (String, String) -> Unit, vm: ChatListViewModel = hiltViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
     Scaffold(
         containerColor = Tokens.AppBg,
@@ -46,7 +46,7 @@ fun ChatListScreen(onOpenChat: (String) -> Unit, vm: ChatListViewModel = hiltVie
             s.chats.isEmpty() -> EmptyState("No chats yet.", Modifier.padding(pad))
             else -> LazyColumn(Modifier.fillMaxSize().padding(pad)) {
                 items(s.chats, key = { it.jid }) { row ->
-                    ChatRowItem(row, s.account, vm = vm, onClick = { onOpenChat(row.jid) })
+                    ChatRowItem(row, s.account, vm = vm, onClick = { onOpenChat(row.jid, row.title) })
                     HorizontalDivider(color = Tokens.Divider)
                 }
             }

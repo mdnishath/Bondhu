@@ -13,11 +13,18 @@ import androidx.compose.ui.unit.sp
 import com.bondhu.app.data.model.Message
 import com.bondhu.app.ui.theme.Tokens
 
+private fun fmt(ms: Long): String {
+    val s = (ms / 1000).toInt()
+    return "${s / 60}:${(s % 60).toString().padStart(2, '0')}"
+}
+
 @Composable
 fun VoiceBubble(
     m: Message,
     isPlaying: Boolean,
     progress: Float,
+    positionMs: Long = 0,
+    durationMs: Long = 0,
     onPlayToggle: () -> Unit,
     onSpeak: () -> Unit,
     speaking: Boolean,
@@ -43,7 +50,20 @@ fun VoiceBubble(
             )
             Spacer(Modifier.width(8.dp))
         }
-        if (!m.fromMe) {
+        val timeLabel = when {
+            durationMs > 0 -> "${fmt(positionMs)} / ${fmt(durationMs)}"
+            positionMs > 0 -> fmt(positionMs)
+            else -> null
+        }
+        if (timeLabel != null) {
+            Text(timeLabel, color = Tokens.TextMut, fontSize = 11.sp, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))
+        }
+        if (m.fromMe) {
+            // Own sent voice: show transcript as a caption (no label needed)
+            if (m.transcript != null) {
+                Text(m.transcript, color = Tokens.TextMain, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            }
+        } else {
             if (m.transcript != null) {
                 Text(
                     "Transcript",

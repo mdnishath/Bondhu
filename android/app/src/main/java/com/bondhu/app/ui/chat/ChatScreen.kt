@@ -83,9 +83,12 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(vertical = 8.dp)) {
                 items(s.messages, key = { it.id }) { msg ->
                     val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
-                    val isVoicePlaying = playback.id == "voice-${msg.id}" && playback.isPlaying
-                    val voiceProgress = if (playback.id == "voice-${msg.id}" && playback.durationMs > 0)
+                    val isVoiceActive = playback.id == "voice-${msg.id}"
+                    val isVoicePlaying = isVoiceActive && playback.isPlaying
+                    val voiceProgress = if (isVoiceActive && playback.durationMs > 0)
                         playback.positionMs.toFloat() / playback.durationMs else 0f
+                    val positionMs = if (isVoiceActive) playback.positionMs else 0L
+                    val durationMs = if (isVoiceActive) playback.durationMs else 0L
                     val isTranscribing = msg.id in s.retranscribing
                     MessageBubble(
                         m = msg,
@@ -93,6 +96,8 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                         onSpeak = { vm.speak(msg) },
                         isVoicePlaying = isVoicePlaying,
                         voiceProgress = voiceProgress,
+                        positionMs = positionMs,
+                        durationMs = durationMs,
                         onPlayVoice = { vm.playVoice(msg) },
                         onRetranscribe = { vm.retranscribe(msg) },
                         transcribing = isTranscribing,

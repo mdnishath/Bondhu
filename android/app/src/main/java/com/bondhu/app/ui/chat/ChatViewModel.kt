@@ -149,7 +149,18 @@ class ChatViewModel @Inject constructor(
     private fun upsert(m: Message) {
         val cur = _state.value.messages
         val idx = cur.indexOfFirst { it.id == m.id }
-        val next = if (idx >= 0) cur.toMutableList().also { it[idx] = m } else (cur + m)
+        val next = if (idx >= 0) {
+            val existing = cur[idx]
+            // Preserve non-null transcript/translated from existing when incoming has null
+            // (guards against socket echo carrying nulls overwriting optimistic values)
+            val merged = m.copy(
+                transcript = m.transcript ?: existing.transcript,
+                translated = m.translated ?: existing.translated,
+            )
+            cur.toMutableList().also { it[idx] = merged }
+        } else {
+            cur + m
+        }
         _state.value = _state.value.copy(messages = next.sortedBy { it.timestamp })
     }
 
@@ -254,8 +265,9 @@ class ChatViewModel @Inject constructor(
             try {
                 if (mode == "voice" && tLang != null) {
                     val r = repo.sendVoice(account, chatId, text, tLang)
-                    // optimistic ptt bubble — uses the real returned id so socket echo dedupes
-                    r.voiceMsgId?.let { upsert(Message(it, chatId, true, "ptt", null, now(), AckTick.SENT, null, null, null)) }
+                    // optimistic ptt bubble — uses the real returned id so socket echo dedupes;
+                    // store sentText as transcript so the voice bubble shows the sent caption
+                    r.voiceMsgId?.let { upsert(Message(it, chatId, true, "ptt", null, now(), AckTick.SENT, null, r.sentText, null)) }
                     // optimistic text bubble (translation)
                     r.textMsgId?.let { upsert(Message(it, chatId, true, "text", r.sentText ?: text, now(), AckTick.SENT, null, null, null)) }
                 } else {
