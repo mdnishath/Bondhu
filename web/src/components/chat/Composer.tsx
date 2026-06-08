@@ -90,10 +90,10 @@ export function Composer({
         try {
           const b64 = await blobToBase64(blob);
           const { transcript } = await api.transcribe(accountId, b64, mime);
-          // Hand the transcript to the parent for an immediate AI-voice + text
-          // send. The original recording is intentionally discarded so it can
-          // never reach the recipient.
-          if (transcript) onMicSend(transcript);
+          // Put the transcript in the input box for the user to REVIEW/edit, then
+          // send manually (no auto-send — avoids firing a wrong transcription).
+          // Sending then respects the chosen mode (text or translated voice note).
+          if (transcript) setText((prev) => (prev ? prev + ' ' : '') + transcript);
         } catch {
           alert('Transcription failed — check your API key.');
         }
