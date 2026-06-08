@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -14,8 +15,8 @@ android {
         applicationId = "com.bondhu.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "0.8.0"
+        versionCode = 22
+        versionName = "0.9.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -71,6 +72,8 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.common)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     debugImplementation(libs.compose.ui.tooling)
 

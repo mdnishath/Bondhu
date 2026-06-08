@@ -17,6 +17,8 @@ coil = "2.7.0"
 datastore = "1.1.1"
 zxing = "3.5.3"
 media3 = "1.4.1"
+googleServices = "4.4.2"
+firebaseBom = "33.7.0"
 junit = "4.13.2"
 coroutinesTest = "1.9.0"
 
@@ -50,6 +52,8 @@ datastore-preferences = { module = "androidx.datastore:datastore-preferences", v
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 junit = { module = "junit:junit", version.ref = "junit" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 
@@ -59,3 +63,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
