@@ -110,19 +110,27 @@ fun ChatScreen(chatId: String, title: String, unreadAtOpen: Int = 0, onBack: () 
     }
 
     LaunchedEffect(chatId) { vm.bind(chatId, unreadAtOpen) }
-    // Stick to bottom only when a NEW last message arrives AND the user is already
-    // at the bottom (or it's our own message). Otherwise count it as "new" and let
-    // the user pull down via the scroll-to-bottom FAB — don't yank their view.
     val lastMsgId = s.messages.lastOrNull()?.id
-    LaunchedEffect(lastMsgId) {
-        if (s.searchQuery.isNullOrBlank() && s.messages.isNotEmpty()) {
-            val last = s.messages.last()
-            if (atBottom || last.fromMe) {
-                listState.animateScrollToItem(s.messages.lastIndex)
-                newCount = 0
-            } else {
-                newCount++
-            }
+    // On first open — whether tapped from the list OR a notification deep-link —
+    // jump straight to the latest message so the user never has to scroll down.
+    // After that, only stick to the bottom for a NEW last message when already
+    // there (or it's our own send); otherwise count it for the scroll-to-bottom FAB.
+    val firstScrollDone = remember(chatId) { mutableStateOf(false) }
+    LaunchedEffect(lastMsgId, s.loading) {
+        if (s.messages.isEmpty() || s.loading) return@LaunchedEffect
+        if (!firstScrollDone.value) {
+            listState.scrollToItem(s.messages.lastIndex) // instant, no visible scroll
+            newCount = 0
+            firstScrollDone.value = true
+            return@LaunchedEffect
+        }
+        if (!s.searchQuery.isNullOrBlank()) return@LaunchedEffect
+        val last = s.messages.last()
+        if (atBottom || last.fromMe) {
+            listState.animateScrollToItem(s.messages.lastIndex)
+            newCount = 0
+        } else {
+            newCount++
         }
     }
     LaunchedEffect(atBottom) { if (atBottom) newCount = 0 }
