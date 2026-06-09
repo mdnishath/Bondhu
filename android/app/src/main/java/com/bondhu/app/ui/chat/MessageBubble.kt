@@ -68,6 +68,7 @@ fun MessageBubble(
     onRetry: () -> Unit = {},
     selected: Boolean = false,
     onTap: (() -> Unit)? = null,
+    onDoubleTap: (() -> Unit)? = null,
     onJumpToQuoted: (String) -> Unit = {},
     onDownload: () -> Unit = {},
 ) {
@@ -91,6 +92,7 @@ fun MessageBubble(
                 .combinedClickable(
                     onClick = { if (onTap != null) onTap() else showFullTime = !showFullTime },
                     onLongClick = onLongPress,
+                    onDoubleClick = onDoubleTap,
                 )
                 .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {

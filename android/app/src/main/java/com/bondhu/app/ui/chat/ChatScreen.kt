@@ -1,8 +1,11 @@
 package com.bondhu.app.ui.chat
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -15,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Forward
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -26,10 +30,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -93,6 +100,14 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         }
     }
     var newCount by remember { mutableIntStateOf(0) }
+
+    // Hardware back: clear search / selection first instead of leaving the chat.
+    BackHandler(enabled = searchActive || selectionMode) {
+        when {
+            searchActive -> { searchActive = false; searchText = ""; vm.setSearch(null) }
+            else -> selected = emptySet()
+        }
+    }
 
     LaunchedEffect(chatId) { vm.bind(chatId) }
     // Stick to bottom only when a NEW last message arrives AND the user is already
@@ -331,6 +346,10 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                         val durationMs = if (isVoiceActive) playback.durationMs else 0L
                         val isTranscribing = msg.id in s.retranscribing
                         val imgUrl = msg.localImage ?: (if (msg.type == "image") vm.imageUrl(msg.id) else null)
+                        SwipeToReply(
+                            enabled = !selectionMode && msg.type != "deleted",
+                            onReply = { vm.setReplyTo(msg) },
+                        ) {
                         MessageBubble(
                             m = msg,
                             speaking = speaking,
@@ -350,12 +369,14 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                             onRetry = { vm.retrySend(msg) },
                             selected = (msg.id in selected) || (msg.id == flashId),
                             onTap = if (selectionMode) ({ toggleSelect(msg.id) }) else null,
+                            onDoubleTap = if (selectionMode || msg.type == "deleted") null else ({ vm.react(msg, "❤️") }),
                             onJumpToQuoted = { qid ->
                                 val idx = shown.indexOfFirst { it.id == qid }
                                 if (idx >= 0) { scope.launch { listState.animateScrollToItem(idx) }; flashId = qid }
                             },
                             onDownload = { downloadFile(msg); scope.launch { snackbarHost.showSnackbar("Downloading… check notifications") } },
                         )
+                        }
                     }
                 }
                 if (!atBottom) {
@@ -555,6 +576,64 @@ private fun SelectionTopBar(count: Int, onClose: () -> Unit, onForward: () -> Un
             ),
         )
         HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
+    }
+}
+
+/**
+ * Wraps a message row so a right-swipe stages it as the reply target (the
+ * single most-used WhatsApp gesture). Follows the finger 1:1, reveals a reply
+ * arrow at the start edge, buzzes once past the threshold, and springs back.
+ * Horizontal-only drag detection — vertical list scrolling is untouched.
+ */
+@Composable
+private fun SwipeToReply(
+    enabled: Boolean,
+    onReply: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    if (!enabled) { content(); return }
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+    val density = LocalDensity.current
+    val threshold = with(density) { 56.dp.toPx() }
+    val maxDrag = with(density) { 80.dp.toPx() }
+    var armed by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxWidth()) {
+        Icon(
+            Icons.AutoMirrored.Filled.Reply,
+            contentDescription = null,
+            tint = Tokens.Primary,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 20.dp)
+                .graphicsLayer { alpha = (offsetX.value / threshold).coerceIn(0f, 1f) },
+        )
+        Box(
+            Modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (offsetX.value > threshold) onReply()
+                            armed = false
+                            scope.launch { offsetX.animateTo(0f) }
+                        },
+                        onDragCancel = {
+                            armed = false
+                            scope.launch { offsetX.animateTo(0f) }
+                        },
+                    ) { change, dragAmount ->
+                        change.consume()
+                        val next = (offsetX.value + dragAmount).coerceIn(0f, maxDrag)
+                        scope.launch { offsetX.snapTo(next) }
+                        if (!armed && next >= threshold) {
+                            armed = true
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    }
+                },
+        ) { content() }
     }
 }
 
