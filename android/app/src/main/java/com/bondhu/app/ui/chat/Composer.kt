@@ -521,6 +521,26 @@ fun Composer(
                                     )
                                 }
                             }
+
+                            // Clear input (×) — wipes the draft; shown only when there's text.
+                            if (draft.isNotBlank()) {
+                                Surface(
+                                    color = Tokens.Field,
+                                    shape = CircleShape,
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clickable { onDraft("") },
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Clear input",
+                                            tint = Tokens.TextMut,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         // RIGHT group: attach + mic + send, tightly spaced
