@@ -31,6 +31,7 @@ class SpeechController(
     private val onFinal: (String) -> Unit,
     private val onListening: (Boolean) -> Unit,
     private val onUnavailable: () -> Unit,
+    private val onRms: (Float) -> Unit = {},
 ) : RecognitionListener {
     private var recognizer: SpeechRecognizer? = null
     private val main = Handler(Looper.getMainLooper())
@@ -49,7 +50,7 @@ class SpeechController(
         if (!SpeechRecognizer.isRecognitionAvailable(appContext)) { onUnavailable(); return }
         buffer.setLength(0); partial = ""
         listening = true
-        onListening(true); onLive("")
+        onListening(true); onLive(""); onRms(0f)
         ensure(); listen()
     }
 
@@ -60,9 +61,19 @@ class SpeechController(
         if (partial.isNotBlank()) appendSegment(partial)
         partial = ""
         try { recognizer?.cancel() } catch (_: Exception) {}
-        onListening(false); onLive("")
+        onListening(false); onLive(""); onRms(0f)
         onFinal(buffer.toString().trim())
         buffer.setLength(0)
+    }
+
+    /** Stop WITHOUT committing — discards whatever was dictated. */
+    fun cancel() {
+        if (!listening) return
+        listening = false
+        main.removeCallbacksAndMessages(null)
+        partial = ""; buffer.setLength(0)
+        try { recognizer?.cancel() } catch (_: Exception) {}
+        onListening(false); onLive(""); onRms(0f)
     }
 
     fun destroy() {
@@ -115,7 +126,7 @@ class SpeechController(
 
     override fun onReadyForSpeech(params: Bundle?) {}
     override fun onBeginningOfSpeech() {}
-    override fun onRmsChanged(rmsdB: Float) {}
+    override fun onRmsChanged(rmsdB: Float) { if (listening) onRms(rmsdB) }
     override fun onBufferReceived(buffer: ByteArray?) {}
     override fun onEndOfSpeech() {}
 
@@ -150,6 +161,7 @@ fun rememberSpeechController(
     onFinal: (String) -> Unit,
     onListening: (Boolean) -> Unit,
     onUnavailable: () -> Unit,
+    onRms: (Float) -> Unit = {},
 ): SpeechController {
     val ctx = LocalContext.current.applicationContext
     // Wrap callbacks so the controller (created once) always invokes the LATEST
@@ -158,6 +170,7 @@ fun rememberSpeechController(
     val finalS = rememberUpdatedState(onFinal)
     val listeningS = rememberUpdatedState(onListening)
     val unavailS = rememberUpdatedState(onUnavailable)
+    val rmsS = rememberUpdatedState(onRms)
     val controller = remember {
         SpeechController(
             ctx,
@@ -165,6 +178,7 @@ fun rememberSpeechController(
             onFinal = { finalS.value(it) },
             onListening = { listeningS.value(it) },
             onUnavailable = { unavailS.value() },
+            onRms = { rmsS.value(it) },
         )
     }
     LaunchedEffect(language) { controller.setLanguage(language) }

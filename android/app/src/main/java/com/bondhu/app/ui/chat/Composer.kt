@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -31,8 +32,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,6 +87,7 @@ fun Composer(
     // Continuous on-device dictation state.
     var speechListening by remember { mutableStateOf(false) }
     var speechLive by remember { mutableStateOf("") }
+    var speechRms by remember { mutableFloatStateOf(0f) }
     val micGrantAction = remember { mutableStateOf<() -> Unit>({}) }
 
     val selectedLang = supported.firstOrNull { it.code == outLang }
@@ -178,6 +183,7 @@ fun Composer(
         onFinal = { spoken -> if (spoken.isNotBlank()) onDraft(if (draft.isBlank()) spoken else "${draft.trimEnd()} $spoken") },
         onListening = { speechListening = it },
         onUnavailable = { startSpeech() },
+        onRms = { speechRms = it },
     )
     fun toggleMic() {
         if (speechListening) { speech.stop(); return }
@@ -327,36 +333,7 @@ fun Composer(
                     ),
                 )
 
-                if (speechListening) {
-                    // Live dictation row INSTEAD of ROW 2 — keeps listening until Done.
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Icon(Icons.Default.Mic, contentDescription = null, tint = Tokens.Primary, modifier = Modifier.size(20.dp))
-                        Text(
-                            text = speechLive.ifBlank { if (voiceLang.startsWith("bn")) "শুনছি… বলুন" else "Listening…" },
-                            color = if (speechLive.isBlank()) Tokens.TextMut else Tokens.TextMain,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 2,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Button(
-                            onClick = { speech.stop() },
-                            shape = PillShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Tokens.Primary,
-                                contentColor = Tokens.OnPrimary,
-                            ),
-                        ) {
-                            Icon(Icons.Default.Stop, contentDescription = "Done", modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Done")
-                        }
-                    }
-                } else if (recording) {
+                if (recording) {
                     // Recording row INSTEAD of ROW 2 when recording
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -655,6 +632,68 @@ fun Composer(
         onDismiss = { showLangSheet = false },
     )
 
+    // Center voice popup (Google-voice style) — live transcript + a mic circle
+    // that pulses with your voice. Stays until Done (commit) / Cancel (discard).
+    if (speechListening) {
+        val bn = voiceLang.startsWith("bn")
+        Dialog(
+            onDismissRequest = { speech.stop() },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = Tokens.Surface,
+                modifier = Modifier
+                    .fillMaxWidth(0.86f)
+                    .border(1.dp, Tokens.Divider, RoundedCornerShape(24.dp)),
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        if (bn) "শুনছি…" else "Listening…",
+                        color = Tokens.TextMain,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(22.dp))
+                    VoiceCircle(rms = speechRms)
+                    Spacer(Modifier.height(16.dp))
+                    Text(if (bn) "বলুন…" else "Speak now…", color = Tokens.TextMut, fontSize = 13.sp)
+                    Text(if (bn) "বাংলা" else "English", color = Tokens.TextMut.copy(alpha = 0.7f), fontSize = 11.sp)
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = speechLive.ifBlank { "…" },
+                        color = if (speechLive.isBlank()) Tokens.TextMut else Tokens.TextMain,
+                        fontSize = 15.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        maxLines = 4,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 22.dp),
+                    )
+                    Spacer(Modifier.height(22.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(
+                            onClick = { speech.cancel() },
+                            shape = PillShape,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Tokens.TextMut),
+                        ) { Text("Cancel") }
+                        Button(
+                            onClick = { speech.stop() },
+                            shape = PillShape,
+                            colors = ButtonDefaults.buttonColors(containerColor = Tokens.Primary, contentColor = Tokens.OnPrimary),
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Done")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Image caption dialog — preview the picked image and optionally add a caption.
     val pending = pendingImage
     if (pending != null) {
@@ -709,5 +748,35 @@ fun Composer(
                 }
             },
         )
+    }
+}
+
+/** The pulsing mic disc for the voice popup — the halo grows with your voice level. */
+@Composable
+private fun VoiceCircle(rms: Float) {
+    // SpeechRecognizer rms is roughly -2..10 dB → normalise to 0..1.
+    val level = ((rms + 2f) / 12f).coerceIn(0f, 1f)
+    val scale by animateFloatAsState(
+        targetValue = 1f + level * 0.55f,
+        animationSpec = tween(120),
+        label = "voiceScale",
+    )
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .scale(scale)
+                .clip(CircleShape)
+                .background(Tokens.Primary.copy(alpha = 0.16f)),
+        )
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .clip(CircleShape)
+                .background(Tokens.Primary),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Default.Mic, contentDescription = null, tint = Tokens.OnPrimary, modifier = Modifier.size(36.dp))
+        }
     }
 }
