@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type { LangOption, Message } from '../../lib/types';
 import { SendIcon, MicIcon, GlobeIcon, ReplyIcon, CloseIcon, ClipIcon } from '../ui/icons';
+import { toast } from '../ui/Toast';
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -95,7 +96,7 @@ export function Composer({
           // Sending then respects the chosen mode (text or translated voice note).
           if (transcript) setText((prev) => (prev ? prev + ' ' : '') + transcript);
         } catch {
-          alert('Transcription failed — check your API key.');
+          toast('Transcription failed — check your API key.');
         }
         setTranscribing(false);
       };
@@ -106,7 +107,7 @@ export function Composer({
       setRecSecs(0);
       timerRef.current = setInterval(() => setRecSecs((s) => s + 1), 1000);
     } catch {
-      alert('Microphone access is needed to record voice.');
+      toast('Microphone access is needed to record voice.');
     }
   }
   function stopRec() {

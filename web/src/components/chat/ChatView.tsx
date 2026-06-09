@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { toast } from '../ui/Toast';
 import type { Chat, LangOption, Message, Reaction } from '../../lib/types';
 import { displayName } from '../../lib/format';
 import { Avatar } from '../ui/Avatar';
@@ -30,10 +31,33 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   const [presence, setPresence] = useState('');
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [flashId, setFlashId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const presenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastIdRef = useRef('');
   const loadingOlderRef = useRef(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced chat-list bump: an incoming message used to trigger a full
+  // api.chats() refetch in the parent PER message — a network request per
+  // message on a busy chat. Coalesce the high-frequency path to one call.
+  const bumpRef = useRef(onChatBump);
+  useEffect(() => { bumpRef.current = onChatBump; }, [onChatBump]);
+  const bumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedBump = useCallback(() => {
+    if (bumpTimer.current) clearTimeout(bumpTimer.current);
+    bumpTimer.current = setTimeout(() => bumpRef.current(), 700);
+  }, []);
+
+  /** Scroll to a quoted message and flash it. */
+  const jumpToQuoted = useCallback((msgId: string) => {
+    const el = document.getElementById('msg-' + msgId);
+    if (!el) return; // not in the loaded window
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashId(msgId);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlashId(null), 1500);
+  }, []);
 
   const name = chat ? displayName(jid, chat.name) : displayName(jid);
 
@@ -72,7 +96,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   async function clearChat() {
     setShowMenu(false);
     if (!window.confirm('Clear all messages in this chat from this device?')) return;
-    try { await api.clearChat(accountId, jid); setMessages([]); onChatBump(); } catch { alert('Clear failed'); }
+    try { await api.clearChat(accountId, jid); setMessages([]); onChatBump(); } catch { toast('Clear failed'); }
   }
 
   useEffect(() => {
@@ -145,7 +169,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
         // arriving in a background tab gets receipted as read while unseen.
         if (document.visibilityState === 'visible') api.markRead(accountId, jid).catch(() => {});
       }
-      onChatBump();
+      debouncedBump();
     };
     const onReaction = (e: { accountId: string; msgId: string; emoji: string; sender: string }) => {
       if (e.accountId !== accountId) return;
@@ -198,7 +222,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       s.off('presence', onPresence);
       s.off('connect', onConnect);
     };
-  }, [accountId, jid, onChatBump]);
+  }, [accountId, jid, debouncedBump]);
 
   // Stick to the bottom only when the LAST message changes (new message / initial
   // load) — not when older history is prepended (that would yank the view down).
@@ -244,7 +268,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       onChatBump();
     } catch {
       setMessages((prev) => prev.filter((m) => m.msgId !== id));
-      alert('Voice send failed.');
+      toast('Voice send failed.');
     }
   }
 
@@ -256,6 +280,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       const tmp: Message = {
         msgId: id, chatJid: jid, senderJid: null, fromMe: true, type: 'text',
         body: text, timestamp: Date.now(), ack: 1, reactions: [],
+        quotedMsgId: replyTo.msgId, quotedBody: replyTo.body ?? replyTo.transcript ?? undefined,
       };
       setMessages((prev) => [...prev, tmp]);
       const quotedId = replyTo.msgId;
@@ -271,7 +296,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
         onChatBump();
       } catch {
         setMessages((prev) => prev.filter((m) => m.msgId !== id));
-        alert('Reply failed');
+        toast('Reply failed');
       }
       return;
     }
@@ -348,7 +373,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       onChatBump();
     } catch {
       setMessages((prev) => prev.filter((m) => m.msgId !== id));
-      alert('Image send failed.');
+      toast('Image send failed.');
     }
   }
 
@@ -368,7 +393,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     onEdit: async (m, newText) => {
       setMessages((prev) => prev.map((x) => (x.msgId === m.msgId ? { ...x, body: newText, edited: true } : x)));
       try { await api.editMessage(accountId, m.msgId, newText); }
-      catch { alert('Edit failed'); }
+      catch { toast('Edit failed'); }
     },
     onDelete: async (m) => {
       setMessages((prev) => prev.map((x) => (x.msgId === m.msgId ? { ...x, body: '[deleted]', type: 'deleted' } : x)));
@@ -377,9 +402,10 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
         // from Bondhu's local DB (WhatsApp can't remove others' messages).
         if (m.fromMe) await api.deleteMessage(accountId, m.msgId);
         else await api.deleteLocal(accountId, m.msgId);
-      } catch { alert('Delete failed'); }
+      } catch { toast('Delete failed'); }
     },
-  }), [accountId]);
+    onJumpToQuoted: jumpToQuoted,
+  }), [accountId, jumpToQuoted]);
 
   const sq = searchQuery.trim().toLowerCase();
   const shownMessages = sq
@@ -441,7 +467,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
           <div className="text-center text-muted py-10">{sq ? 'No matching messages' : 'No messages yet. Say hello 👋'}</div>
         ) : (
           shownMessages.map((m) => (
-            <MessageBubble key={m.msgId} msg={m} accountId={accountId} lang={lang} handlers={bubbleHandlers} />
+            <MessageBubble key={m.msgId} msg={m} accountId={accountId} lang={lang} handlers={bubbleHandlers} flash={m.msgId === flashId} />
           ))
         )}
       </div>
