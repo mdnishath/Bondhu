@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -19,7 +20,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -56,7 +57,6 @@ fun ChatListScreen(
     val connected by vm.socketConnected.collectAsStateWithLifecycle()
     var showNewChat by remember { mutableStateOf(false) }
     var newChatPhone by remember { mutableStateOf("") }
-    var searchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
     // Filter the (already-loaded) chat list by name — same as the web search box.
@@ -66,8 +66,8 @@ fun ChatListScreen(
         else s.chats.filter { it.title.contains(q, ignoreCase = true) }
     }
 
-    // Hardware back exits search before leaving the screen.
-    BackHandler(enabled = searchActive) { searchActive = false; searchQuery = "" }
+    // Hardware back clears the search before leaving the screen.
+    BackHandler(enabled = searchQuery.isNotEmpty()) { searchQuery = "" }
 
     if (showNewChat) {
         AlertDialog(
@@ -110,67 +110,23 @@ fun ChatListScreen(
             Column {
                 TopAppBar(
                     title = {
-                        if (searchActive) {
-                            TextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                placeholder = { Text("Search chats…", color = Tokens.TextMut) },
-                                singleLine = true,
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Tokens.Primary,
-                                    unfocusedIndicatorColor = Tokens.Divider,
-                                    cursorColor = Tokens.Primary,
-                                    focusedTextColor = Tokens.TextMain,
-                                    unfocusedTextColor = Tokens.TextMain,
-                                ),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        } else {
-                            // Brand logo (lime "B" badge) instead of a plain title
-                            Surface(
-                                color = Tokens.Primary,
-                                shape = RoundedCornerShape(9.dp),
-                                modifier = Modifier.size(34.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        "B",
-                                        color = Tokens.OnPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    navigationIcon = {
-                        if (searchActive) {
-                            IconButton(onClick = { searchActive = false; searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Close search", tint = Tokens.TextMain)
+                        // Brand logo (lime "B" badge)
+                        Surface(
+                            color = Tokens.Primary,
+                            shape = RoundedCornerShape(9.dp),
+                            modifier = Modifier.size(34.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("B", color = Tokens.OnPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             }
                         }
                     },
                     actions = {
-                        if (!searchActive) {
-                            IconButton(onClick = { searchActive = true }) {
-                                Icon(Icons.Default.Search, contentDescription = "Search chats", tint = Tokens.TextMain)
-                            }
-                            IconButton(onClick = onSwitchAccount) {
-                                Icon(
-                                    Icons.Default.ManageAccounts,
-                                    contentDescription = "Accounts",
-                                    tint = Tokens.TextMain,
-                                )
-                            }
-                            IconButton(onClick = onOpenSettings) {
-                                Icon(
-                                    Icons.Default.Settings,
-                                    contentDescription = "Settings",
-                                    tint = Tokens.TextMain,
-                                )
-                            }
+                        IconButton(onClick = onSwitchAccount) {
+                            Icon(Icons.Default.ManageAccounts, contentDescription = "Accounts", tint = Tokens.TextMain)
+                        }
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Tokens.TextMain)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -193,6 +149,38 @@ fun ChatListScreen(
                             )
                             TextButton(onClick = { vm.runUpdate() }) { Text("Update", color = Tokens.Primary, fontWeight = FontWeight.SemiBold) }
                             IconButton(onClick = { vm.dismissUpdate() }) { Icon(Icons.Default.Close, "Dismiss", tint = Tokens.TextMut) }
+                        }
+                    }
+                }
+                // Always-visible search bar (web-style), matched to the app's glassy field.
+                Surface(
+                    color = Tokens.Field,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = Tokens.TextMut, modifier = Modifier.size(18.dp))
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(color = Tokens.TextMain, fontSize = 14.sp),
+                            cursorBrush = SolidColor(Tokens.Primary),
+                            modifier = Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 13.dp),
+                            decorationBox = { inner ->
+                                if (searchQuery.isEmpty()) {
+                                    Text("Search chats", color = Tokens.TextMut, fontSize = 14.sp)
+                                }
+                                inner()
+                            },
+                        )
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear", tint = Tokens.TextMut, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }

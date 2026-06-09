@@ -96,9 +96,11 @@ class SpeechController(
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            // Tolerate longer in-segment pauses (best-effort; some engines honour this).
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L)
+            // Snappier: finalise a segment after ~1s of silence (was 2.5s) so the
+            // text settles and the next phrase starts being recognised quickly.
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 900L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 800L)
         }
         try { recognizer?.startListening(intent) } catch (_: Exception) { scheduleRestart() }
     }
@@ -106,11 +108,12 @@ class SpeechController(
     private fun scheduleRestart() {
         if (!listening || restarting) return
         restarting = true
-        // Small gap avoids ERROR_RECOGNIZER_BUSY when restarting back-to-back.
+        // Short gap — small enough to feel continuous, large enough to dodge
+        // ERROR_RECOGNIZER_BUSY when restarting back-to-back.
         main.postDelayed({
             restarting = false
             if (listening) { try { recognizer?.cancel() } catch (_: Exception) {}; listen() }
-        }, 300)
+        }, 120)
     }
 
     private fun appendSegment(s: String) {
