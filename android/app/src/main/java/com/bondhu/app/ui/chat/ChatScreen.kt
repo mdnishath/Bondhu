@@ -60,7 +60,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewModel = hiltViewModel()) {
+fun ChatScreen(chatId: String, title: String, unreadAtOpen: Int = 0, onBack: () -> Unit, vm: ChatViewModel = hiltViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
     val playback by vm.playback.collectAsStateWithLifecycle()
     val connected by vm.socketConnected.collectAsStateWithLifecycle()
@@ -109,7 +109,7 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
         }
     }
 
-    LaunchedEffect(chatId) { vm.bind(chatId) }
+    LaunchedEffect(chatId) { vm.bind(chatId, unreadAtOpen) }
     // Stick to bottom only when a NEW last message arrives AND the user is already
     // at the bottom (or it's our own message). Otherwise count it as "new" and let
     // the user pull down via the scroll-to-bottom FAB — don't yank their view.
@@ -336,6 +336,9 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                     itemsIndexed(shown, key = { _, m -> m.id }) { i, msg ->
                         if (i == 0 || dayKey(shown[i - 1].timestamp) != dayKey(msg.timestamp)) {
                             DateSeparator(dayLabel(msg.timestamp))
+                        }
+                        if (!searching && msg.id == s.unreadDividerId) {
+                            UnreadDivider()
                         }
                         val speaking = playback.id == "tts-${msg.id}" && playback.isPlaying
                         val isVoiceActive = playback.id == "voice-${msg.id}"
@@ -634,6 +637,23 @@ private fun SwipeToReply(
                     }
                 },
         ) { content() }
+    }
+}
+
+@Composable
+private fun UnreadDivider() {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(Modifier.weight(1f), color = Tokens.Primary.copy(alpha = 0.35f))
+        Text(
+            "Unread messages",
+            color = Tokens.Primary,
+            fontSize = 11.sp,
+            modifier = Modifier.padding(horizontal = 10.dp),
+        )
+        HorizontalDivider(Modifier.weight(1f), color = Tokens.Primary.copy(alpha = 0.35f))
     }
 }
 

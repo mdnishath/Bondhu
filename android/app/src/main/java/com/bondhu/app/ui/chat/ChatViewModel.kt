@@ -54,6 +54,7 @@ data class ChatUiState(
     val searchQuery: String? = null,
     val searchResults: List<Message> = emptyList(),
     val searching: Boolean = false,
+    val unreadDividerId: String? = null, // first unseen incoming message at open (stable)
 )
 
 @HiltViewModel
@@ -75,14 +76,16 @@ class ChatViewModel @Inject constructor(
     private var chatId: String = ""
 
     private var bound = false
+    private var unreadAtOpen = 0
 
-    fun bind(chatId: String) {
+    fun bind(chatId: String, unreadAtOpen: Int = 0) {
         // Re-entrancy guard: ChatScreen calls bind() from a LaunchedEffect, which
         // re-fires on recomposition / config-change. Without this, each call would
         // launch a fresh set of socket.events / socket.connects collectors, so one
         // incoming message would run onEvent + markRead N times.
         if (bound) return
         this.chatId = chatId
+        this.unreadAtOpen = unreadAtOpen
         // Active account from the in-memory cache — NO DataStore read / no main-thread
         // block on the critical chat-open path (a runBlocking DataStore read here was
         // freezing the UI and leaving the loader stuck on first open).
@@ -261,10 +264,18 @@ class ChatViewModel @Inject constructor(
                 // history the user had scrolled in (and resetting hasMore).
                 val merged = if (existing.isEmpty()) fresh else mergeLatest(existing, fresh)
                 cache.put(account, chatId, merged)
+                // Freeze the unread divider at the first unseen incoming message on the
+                // FIRST load (before markRead clears the count). Stable id so it doesn't
+                // drift as live messages arrive; kept across reconnect reloads.
+                val dividerId = if (existing.isEmpty() && unreadAtOpen > 0) {
+                    val incoming = merged.filter { !it.fromMe }
+                    incoming.getOrNull((incoming.size - unreadAtOpen).coerceAtLeast(0))?.id
+                } else _state.value.unreadDividerId
                 _state.value = _state.value.copy(
                     loading = false,
                     messages = merged,
                     error = null,
+                    unreadDividerId = dividerId,
                     // Only derive hasMore from this 30-window on the first load; don't
                     // clear the "older history exists" flag after the user paged back.
                     hasMore = if (existing.isEmpty()) fresh.size >= 30 else _state.value.hasMore,
