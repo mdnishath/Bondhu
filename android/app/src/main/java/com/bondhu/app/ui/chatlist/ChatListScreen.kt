@@ -44,7 +44,7 @@ private fun shortTime(ts: Long): String =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
-    onOpenChat: (String, String) -> Unit,
+    onOpenChat: (String, String, Int) -> Unit,
     onOpenSettings: () -> Unit = {},
     onSwitchAccount: () -> Unit = {},
     vm: ChatListViewModel = hiltViewModel(),
@@ -74,7 +74,7 @@ fun ChatListScreen(
                     onClick = {
                         val digits = newChatPhone.filter { it.isDigit() }
                         if (digits.isNotEmpty()) {
-                            onOpenChat("${digits}@s.whatsapp.net", "+$digits")
+                            onOpenChat("${digits}@s.whatsapp.net", "+$digits", 0)
                         }
                         showNewChat = false
                         newChatPhone = ""
@@ -183,7 +183,7 @@ fun ChatListScreen(
                             row = row,
                             account = s.account,
                             vm = vm,
-                            onClick = { onOpenChat(row.jid, row.title) },
+                            onClick = { onOpenChat(row.jid, row.title, row.unread) },
                         )
                     }
                 }

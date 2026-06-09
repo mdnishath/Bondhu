@@ -54,6 +54,7 @@ data class ChatUiState(
     val searchQuery: String? = null,
     val searchResults: List<Message> = emptyList(),
     val searching: Boolean = false,
+    val unreadDividerId: String? = null, // first unseen incoming message at open (stable)
 )
 
 @HiltViewModel
@@ -74,18 +75,29 @@ class ChatViewModel @Inject constructor(
     private var account: String = ""
     private var chatId: String = ""
 
-    fun bind(chatId: String) {
+    private var bound = false
+    private var unreadAtOpen = 0
+
+    fun bind(chatId: String, unreadAtOpen: Int = 0) {
+        // Re-entrancy guard: ChatScreen calls bind() from a LaunchedEffect, which
+        // re-fires on recomposition / config-change. Without this, each call would
+        // launch a fresh set of socket.events / socket.connects collectors, so one
+        // incoming message would run onEvent + markRead N times.
+        if (bound) return
         this.chatId = chatId
-        // Seed instantly from the app-scoped cache so a re-opened chat shows its
-        // messages with no spinner; the background load() then refreshes them.
-        cache.get(chatId)?.let { _state.value = _state.value.copy(messages = it, loading = false) }
+        this.unreadAtOpen = unreadAtOpen
         // Active account from the in-memory cache — NO DataStore read / no main-thread
         // block on the critical chat-open path (a runBlocking DataStore read here was
         // freezing the UI and leaving the loader stuck on first open).
         account = prefs.activeAccountBlocking() ?: run {
             _state.value = _state.value.copy(loading = false, error = "No active account")
-            return
+            return // bound stays false so a later bind can retry once an account exists
         }
+        bound = true
+        // Seed instantly from the app-scoped cache (keyed by account + chat so a
+        // switched account can't surface another account's messages for this jid);
+        // the background load() then refreshes them.
+        cache.get(account, chatId)?.let { _state.value = _state.value.copy(messages = it, loading = false) }
         load()
         viewModelScope.launch {
             loadComposerPrefs()
@@ -238,18 +250,51 @@ class ChatViewModel @Inject constructor(
             cur + m
         }
         val sorted = next.sortedBy { it.timestamp }
-        cache.put(chatId, sorted)
+        cache.put(account, chatId, sorted)
         _state.value = _state.value.copy(messages = sorted)
     }
 
     private fun load() {
         viewModelScope.launch {
             try {
-                val msgs = repo.messages(account, chatId, limit = 30)
-                cache.put(chatId, msgs)
-                _state.value = _state.value.copy(loading = false, messages = msgs, error = null, hasMore = msgs.size >= 30)
+                val fresh = repo.messages(account, chatId, limit = 30)
+                val existing = _state.value.messages
+                // Reconnect reloads must MERGE, not replace: a socket reconnect used to
+                // overwrite the whole list with just the latest 30, wiping any older
+                // history the user had scrolled in (and resetting hasMore).
+                val merged = if (existing.isEmpty()) fresh else mergeLatest(existing, fresh)
+                cache.put(account, chatId, merged)
+                // Freeze the unread divider at the first unseen incoming message on the
+                // FIRST load (before markRead clears the count). Stable id so it doesn't
+                // drift as live messages arrive; kept across reconnect reloads.
+                val dividerId = if (existing.isEmpty() && unreadAtOpen > 0) {
+                    val incoming = merged.filter { !it.fromMe }
+                    incoming.getOrNull((incoming.size - unreadAtOpen).coerceAtLeast(0))?.id
+                } else _state.value.unreadDividerId
+                _state.value = _state.value.copy(
+                    loading = false,
+                    messages = merged,
+                    error = null,
+                    unreadDividerId = dividerId,
+                    // Only derive hasMore from this 30-window on the first load; don't
+                    // clear the "older history exists" flag after the user paged back.
+                    hasMore = if (existing.isEmpty()) fresh.size >= 30 else _state.value.hasMore,
+                )
             } catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message ?: "Couldn't load messages") }
         }
+    }
+
+    /** Merge a freshly-fetched latest window into the (possibly larger, paged) list:
+     *  the server copy wins for shared ids, older paged history is kept, and the
+     *  session-only `localImage` survives a server row that doesn't carry it. */
+    private fun mergeLatest(existing: List<Message>, fresh: List<Message>): List<Message> {
+        val byId = LinkedHashMap<String, Message>()
+        existing.forEach { byId[it.id] = it }
+        fresh.forEach { f ->
+            val prev = byId[f.id]
+            byId[f.id] = if (prev?.localImage != null && f.localImage == null) f.copy(localImage = prev.localImage) else f
+        }
+        return byId.values.sortedBy { it.timestamp }
     }
 
     /** Page in older history when the user scrolls to the top. Prepends + de-dupes
@@ -266,7 +311,7 @@ class ChatViewModel @Inject constructor(
                 val have = _state.value.messages.map { it.id }.toSet()
                 val fresh = older.filterNot { it.id in have }
                 val merged = (fresh + _state.value.messages).sortedBy { it.timestamp }
-                cache.put(chatId, merged)
+                cache.put(account, chatId, merged)
                 _state.value = _state.value.copy(messages = merged, loadingOlder = false, hasMore = older.size >= 30)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(loadingOlder = false)
@@ -366,7 +411,7 @@ class ChatViewModel @Inject constructor(
     fun clearChat() {
         viewModelScope.launch {
             runCatching { repo.clearChat(account, chatId) }
-            cache.clear(chatId)
+            cache.clear(account, chatId)
             _state.value = _state.value.copy(messages = emptyList())
         }
     }
@@ -395,7 +440,7 @@ class ChatViewModel @Inject constructor(
         if (ids.isEmpty()) return
         val idSet = ids.toSet()
         _state.value = _state.value.copy(messages = _state.value.messages.filterNot { it.id in idSet })
-        cache.put(chatId, _state.value.messages)
+        cache.put(account, chatId, _state.value.messages)
         viewModelScope.launch { ids.forEach { runCatching { repo.deleteForMe(account, it) } } }
     }
 
@@ -458,7 +503,35 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun onDraft(v: String) { _state.value = _state.value.copy(draft = v) }
+    fun onDraft(v: String) {
+        _state.value = _state.value.copy(draft = v)
+        if (v.isNotEmpty()) emitTyping()
+    }
+
+    // Outgoing typing presence: notify the contact's WhatsApp we're typing while the
+    // user types, auto-clearing after a short idle so "typing…" doesn't get stuck.
+    private var typingOn = false
+    private var typingStopJob: kotlinx.coroutines.Job? = null
+    private fun emitTyping() {
+        if (account.isEmpty()) return
+        if (!typingOn) {
+            typingOn = true
+            viewModelScope.launch { runCatching { repo.sendTyping(account, chatId, true) } }
+        }
+        typingStopJob?.cancel()
+        typingStopJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(2500)
+            typingOn = false
+            runCatching { repo.sendTyping(account, chatId, false) }
+        }
+    }
+    private fun stopTyping() {
+        typingStopJob?.cancel()
+        if (typingOn && account.isNotEmpty()) {
+            typingOn = false
+            viewModelScope.launch { runCatching { repo.sendTyping(account, chatId, false) } }
+        }
+    }
 
     fun startRecording(nowMs: Long) {
         try {
@@ -500,6 +573,7 @@ class ChatViewModel @Inject constructor(
     fun send() {
         val text = _state.value.draft.trim()
         if (text.isEmpty() || account.isEmpty()) return
+        stopTyping() // sending — clear the typing presence immediately
 
         // Edit mode: update an existing own message instead of sending a new one.
         val editTarget = _state.value.editing
@@ -564,7 +638,7 @@ class ChatViewModel @Inject constructor(
         val merged = if (rest.any { it.id == rid }) rest
         else rest + Message(rid, chatId, true, "text", body, now(), AckTick.SENT, null, null, null)
         val sorted = merged.sortedBy { it.timestamp }
-        cache.put(chatId, sorted)
+        cache.put(account, chatId, sorted)
         _state.value = _state.value.copy(messages = sorted)
     }
 
@@ -585,5 +659,5 @@ class ChatViewModel @Inject constructor(
 
     private fun now() = System.currentTimeMillis() // epoch millis, matches server
 
-    override fun onCleared() { super.onCleared(); audio.stop() }
+    override fun onCleared() { super.onCleared(); audio.stop(); stopTyping() }
 }

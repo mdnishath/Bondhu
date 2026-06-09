@@ -6,10 +6,10 @@ object Routes {
     const val ACCOUNTS = "accounts"
     const val PAIR = "pair/{accountId}"
     const val CHAT_LIST = "chatlist"
-    const val CHAT = "chat/{chatId}?name={name}"
+    const val CHAT = "chat/{chatId}?name={name}&unread={unread}"
     const val SETTINGS = "settings"
 
     fun pair(accountId: String) = "pair/$accountId"
-    fun chat(chatId: String, name: String = "") =
-        "chat/${android.net.Uri.encode(chatId)}?name=${android.net.Uri.encode(name)}"
+    fun chat(chatId: String, name: String = "", unread: Int = 0) =
+        "chat/${android.net.Uri.encode(chatId)}?name=${android.net.Uri.encode(name)}&unread=$unread"
 }

@@ -1,12 +1,14 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import type { Message } from '../../lib/types';
-import { clockTime } from '../../lib/format';
+import { clockTime, senderColor } from '../../lib/format';
 import { Tick } from '../ui/Avatar';
 import { GlobeIcon, SpeakerIcon, PlayIcon, ChevronDownIcon } from '../ui/icons';
 import { TranslatingLoader } from './TranslatingLoader';
 import { MessageActions, type MessageAction } from './MessageActions';
 import { Lightbox } from './Lightbox';
+import { toast } from '../ui/Toast';
+import { confirm } from '../ui/ConfirmDialog';
 
 export interface MessageBubbleHandlers {
   onReply: (msg: Message) => void;
@@ -14,6 +16,7 @@ export interface MessageBubbleHandlers {
   onReact: (msg: Message, emoji: string) => void;
   onEdit: (msg: Message, newText: string) => void;
   onDelete: (msg: Message) => void;
+  onJumpToQuoted: (msgId: string) => void;
 }
 
 function MessageBubbleInner({
@@ -21,11 +24,13 @@ function MessageBubbleInner({
   accountId,
   lang,
   handlers,
+  flash,
 }: {
   msg: Message;
   accountId: string;
   lang: string;
   handlers: MessageBubbleHandlers;
+  flash?: boolean;
 }) {
   const out = msg.fromMe;
   const reacts = msg.reactions && msg.reactions.length > 0;
@@ -38,7 +43,7 @@ function MessageBubbleInner({
 
   useEffect(() => { setEditText(msg.body ?? ''); }, [msg.body]);
 
-  function handlePick(a: MessageAction) {
+  async function handlePick(a: MessageAction) {
     if (a.kind === 'reply') handlers.onReply(msg);
     else if (a.kind === 'forward') handlers.onForward(msg);
     else if (a.kind === 'react') handlers.onReact(msg, a.emoji);
@@ -47,7 +52,13 @@ function MessageBubbleInner({
       if (txt) navigator.clipboard.writeText(txt).catch(() => {});
     } else if (a.kind === 'edit') { setEditing(true); setEditText(msg.body ?? ''); }
     else if (a.kind === 'delete') {
-      if (window.confirm('Delete this message for everyone?')) handlers.onDelete(msg);
+      // Own messages delete for everyone via WhatsApp; incoming only locally.
+      const ok = await confirm({
+        title: out ? 'Delete for everyone?' : 'Delete message?',
+        body: out ? 'This message will be removed for everyone in the chat.' : 'This message will be removed on this device.',
+        confirmLabel: 'Delete', danger: true,
+      });
+      if (ok) handlers.onDelete(msg);
     }
   }
 
@@ -59,14 +70,25 @@ function MessageBubbleInner({
   }
 
   return (
-    <div className={`group flex ${out ? 'justify-end' : 'justify-start'} mb-1.5 min-w-0`}>
+    <div id={`msg-${msg.msgId}`} className={`group flex ${out ? 'justify-end' : 'justify-start'} mb-1.5 min-w-0`}>
       <div className="relative max-w-[85%] sm:max-w-[75%] md:max-w-[65%] min-w-0">
         <div
-          className="rounded-[10px] px-2.5 py-1.5 text-[14.2px] leading-snug shadow"
+          className={`rounded-[10px] px-2.5 py-1.5 text-[14.2px] leading-snug shadow transition-shadow ${flash ? 'ring-2 ring-[#A3E635]' : ''}`}
           style={{ background: out ? '#2A3A1E' : '#202C33' }}
         >
           {!out && msg.senderName && (
-            <div className="text-[12px] font-semibold text-[#A3E635] mb-0.5">{msg.senderName}</div>
+            <div className="text-[12px] font-semibold mb-0.5" style={{ color: senderColor(msg.senderJid ?? msg.senderName) }}>{msg.senderName}</div>
+          )}
+          {!deleted && !editing && msg.quotedMsgId && (msg.quotedBody || msg.quotedSenderJid) && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handlers.onJumpToQuoted(msg.quotedMsgId!); }}
+              className="block w-full text-left mb-1 rounded-md bg-black/25 border-l-2 border-[#A3E635] px-2 py-1 hover:bg-black/35 transition"
+              title="Go to quoted message"
+            >
+              <div className="text-[11.5px] text-[#A3E635] font-medium leading-tight mb-0.5">Reply</div>
+              <div className="text-[12.5px] text-white/65 truncate">{msg.quotedBody || 'media message'}</div>
+            </button>
           )}
           {editing ? (
             <EditEditor
@@ -280,7 +302,7 @@ function IncomingVoiceRetry({ msg, accountId, lang }: { msg: Message; accountId:
         } catch { /* keep transcript only */ }
       }
     } catch {
-      alert('Transcription failed — check your API key.');
+      toast('Transcription failed — check your API key.');
     }
     setBusy(false);
   }

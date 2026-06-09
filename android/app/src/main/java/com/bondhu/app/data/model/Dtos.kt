@@ -127,6 +127,9 @@ data class EditMessageRequest(val account: String, val msgId: String, val text: 
 data class JidRequest(val jid: String)
 
 @JsonClass(generateAdapter = true)
+data class TypingRequest(val jid: String, val on: Boolean)
+
+@JsonClass(generateAdapter = true)
 data class TestKeyResponse(val ok: Boolean = false, val error: String? = null)
 
 @JsonClass(generateAdapter = true)

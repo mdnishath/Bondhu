@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bondhu.app.data.model.AckTick
@@ -33,6 +34,17 @@ import com.bondhu.app.ui.theme.Tokens
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+// Distinct, readable per-sender name colours for group chats (WhatsApp-style hue).
+private val SENDER_COLORS = listOf(
+    Color(0xFFA3E635), Color(0xFF7CC4FF), Color(0xFFF0A868), Color(0xFFF08DB0),
+    Color(0xFF6EE7C7), Color(0xFFC4A3FF), Color(0xFFFFD166), Color(0xFF8FE388),
+)
+private fun senderColor(seed: String): Color {
+    var h = 0
+    for (c in seed) h = (h * 31 + c.code) and 0x7fffffff
+    return SENDER_COLORS[h % SENDER_COLORS.size]
+}
 
 // ts is epoch millis (backend normalises all timestamps to ms).
 private fun hhmm(ts: Long) = if (ts <= 0) "" else SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(ts))
@@ -68,6 +80,7 @@ fun MessageBubble(
     onRetry: () -> Unit = {},
     selected: Boolean = false,
     onTap: (() -> Unit)? = null,
+    onDoubleTap: (() -> Unit)? = null,
     onJumpToQuoted: (String) -> Unit = {},
     onDownload: () -> Unit = {},
 ) {
@@ -91,11 +104,12 @@ fun MessageBubble(
                 .combinedClickable(
                     onClick = { if (onTap != null) onTap() else showFullTime = !showFullTime },
                     onLongClick = onLongPress,
+                    onDoubleClick = onDoubleTap,
                 )
                 .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {
             if (!m.fromMe && m.senderName != null) {
-                Text(m.senderName, color = Tokens.Primary, fontSize = 12.sp)
+                Text(m.senderName, color = senderColor(m.senderName), fontSize = 12.sp)
             }
             if (!m.quotedText.isNullOrBlank()) {
                 Row(
@@ -154,18 +168,23 @@ fun MessageBubble(
                     when {
                         m.failed -> Icon(
                             Icons.Default.ErrorOutline, "Failed — tap to retry", tint = Tokens.Danger,
-                            modifier = Modifier.size(15.dp).clickable { onRetry() },
+                            // Larger, circular tap target — the retry affordance must be comfortably tappable.
+                            modifier = Modifier
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .clickable { onRetry() }
+                                .padding(6.dp)
+                                .size(16.dp),
                         )
                         m.pending -> Icon(
                             Icons.Default.Schedule, "Sending", tint = Tokens.TextFaint, modifier = Modifier.size(13.dp),
                         )
                         else -> when (m.ack) {
                             AckTick.NONE, AckTick.SENT ->
-                                Icon(Icons.Default.Done, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.Done, "Sent", tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
                             AckTick.DELIVERED ->
-                                Icon(Icons.Default.DoneAll, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.DoneAll, "Delivered", tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
                             AckTick.READ ->
-                                Icon(Icons.Default.DoneAll, null, tint = Tokens.Tick, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.DoneAll, "Read", tint = Tokens.Tick, modifier = Modifier.size(14.dp))
                         }
                     }
                 }

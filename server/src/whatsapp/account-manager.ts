@@ -234,12 +234,15 @@ export class AccountManager extends EventEmitter {
     this.chats.clearUnread(accountId, jid);
     const conn = this.conns.get(accountId);
     if (!conn) return;
-    // Look at a window of recent messages (DESC), not just the single newest row
-    // — if the newest is one of ours, limit-1 would never find the incoming msg
-    // to receipt, silently skipping read receipts.
-    const latest = this.messages.listByChat(accountId, jid, 30).find((x) => !x.fromMe);
-    if (latest) {
-      try { await conn.markRead(this.getStored(accountId, latest.msgId)); } catch { /* best-effort */ }
+    // Receipt EVERY unread incoming message in the recent window, not just the
+    // newest — a WhatsApp read receipt is per-message, so marking only the latest
+    // leaves the sender's blue ticks wrong for every earlier message that arrived
+    // while we were away.
+    const incoming = this.messages.listByChat(accountId, jid, 30).filter((x) => !x.fromMe);
+    if (incoming.length) {
+      try {
+        await conn.markRead(incoming.map((m) => this.getStored(accountId, m.msgId)));
+      } catch { /* best-effort */ }
     }
   }
 

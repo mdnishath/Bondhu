@@ -51,7 +51,7 @@ fun BondhuNavHost(
         }
         composable(Routes.CHAT_LIST) {
             com.bondhu.app.ui.chatlist.ChatListScreen(
-                onOpenChat = { jid, name -> nav.navigate(Routes.chat(jid, name)) },
+                onOpenChat = { jid, name, unread -> nav.navigate(Routes.chat(jid, name, unread)) },
                 onOpenSettings = { nav.navigate(Routes.SETTINGS) },
                 onSwitchAccount = { nav.navigate(Routes.ACCOUNTS) },
             )
@@ -67,6 +67,7 @@ fun BondhuNavHost(
             arguments = listOf(
                 androidx.navigation.navArgument("chatId") { type = androidx.navigation.NavType.StringType },
                 androidx.navigation.navArgument("name") { type = androidx.navigation.NavType.StringType; nullable = true; defaultValue = null },
+                androidx.navigation.navArgument("unread") { type = androidx.navigation.NavType.IntType; defaultValue = 0 },
             ),
         ) { entry ->
             val chatId = android.net.Uri.decode(entry.arguments?.getString("chatId") ?: "")
@@ -74,6 +75,7 @@ fun BondhuNavHost(
             com.bondhu.app.ui.chat.ChatScreen(
                 chatId = chatId,
                 title = name?.takeIf { it.isNotBlank() } ?: ("+" + chatId.substringBefore("@")),
+                unreadAtOpen = entry.arguments?.getInt("unread") ?: 0,
                 onBack = { nav.popBackStack() },
             )
         }
