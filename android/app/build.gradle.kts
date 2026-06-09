@@ -15,8 +15,8 @@ android {
         applicationId = "com.bondhu.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 28
-        versionName = "1.5.0"
+        versionCode = 29
+        versionName = "1.6.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

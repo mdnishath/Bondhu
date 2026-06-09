@@ -80,6 +80,10 @@ fun Composer(
     // Image pending a caption (base64, content-uri) — set by the picker, sent from the dialog.
     var pendingImage by remember { mutableStateOf<Pair<String, String>?>(null) }
     var imageCaption by remember { mutableStateOf("") }
+    // Continuous on-device dictation state.
+    var speechListening by remember { mutableStateOf(false) }
+    var speechLive by remember { mutableStateOf("") }
+    val micGrantAction = remember { mutableStateOf<() -> Unit>({}) }
 
     val selectedLang = supported.firstOrNull { it.code == outLang }
     val isVoiceMode = sendMode == "voice" && outLang != null
@@ -101,11 +105,11 @@ fun Composer(
         }
     }
 
-    // Permission launcher
+    // Permission launcher — runs whatever mic action was staged before the prompt.
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) onStartRecord(System.currentTimeMillis())
+        if (granted) micGrantAction.value()
     }
 
     // Image picker launcher
@@ -164,6 +168,23 @@ fun Composer(
             putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, if (voiceLang.startsWith("bn")) "বলুন…" else "Speak…")
         }
         try { speechLauncher.launch(intent) } catch (_: Exception) { /* no recognizer available */ }
+    }
+
+    // Continuous on-device dictation: keeps listening across pauses, stops only when
+    // the user taps Done. Falls back to the one-shot popup if no on-device recognizer.
+    val speech = rememberSpeechController(
+        language = voiceLang,
+        onLive = { speechLive = it },
+        onFinal = { spoken -> if (spoken.isNotBlank()) onDraft(if (draft.isBlank()) spoken else "${draft.trimEnd()} $spoken") },
+        onListening = { speechListening = it },
+        onUnavailable = { startSpeech() },
+    )
+    fun toggleMic() {
+        if (speechListening) { speech.stop(); return }
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
+        if (granted) speech.start()
+        else { micGrantAction.value = { speech.start() }; permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
     }
 
     fun requestMic() {
@@ -306,7 +327,36 @@ fun Composer(
                     ),
                 )
 
-                if (recording) {
+                if (speechListening) {
+                    // Live dictation row INSTEAD of ROW 2 — keeps listening until Done.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(Icons.Default.Mic, contentDescription = null, tint = Tokens.Primary, modifier = Modifier.size(20.dp))
+                        Text(
+                            text = speechLive.ifBlank { if (voiceLang.startsWith("bn")) "শুনছি… বলুন" else "Listening…" },
+                            color = if (speechLive.isBlank()) Tokens.TextMut else Tokens.TextMain,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Button(
+                            onClick = { speech.stop() },
+                            shape = PillShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Tokens.Primary,
+                                contentColor = Tokens.OnPrimary,
+                            ),
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = "Done", modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Done")
+                        }
+                    }
+                } else if (recording) {
                     // Recording row INSTEAD of ROW 2 when recording
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -525,14 +575,14 @@ fun Composer(
                                 )
                             }
 
-                            // Mic button — on-device speech-to-text into the input
+                            // Mic button — continuous on-device dictation (tap to start)
                             IconButton(
-                                onClick = { startSpeech() },
+                                onClick = { toggleMic() },
                                 modifier = Modifier.size(44.dp),
                             ) {
                                 Icon(
                                     Icons.Default.Mic,
-                                    contentDescription = "Record",
+                                    contentDescription = "Dictate",
                                     tint = Tokens.TextMut,
                                     modifier = Modifier.size(26.dp),
                                 )

@@ -7,6 +7,13 @@
     <!-- For FCM background notifications (Android 13+). Enable once Firebase is wired. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Lets SpeechRecognizer.isRecognitionAvailable() find the on-device recognizer on Android 11+. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".App"
         android:allowBackup="true"
