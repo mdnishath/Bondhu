@@ -137,6 +137,29 @@ test('reaction event is stored and re-emitted', async () => {
   expect(got[0]).toMatchObject({ msgId: 'm1', emoji: '❤️' });
 });
 
+test('markRead receipts ALL unread incoming messages in the window, not just the newest', async () => {
+  const { mgr, accounts, messages, conns } = makeManager();
+  const acc = accounts.create({ userId: 'u1' });
+  await mgr.start(acc.id);
+  const jid = 'c@s.whatsapp.net';
+  const calls: any[] = [];
+  conns[0].markRead = vi.fn(async (arg: any) => { calls.push(arg); });
+
+  // three incoming + one of ours, interleaved
+  messages.upsert({ accountId: acc.id, msgId: 'i1', chatJid: jid, senderJid: jid, fromMe: false, type: 'text', body: 'a', timestamp: 1, ack: 0 });
+  messages.upsert({ accountId: acc.id, msgId: 'i2', chatJid: jid, senderJid: jid, fromMe: false, type: 'text', body: 'b', timestamp: 2, ack: 0 });
+  messages.upsert({ accountId: acc.id, msgId: 'o1', chatJid: jid, senderJid: 'me', fromMe: true, type: 'text', body: 'mine', timestamp: 3, ack: 0 });
+  messages.upsert({ accountId: acc.id, msgId: 'i3', chatJid: jid, senderJid: jid, fromMe: false, type: 'text', body: 'c', timestamp: 4, ack: 0 });
+
+  await mgr.markRead(acc.id, jid);
+
+  expect(conns[0].markRead).toHaveBeenCalledTimes(1);
+  const arg = calls[0];
+  expect(Array.isArray(arg)).toBe(true);
+  const ids = arg.map((m: any) => m.msgId).sort();
+  expect(ids).toEqual(['i1', 'i2', 'i3']); // every incoming, none of ours
+});
+
 test('action methods delegate to the connection with stored message', async () => {
   const { mgr, accounts, messages, conns } = makeManager();
   const acc = accounts.create({ userId: 'u1' });

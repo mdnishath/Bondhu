@@ -11,6 +11,7 @@ import P from 'pino';
 import type { DB } from '../db/db.js';
 import { useSqliteAuthState } from './auth-state.js';
 import { normalizeMessage } from './normalize.js';
+import { resolveReactionSender } from './reaction.js';
 
 const logger = P({ level: 'silent' });
 
@@ -183,8 +184,8 @@ export class WaConnection extends EventEmitter {
         const msgId = r.key?.id;
         const emoji = r.reaction?.text ?? '';
         const fromMe = !!r.key?.fromMe;
-        const sender = (r.reaction as any)?.key?.participant || (fromMe ? 'me' : (r.key?.remoteJid ?? 'unknown'));
-        if (msgId) this.emit('reaction', msgId, emoji, fromMe, String(sender));
+        const sender = resolveReactionSender(r as any);
+        if (msgId) this.emit('reaction', msgId, emoji, fromMe, sender);
       }
     });
 
@@ -277,9 +278,11 @@ export class WaConnection extends EventEmitter {
     await this.sock.sendMessage(stored.chatJid, { text, edit: this.keyFor(stored) });
   }
 
-  async markRead(stored: any): Promise<void> {
+  async markRead(stored: any | any[]): Promise<void> {
     if (!this.sock) return;
-    await this.sock.readMessages([this.keyFor(stored)]);
+    const arr = Array.isArray(stored) ? stored : [stored];
+    if (!arr.length) return;
+    await this.sock.readMessages(arr.map((s) => this.keyFor(s)));
   }
 
   async sendImage(jid: string, buffer: Buffer, caption?: string): Promise<string | null> {
