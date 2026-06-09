@@ -4,6 +4,7 @@ import { createContext } from './app-context.js';
 import { createApp } from './api/server.js';
 import { attachGateway } from './api/socket-gateway.js';
 import { config } from './config.js';
+import { MaintenanceRepo } from './db/repositories/maintenance.repo.js';
 
 // Never let an unhandled async error take down the whole process silently.
 process.on('unhandledRejection', (reason: any) => {
@@ -36,6 +37,23 @@ accounts.forEach((acc, i) => {
     );
   }, i * 1500);
 });
+
+// Daily housekeeping: prune regenerable caches (translations / TTS / profile pics)
+// older than the retention window so the SQLite file doesn't grow without bound on
+// a long-lived account. All pruned data is re-derivable on demand; history is kept.
+const maintenance = new MaintenanceRepo(ctx.db);
+const RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+function runPrune() {
+  try {
+    const n = maintenance.pruneOldCaches(Date.now() - RETENTION_MS);
+    if (n.translations || n.tts || n.profilePics)
+      process.stderr.write(`[Bondhu] pruned caches: ${JSON.stringify(n)}\n`);
+  } catch (e: any) {
+    process.stderr.write(`[Bondhu] cache prune failed: ${e?.message}\n`);
+  }
+}
+runPrune();
+setInterval(runPrune, 24 * 60 * 60 * 1000).unref();
 
 http.listen(config.port, () => {
   process.stderr.write(`[Bondhu] API + Socket.IO on http://localhost:${config.port}\n`);
