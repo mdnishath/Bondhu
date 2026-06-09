@@ -163,11 +163,11 @@ fun MessageBubble(
                         )
                         else -> when (m.ack) {
                             AckTick.NONE, AckTick.SENT ->
-                                Icon(Icons.Default.Done, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.Done, "Sent", tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
                             AckTick.DELIVERED ->
-                                Icon(Icons.Default.DoneAll, null, tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.DoneAll, "Delivered", tint = Tokens.TextFaint, modifier = Modifier.size(14.dp))
                             AckTick.READ ->
-                                Icon(Icons.Default.DoneAll, null, tint = Tokens.Tick, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.DoneAll, "Read", tint = Tokens.Tick, modifier = Modifier.size(14.dp))
                         }
                     }
                 }

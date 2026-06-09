@@ -18,7 +18,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -83,6 +85,16 @@ class MainActivity : ComponentActivity() {
             val mode by themeVm.theme.collectAsStateWithLifecycle()
             val dark = when (mode) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
             val pc by pendingChat
+
+            // Keep the status/nav-bar icon contrast in sync with the IN-APP theme
+            // (which can differ from the system theme) — otherwise light-on-light
+            // icons go invisible after switching to the Light theme.
+            val view = LocalView.current
+            LaunchedEffect(dark) {
+                val controller = WindowCompat.getInsetsController(window, view)
+                controller.isAppearanceLightStatusBars = !dark
+                controller.isAppearanceLightNavigationBars = !dark
+            }
 
             // Ask for notification permission once (Android 13+).
             val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}

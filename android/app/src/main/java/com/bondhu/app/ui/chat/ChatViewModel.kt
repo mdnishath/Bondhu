@@ -254,11 +254,36 @@ class ChatViewModel @Inject constructor(
     private fun load() {
         viewModelScope.launch {
             try {
-                val msgs = repo.messages(account, chatId, limit = 30)
-                cache.put(account, chatId, msgs)
-                _state.value = _state.value.copy(loading = false, messages = msgs, error = null, hasMore = msgs.size >= 30)
+                val fresh = repo.messages(account, chatId, limit = 30)
+                val existing = _state.value.messages
+                // Reconnect reloads must MERGE, not replace: a socket reconnect used to
+                // overwrite the whole list with just the latest 30, wiping any older
+                // history the user had scrolled in (and resetting hasMore).
+                val merged = if (existing.isEmpty()) fresh else mergeLatest(existing, fresh)
+                cache.put(account, chatId, merged)
+                _state.value = _state.value.copy(
+                    loading = false,
+                    messages = merged,
+                    error = null,
+                    // Only derive hasMore from this 30-window on the first load; don't
+                    // clear the "older history exists" flag after the user paged back.
+                    hasMore = if (existing.isEmpty()) fresh.size >= 30 else _state.value.hasMore,
+                )
             } catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message ?: "Couldn't load messages") }
         }
+    }
+
+    /** Merge a freshly-fetched latest window into the (possibly larger, paged) list:
+     *  the server copy wins for shared ids, older paged history is kept, and the
+     *  session-only `localImage` survives a server row that doesn't carry it. */
+    private fun mergeLatest(existing: List<Message>, fresh: List<Message>): List<Message> {
+        val byId = LinkedHashMap<String, Message>()
+        existing.forEach { byId[it.id] = it }
+        fresh.forEach { f ->
+            val prev = byId[f.id]
+            byId[f.id] = if (prev?.localImage != null && f.localImage == null) f.copy(localImage = prev.localImage) else f
+        }
+        return byId.values.sortedBy { it.timestamp }
     }
 
     /** Page in older history when the user scrolls to the top. Prepends + de-dupes
