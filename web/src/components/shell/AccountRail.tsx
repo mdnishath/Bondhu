@@ -4,6 +4,7 @@ import { disconnectSocket } from '../../lib/socket';
 import { avatarGradient, initials } from '../../lib/format';
 import { useStore } from '../../store/useStore';
 import { LogoIcon, PlusIcon, GearIcon, LogoutIcon } from '../ui/icons';
+import { confirm } from '../ui/ConfirmDialog';
 
 export function AccountRail({ onCloseDrawer }: { onCloseDrawer?: () => void } = {}) {
   const nav = useNavigate();
@@ -23,7 +24,12 @@ export function AccountRail({ onCloseDrawer }: { onCloseDrawer?: () => void } = 
 
   async function removeAccount(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!window.confirm('Remove this account from Bondhu? Its chats will be cleared from this app.')) return;
+    const ok = await confirm({
+      title: 'Remove account?',
+      body: 'This account will be unlinked and its chats cleared from this app.',
+      confirmLabel: 'Remove', danger: true,
+    });
+    if (!ok) return;
     try { await api.removeAccount(id); } catch { /* ignore — drop from UI regardless */ }
     const next = accounts.filter((a) => a.id !== id);
     setAccounts(next);

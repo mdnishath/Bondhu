@@ -15,6 +15,14 @@ export function avatarGradient(seed: string): string {
   return GRADS[h % GRADS.length];
 }
 
+// Distinct, readable name colors for group senders (WhatsApp-style per-sender hue).
+const SENDER_COLORS = ['#A3E635', '#7CC4FF', '#F0A868', '#F08DB0', '#6EE7C7', '#C4A3FF', '#FFD166', '#8FE388'];
+export function senderColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < (seed || '').length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return SENDER_COLORS[h % SENDER_COLORS.length];
+}
+
 export function initials(name: string): string {
   const n = (name || '').replace(/[^\p{L}\p{N} ]/gu, '').trim();
   if (!n) return '#';

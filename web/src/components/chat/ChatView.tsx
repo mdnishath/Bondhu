@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { toast } from '../ui/Toast';
+import { confirm } from '../ui/ConfirmDialog';
 import type { Chat, LangOption, Message, Reaction } from '../../lib/types';
 import { displayName } from '../../lib/format';
 import { Avatar } from '../ui/Avatar';
@@ -27,6 +28,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Message[]>([]);
   const [searching, setSearching] = useState(false);
+  const [unreadDividerId, setUnreadDividerId] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [chatLang, setChatLang] = useState('');
   const [msgReload, setMsgReload] = useState(0);
@@ -122,7 +124,12 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
 
   async function clearChat() {
     setShowMenu(false);
-    if (!window.confirm('Clear all messages in this chat from this device?')) return;
+    const ok = await confirm({
+      title: 'Clear chat?',
+      body: 'All messages will be removed from this chat on this device.',
+      confirmLabel: 'Clear', danger: true,
+    });
+    if (!ok) return;
     try { await api.clearChat(accountId, jid); setMessages([]); onChatBump(); } catch { toast('Clear failed'); }
   }
 
@@ -135,7 +142,14 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
       .then((r) => {
         if (!alive) return;
         setLang(r.lang || 'bn');
-        setMessages(r.messages.slice().reverse());
+        const asc = r.messages.slice().reverse();
+        setMessages(asc);
+        // Freeze the unread divider at the first unseen incoming message (the
+        // unread count BEFORE this open's markRead clears it). Stable id, so it
+        // doesn't drift as new live messages arrive.
+        const n = chat?.unreadCount ?? 0;
+        const incoming = n > 0 ? asc.filter((m) => !m.fromMe) : [];
+        setUnreadDividerId(incoming.length ? incoming[Math.max(0, incoming.length - n)].msgId : null);
         if (r.messages.length < 50) setHasMore(false);
         setLoading(false);
         api.markRead(accountId, jid).catch(() => {});
@@ -508,7 +522,16 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
           <div className="text-center text-muted py-10">{sq ? (searching ? 'Searching…' : 'No matching messages') : 'No messages yet. Say hello 👋'}</div>
         ) : (
           shownMessages.map((m) => (
-            <MessageBubble key={m.msgId} msg={m} accountId={accountId} lang={lang} handlers={bubbleHandlers} flash={m.msgId === flashId} />
+            <Fragment key={m.msgId}>
+              {!sq && m.msgId === unreadDividerId && (
+                <div className="flex items-center gap-2 my-3">
+                  <div className="flex-1 h-px bg-teal/30" />
+                  <span className="text-[11px] text-teal font-medium px-2.5 py-0.5 rounded-full bg-teal/10">Unread messages</span>
+                  <div className="flex-1 h-px bg-teal/30" />
+                </div>
+              )}
+              <MessageBubble msg={m} accountId={accountId} lang={lang} handlers={bubbleHandlers} flash={m.msgId === flashId} />
+            </Fragment>
           ))
         )}
       </div>
