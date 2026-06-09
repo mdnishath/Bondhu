@@ -49,6 +49,31 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     bumpTimer.current = setTimeout(() => bumpRef.current(), 700);
   }, []);
 
+  // Outgoing typing presence: tell the contact's WhatsApp we're typing while the
+  // user types, auto-clearing after a short idle so they don't see "typing…" stuck.
+  const typingOn = useRef(false);
+  const typingStop = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emitTyping = useCallback(() => {
+    if (!typingOn.current) {
+      typingOn.current = true;
+      api.presenceTyping(accountId, jid, true).catch(() => {});
+    }
+    if (typingStop.current) clearTimeout(typingStop.current);
+    typingStop.current = setTimeout(() => {
+      typingOn.current = false;
+      api.presenceTyping(accountId, jid, false).catch(() => {});
+    }, 2500);
+  }, [accountId, jid]);
+  const stopTyping = useCallback(() => {
+    if (typingStop.current) clearTimeout(typingStop.current);
+    if (typingOn.current) {
+      typingOn.current = false;
+      api.presenceTyping(accountId, jid, false).catch(() => {});
+    }
+  }, [accountId, jid]);
+  // Clear the typing flag when leaving / switching chats.
+  useEffect(() => () => { stopTyping(); }, [stopTyping]);
+
   /** Scroll to a quoted message and flash it. */
   const jumpToQuoted = useCallback((msgId: string) => {
     const el = document.getElementById('msg-' + msgId);
@@ -273,6 +298,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   }
 
   async function send(text: string) {
+    stopTyping(); // sending — clear the typing presence immediately
     // Reply path: bypass outgoing-translation/voice modes for now; reply is
     // sent as plain text against the quoted message.
     if (replyTo) {
@@ -484,6 +510,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
         accountId={accountId}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
+        onType={emitTyping}
       />
 
       {showProfile && (

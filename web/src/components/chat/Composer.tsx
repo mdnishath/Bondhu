@@ -30,6 +30,7 @@ export function Composer({
   accountId,
   replyTo,
   onCancelReply,
+  onType,
 }: {
   onSend: (text: string) => void;
   /** Mic-recorded transcript: parent auto-sends as AI voice + text (no original audio leaves the device). */
@@ -43,6 +44,7 @@ export function Composer({
   accountId: string;
   replyTo?: Message | null;
   onCancelReply?: () => void;
+  onType?: () => void; // fired on each keystroke so the parent can emit a typing presence
 }) {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
@@ -162,7 +164,7 @@ export function Composer({
         <div className="flex items-center bg-panel2 rounded-xl px-3 py-2">
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); if (e.target.value) onType?.(); }}
             onKeyDown={(e) => {
               // Enter sends; Shift+Enter inserts a newline (multi-line messages).
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }

@@ -492,7 +492,35 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun onDraft(v: String) { _state.value = _state.value.copy(draft = v) }
+    fun onDraft(v: String) {
+        _state.value = _state.value.copy(draft = v)
+        if (v.isNotEmpty()) emitTyping()
+    }
+
+    // Outgoing typing presence: notify the contact's WhatsApp we're typing while the
+    // user types, auto-clearing after a short idle so "typing…" doesn't get stuck.
+    private var typingOn = false
+    private var typingStopJob: kotlinx.coroutines.Job? = null
+    private fun emitTyping() {
+        if (account.isEmpty()) return
+        if (!typingOn) {
+            typingOn = true
+            viewModelScope.launch { runCatching { repo.sendTyping(account, chatId, true) } }
+        }
+        typingStopJob?.cancel()
+        typingStopJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(2500)
+            typingOn = false
+            runCatching { repo.sendTyping(account, chatId, false) }
+        }
+    }
+    private fun stopTyping() {
+        typingStopJob?.cancel()
+        if (typingOn && account.isNotEmpty()) {
+            typingOn = false
+            viewModelScope.launch { runCatching { repo.sendTyping(account, chatId, false) } }
+        }
+    }
 
     fun startRecording(nowMs: Long) {
         try {
@@ -534,6 +562,7 @@ class ChatViewModel @Inject constructor(
     fun send() {
         val text = _state.value.draft.trim()
         if (text.isEmpty() || account.isEmpty()) return
+        stopTyping() // sending — clear the typing presence immediately
 
         // Edit mode: update an existing own message instead of sending a new one.
         val editTarget = _state.value.editing
@@ -619,5 +648,5 @@ class ChatViewModel @Inject constructor(
 
     private fun now() = System.currentTimeMillis() // epoch millis, matches server
 
-    override fun onCleared() { super.onCleared(); audio.stop() }
+    override fun onCleared() { super.onCleared(); audio.stop(); stopTyping() }
 }
