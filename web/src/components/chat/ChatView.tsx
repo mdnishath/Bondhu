@@ -25,6 +25,8 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Message[]>([]);
+  const [searching, setSearching] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [chatLang, setChatLang] = useState('');
   const [msgReload, setMsgReload] = useState(0);
@@ -433,10 +435,23 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
     onJumpToQuoted: jumpToQuoted,
   }), [accountId, jumpToQuoted]);
 
-  const sq = searchQuery.trim().toLowerCase();
-  const shownMessages = sq
-    ? messages.filter((m) => [m.body, m.translated, m.transcript, m.quotedBody].some((t) => !!t && t.toLowerCase().includes(sq)))
-    : messages;
+  // Server-side search across the chat's FULL history (the old client-side filter
+  // only matched the loaded window, silently missing older messages). Debounced.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) { setSearchResults([]); setSearching(false); return; }
+    setSearching(true);
+    const t = setTimeout(() => {
+      api.searchMessages(accountId, jid, q)
+        .then((r) => setSearchResults(r.messages.slice().sort((a, b) => a.timestamp - b.timestamp)))
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery, accountId, jid]);
+
+  const sq = searchQuery.trim();
+  const shownMessages = sq ? searchResults : messages;
 
   return (
     <main className="flex flex-col min-h-0 chat-wall w-full h-full">
@@ -490,7 +505,7 @@ export function ChatView({ accountId, jid, chat, onChatBump, onBack }: { account
         {loading ? (
           <div className="text-center text-muted py-10">Loading…</div>
         ) : shownMessages.length === 0 ? (
-          <div className="text-center text-muted py-10">{sq ? 'No matching messages' : 'No messages yet. Say hello 👋'}</div>
+          <div className="text-center text-muted py-10">{sq ? (searching ? 'Searching…' : 'No matching messages') : 'No messages yet. Say hello 👋'}</div>
         ) : (
           shownMessages.map((m) => (
             <MessageBubble key={m.msgId} msg={m} accountId={accountId} lang={lang} handlers={bubbleHandlers} flash={m.msgId === flashId} />

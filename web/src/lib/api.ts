@@ -69,6 +69,9 @@ export const api = {
     get<{ lang: string; messages: Message[] }>(
       `/api/messages/${enc(jid)}?account=${enc(acc)}&limit=50${before ? `&before=${before}` : ''}`,
     ),
+  // Full-history in-chat search (server-side) — not limited to the loaded window.
+  searchMessages: (acc: string, jid: string, q: string) =>
+    get<{ messages: Message[] }>(`/api/messages/${enc(jid)}/search?account=${enc(acc)}&q=${enc(q)}`),
   send: (acc: string, chatId: string, message: string, translateTo?: string) =>
     post<{ success: boolean; msgId: string | null; sentText?: string; original?: string }>(
       `/api/send?account=${enc(acc)}`,
