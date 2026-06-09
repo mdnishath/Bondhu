@@ -74,18 +74,27 @@ class ChatViewModel @Inject constructor(
     private var account: String = ""
     private var chatId: String = ""
 
+    private var bound = false
+
     fun bind(chatId: String) {
+        // Re-entrancy guard: ChatScreen calls bind() from a LaunchedEffect, which
+        // re-fires on recomposition / config-change. Without this, each call would
+        // launch a fresh set of socket.events / socket.connects collectors, so one
+        // incoming message would run onEvent + markRead N times.
+        if (bound) return
         this.chatId = chatId
-        // Seed instantly from the app-scoped cache so a re-opened chat shows its
-        // messages with no spinner; the background load() then refreshes them.
-        cache.get(chatId)?.let { _state.value = _state.value.copy(messages = it, loading = false) }
         // Active account from the in-memory cache — NO DataStore read / no main-thread
         // block on the critical chat-open path (a runBlocking DataStore read here was
         // freezing the UI and leaving the loader stuck on first open).
         account = prefs.activeAccountBlocking() ?: run {
             _state.value = _state.value.copy(loading = false, error = "No active account")
-            return
+            return // bound stays false so a later bind can retry once an account exists
         }
+        bound = true
+        // Seed instantly from the app-scoped cache (keyed by account + chat so a
+        // switched account can't surface another account's messages for this jid);
+        // the background load() then refreshes them.
+        cache.get(account, chatId)?.let { _state.value = _state.value.copy(messages = it, loading = false) }
         load()
         viewModelScope.launch {
             loadComposerPrefs()
@@ -238,7 +247,7 @@ class ChatViewModel @Inject constructor(
             cur + m
         }
         val sorted = next.sortedBy { it.timestamp }
-        cache.put(chatId, sorted)
+        cache.put(account, chatId, sorted)
         _state.value = _state.value.copy(messages = sorted)
     }
 
@@ -246,7 +255,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val msgs = repo.messages(account, chatId, limit = 30)
-                cache.put(chatId, msgs)
+                cache.put(account, chatId, msgs)
                 _state.value = _state.value.copy(loading = false, messages = msgs, error = null, hasMore = msgs.size >= 30)
             } catch (e: Exception) { _state.value = _state.value.copy(loading = false, error = e.message ?: "Couldn't load messages") }
         }
@@ -266,7 +275,7 @@ class ChatViewModel @Inject constructor(
                 val have = _state.value.messages.map { it.id }.toSet()
                 val fresh = older.filterNot { it.id in have }
                 val merged = (fresh + _state.value.messages).sortedBy { it.timestamp }
-                cache.put(chatId, merged)
+                cache.put(account, chatId, merged)
                 _state.value = _state.value.copy(messages = merged, loadingOlder = false, hasMore = older.size >= 30)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(loadingOlder = false)
@@ -366,7 +375,7 @@ class ChatViewModel @Inject constructor(
     fun clearChat() {
         viewModelScope.launch {
             runCatching { repo.clearChat(account, chatId) }
-            cache.clear(chatId)
+            cache.clear(account, chatId)
             _state.value = _state.value.copy(messages = emptyList())
         }
     }
@@ -395,7 +404,7 @@ class ChatViewModel @Inject constructor(
         if (ids.isEmpty()) return
         val idSet = ids.toSet()
         _state.value = _state.value.copy(messages = _state.value.messages.filterNot { it.id in idSet })
-        cache.put(chatId, _state.value.messages)
+        cache.put(account, chatId, _state.value.messages)
         viewModelScope.launch { ids.forEach { runCatching { repo.deleteForMe(account, it) } } }
     }
 
@@ -564,7 +573,7 @@ class ChatViewModel @Inject constructor(
         val merged = if (rest.any { it.id == rid }) rest
         else rest + Message(rid, chatId, true, "text", body, now(), AckTick.SENT, null, null, null)
         val sorted = merged.sortedBy { it.timestamp }
-        cache.put(chatId, sorted)
+        cache.put(account, chatId, sorted)
         _state.value = _state.value.copy(messages = sorted)
     }
 
