@@ -13,11 +13,24 @@ import com.bondhu.app.ui.auth.AuthScreen
 import com.bondhu.app.ui.settings.SettingsScreen
 
 @Composable
-fun BondhuNavHost(gateVm: GateViewModel = hiltViewModel()) {
+fun BondhuNavHost(
+    gateVm: GateViewModel = hiltViewModel(),
+    pendingChatJid: String? = null,
+    pendingChatName: String? = null,
+    onChatConsumed: () -> Unit = {},
+) {
     val nav = rememberNavController()
     val start by gateVm.start.collectAsState()
 
     if (start == null) return
+
+    // Deep-link from a tapped notification: jump straight into the chat.
+    LaunchedEffect(pendingChatJid, start) {
+        if (pendingChatJid != null && start == Routes.CHAT_LIST) {
+            nav.navigate(Routes.chat(pendingChatJid, pendingChatName ?: ""))
+            onChatConsumed()
+        }
+    }
 
     NavHost(navController = nav, startDestination = start!!) {
         composable(Routes.AUTH) {

@@ -3,6 +3,7 @@ package com.bondhu.app.data.fcm
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.bondhu.app.R
@@ -31,18 +32,22 @@ class BondhuMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title ?: message.data["title"] ?: "Bondhu"
         val body = message.notification?.body ?: message.data["preview"] ?: "New message"
-        showNotification(title, body)
+        showNotification(title, body, message.data["chatJid"])
     }
 
-    private fun showNotification(title: String, body: String) {
+    private fun showNotification(title: String, body: String, chatJid: String?) {
         val nm = getSystemService(NotificationManager::class.java)
         val channelId = "messages"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(NotificationChannel(channelId, "Messages", NotificationManager.IMPORTANCE_HIGH))
         }
-        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        // Carry the chat id so tapping the notification opens THAT chat (not the list).
+        val launch = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            if (chatJid != null) { putExtra("chatJid", chatJid); putExtra("chatName", title) }
+        }
         val pi = PendingIntent.getActivity(
-            this, 0, launch,
+            this, chatJid?.hashCode() ?: 0, launch,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notif = NotificationCompat.Builder(this, channelId)

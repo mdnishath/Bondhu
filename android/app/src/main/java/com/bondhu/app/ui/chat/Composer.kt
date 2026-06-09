@@ -71,6 +71,8 @@ fun Composer(
     onCancelReply: () -> Unit = {},
     editing: Message? = null,
     onCancelEdit: () -> Unit = {},
+    voiceLang: String = "bn-IN",
+    onSetVoiceLang: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -136,6 +138,32 @@ fun Composer(
                 onSendDocument(b64, name, mime)
             }
         }
+    }
+
+    // On-device speech-to-text (same engine as Gboard voice typing) — accurate
+    // Bangla recognition, returned straight into the input for review/edit.
+    val speechLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!spoken.isNullOrBlank()) {
+                onDraft(if (draft.isBlank()) spoken else "${draft.trimEnd()} $spoken")
+            }
+        }
+    }
+    fun startSpeech() {
+        val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            // Recognise in the chosen voice language (Google STT) — verbatim, no
+            // translation. Bangla → Bangla script; English → English. User-controlled.
+            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, voiceLang)
+            putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, voiceLang)
+            putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, if (voiceLang.startsWith("bn")) "বলুন…" else "Speak…")
+        }
+        try { speechLauncher.launch(intent) } catch (_: Exception) { /* no recognizer available */ }
     }
 
     fun requestMic() {
@@ -480,9 +508,26 @@ fun Composer(
                                 }
                             }
 
-                            // Mic button — ghost, TextMut
+                            // Voice-input language toggle (বাং ⇄ EN) for the mic — pick
+                            // the language you'll speak so STT is 100% accurate for it.
+                            val isBn = voiceLang.startsWith("bn")
+                            Surface(
+                                color = Tokens.Field,
+                                shape = PillShape,
+                                modifier = Modifier.clickable { onSetVoiceLang(if (isBn) "en-US" else "bn-IN") },
+                            ) {
+                                Text(
+                                    if (isBn) "বাং" else "EN",
+                                    color = Tokens.Primary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                )
+                            }
+
+                            // Mic button — on-device speech-to-text into the input
                             IconButton(
-                                onClick = { requestMic() },
+                                onClick = { startSpeech() },
                                 modifier = Modifier.size(44.dp),
                             ) {
                                 Icon(

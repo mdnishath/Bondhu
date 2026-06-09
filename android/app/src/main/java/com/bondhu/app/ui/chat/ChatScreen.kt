@@ -272,6 +272,8 @@ fun ChatScreen(chatId: String, title: String, onBack: () -> Unit, vm: ChatViewMo
                 onCancelReply = vm::clearReplyTo,
                 editing = s.editing,
                 onCancelEdit = vm::cancelEdit,
+                voiceLang = s.voiceLang,
+                onSetVoiceLang = vm::setVoiceLang,
             )
         },
     ) { pad ->

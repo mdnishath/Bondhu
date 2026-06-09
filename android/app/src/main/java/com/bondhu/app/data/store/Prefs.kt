@@ -26,6 +26,7 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
         val BASE_URL = stringPreferencesKey("base_url")
         val THEME = stringPreferencesKey("theme")
         val ONBOARDED = booleanPreferencesKey("onboarded")
+        val VOICE_LANG = stringPreferencesKey("voice_lang")
     }
 
     val jwt: Flow<String?> = ds.data.map { it[Keys.JWT] }
@@ -58,6 +59,11 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
     @Volatile private var cOnboarded: Boolean = runBlocking { ds.data.first()[Keys.ONBOARDED] } ?: false
     fun onboardedBlocking(): Boolean = cOnboarded
     suspend fun setOnboarded() { cOnboarded = true; ds.edit { it[Keys.ONBOARDED] = true } }
+
+    // Voice-input recognizer language (BCP-47, e.g. "bn-IN" / "en-US"). Default Bangla.
+    @Volatile private var cVoiceLang: String = runBlocking { ds.data.first()[Keys.VOICE_LANG] } ?: "bn-IN"
+    fun voiceLangBlocking(): String = cVoiceLang
+    suspend fun setVoiceLang(v: String) { cVoiceLang = v; ds.edit { it[Keys.VOICE_LANG] = v } }
 
     // per-chat composer prefs
     fun outLangKey(jid: String) = androidx.datastore.preferences.core.stringPreferencesKey("out_lang_${jid}")

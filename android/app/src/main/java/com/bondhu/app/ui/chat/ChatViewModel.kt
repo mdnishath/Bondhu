@@ -31,6 +31,7 @@ data class ChatUiState(
     val error: String? = null,
     val sendMode: String = "text",
     val outLang: String? = null,
+    val voiceLang: String = "bn-IN",
     val supported: List<LangOption> = emptyList(),
     val recording: Boolean = false,
     val recordSecs: Int = 0,
@@ -107,7 +108,7 @@ class ChatViewModel @Inject constructor(
     private suspend fun loadComposerPrefs() {
         val mode = prefs.getSendMode(chatId)
         val outLang = prefs.getOutLang(chatId)
-        _state.value = _state.value.copy(sendMode = mode, outLang = outLang)
+        _state.value = _state.value.copy(sendMode = mode, outLang = outLang, voiceLang = prefs.voiceLangBlocking())
         runCatching {
             val resp = lang.getGlobal()
             _state.value = _state.value.copy(supported = resp.supported)
@@ -126,6 +127,11 @@ class ChatViewModel @Inject constructor(
             prefs.setOutLang(chatId, code)
             _state.value = _state.value.copy(outLang = code)
         }
+    }
+
+    fun setVoiceLang(code: String) {
+        _state.value = _state.value.copy(voiceLang = code)
+        viewModelScope.launch { prefs.setVoiceLang(code) }
     }
 
     fun ensureLanguages() {

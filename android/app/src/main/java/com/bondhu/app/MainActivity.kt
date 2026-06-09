@@ -1,6 +1,7 @@
 package com.bondhu.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,6 +43,20 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var prefs: Prefs
     @Inject lateinit var api: BondhuApi
 
+    // Chat to open from a tapped notification (jid to name).
+    private val pendingChat = mutableStateOf<Pair<String, String?>?>(null)
+
+    private fun chatFromIntent(i: Intent?): Pair<String, String?>? {
+        val jid = i?.getStringExtra("chatJid") ?: return null
+        return jid to i.getStringExtra("chatName")
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        chatFromIntent(intent)?.let { pendingChat.value = it }
+    }
+
     override fun onStart() {
         super.onStart()
         // Re-establish the realtime socket when the app returns to the foreground.
@@ -60,11 +76,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val initialDark = when (prefs.themeBlocking()) { "light" -> false; "dark" -> true; else -> systemDark() }
         Tokens.palette = if (initialDark) DarkColors else LightColors
+        pendingChat.value = chatFromIntent(intent)
         enableEdgeToEdge()
         setContent {
             val themeVm: ThemeViewModel = hiltViewModel()
             val mode by themeVm.theme.collectAsStateWithLifecycle()
             val dark = when (mode) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
+            val pc by pendingChat
 
             // Ask for notification permission once (Android 13+).
             val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -78,7 +96,11 @@ class MainActivity : ComponentActivity() {
 
             BondhuTheme(darkTheme = dark) {
                 Surface(Modifier.fillMaxSize(), color = Tokens.AppBg) {
-                    BondhuNavHost()
+                    BondhuNavHost(
+                        pendingChatJid = pc?.first,
+                        pendingChatName = pc?.second,
+                        onChatConsumed = { pendingChat.value = null },
+                    )
                 }
             }
         }
