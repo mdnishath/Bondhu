@@ -29,5 +29,10 @@ export function authRoutes(ctx: AppContext): Router {
     res.json({ id: user.id, email: user.email, name: user.name });
   });
 
+  r.post('/logout', requireAuth(ctx), (req: AuthedRequest, res) => {
+    ctx.users.bumpTokenVersion(req.userId!);
+    res.json({ ok: true });
+  });
+
   return r;
 }
