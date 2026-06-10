@@ -13,6 +13,9 @@ interface BondhuApi {
     @GET("api/auth/me")
     suspend fun me(): UserDto
 
+    @POST("api/auth/logout")
+    suspend fun logout()
+
     @GET("api/accounts")
     suspend fun accounts(): AccountsResponse
 

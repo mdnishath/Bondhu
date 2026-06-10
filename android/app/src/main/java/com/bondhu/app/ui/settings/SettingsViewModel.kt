@@ -35,6 +35,7 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val settingsRepo: SettingsRepository,
     private val langRepo: LanguageRepository,
+    private val authRepo: com.bondhu.app.data.repository.AuthRepository,
     private val prefs: Prefs,
     private val socket: SocketManager,
     private val updateManager: com.bondhu.app.data.update.UpdateManager,
@@ -163,8 +164,9 @@ class SettingsViewModel @Inject constructor(
 
     fun logout(onDone: () -> Unit) {
         viewModelScope.launch {
-            prefs.setJwt(null)
-            prefs.setActiveAccount(null)
+            // Revokes the server token (best-effort, while the JWT is still present
+            // so the AuthInterceptor can attach it) then clears local JWT + account.
+            authRepo.logout()
             socket.disconnect()
             onDone()
         }
