@@ -220,6 +220,7 @@ fun ChatListScreen(
                             account = s.account,
                             vm = vm,
                             onClick = { onOpenChat(row.jid, row.title, row.unread) },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -276,11 +277,11 @@ private fun OnboardBullet(emoji: String, text: String) {
 private val CardShape = RoundedCornerShape(Radii.md)
 
 @Composable
-private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, onClick: () -> Unit) {
+private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         color = Tokens.Surface,
         shape = CardShape,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 5.dp)
             .border(1.dp, Tokens.Divider, CardShape),
