@@ -5,6 +5,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.bondhu.app.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -29,20 +31,43 @@ class Prefs @Inject constructor(@ApplicationContext private val context: Context
         val VOICE_LANG = stringPreferencesKey("voice_lang")
     }
 
-    val jwt: Flow<String?> = ds.data.map { it[Keys.JWT] }
     val activeAccount: Flow<String?> = ds.data.map { it[Keys.ACTIVE_ACCOUNT] }
     // Server URL is hardcoded (BuildConfig.BASE_URL) and not user-configurable.
     // Always emit it, ignoring any value persisted by older builds.
     val baseUrl: Flow<String> = ds.data.map { BuildConfig.BASE_URL }
 
-    // In-memory cache so the OkHttp interceptors NEVER block on DataStore per
-    // request (runBlocking on the OkHttp threads was a hang/contention source).
-    // Seeded once at construction; kept fresh by every setter below.
-    @Volatile private var cJwt: String? = runBlocking { jwt.first() }
+    // The JWT is the only sensitive value, so it lives in EncryptedSharedPreferences
+    // (AES256), NOT plaintext DataStore. Everything else stays in DataStore.
+    private val secure by lazy {
+        val key = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        EncryptedSharedPreferences.create(
+            context, "bondhu_secure", key,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+    }
+
+    // In-memory cache so the OkHttp interceptors NEVER block on disk per request.
+    // Seeded once at construction; kept fresh by every setter below. On first run
+    // after the upgrade, migrate any legacy plaintext-DataStore token into secure.
+    @Volatile private var cJwt: String? = run {
+        val legacy = runBlocking { ds.data.first()[Keys.JWT] }
+        if (legacy != null && secure.getString("jwt", null) == null) {
+            secure.edit().putString("jwt", legacy).apply()
+            runBlocking { ds.edit { it.remove(Keys.JWT) } }
+        }
+        secure.getString("jwt", null)
+    }
     @Volatile private var cAccount: String? = runBlocking { activeAccount.first() }
 
-    suspend fun setJwt(v: String?) { cJwt = v; ds.edit { p -> if (v == null) p.remove(Keys.JWT) else p[Keys.JWT] = v } }
+    suspend fun setJwt(v: String?) {
+        cJwt = v
+        secure.edit().apply { if (v == null) remove("jwt") else putString("jwt", v) }.apply()
+    }
     suspend fun setActiveAccount(v: String?) { cAccount = v; ds.edit { p -> if (v == null) p.remove(Keys.ACTIVE_ACCOUNT) else p[Keys.ACTIVE_ACCOUNT] = v } }
+
+    // Suspend read of the cached JWT (replaces the old `jwt` Flow consumer).
+    suspend fun getJwt(): String? = cJwt
 
     // Non-blocking reads for OkHttp interceptors (return the cached value).
     fun jwtBlocking(): String? = cJwt

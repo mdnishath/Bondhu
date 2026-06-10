@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import type { AppContext } from '../app-context.js';
@@ -20,6 +21,11 @@ const AI_PATHS = ['/api/transcribe', '/api/tts', '/api/send-voice', '/api/retran
 
 export function createApp(ctx: AppContext): Express {
   const app = express();
+  app.use(helmet({
+    contentSecurityPolicy: false,                                   // SPA-tuned CSP is future work; off avoids breaking inline styles/scripts
+    crossOriginResourcePolicy: { policy: 'cross-origin' },          // media loaded cross-origin by Coil/ExoPlayer
+    crossOriginEmbedderPolicy: false,
+  }));
   app.set('trust proxy', 1); // behind nginx — use X-Forwarded-For for client IP
 
   // CORS: allowlist browser origins; native apps / curl (no Origin) always pass.
@@ -41,6 +47,8 @@ export function createApp(ctx: AppContext): Express {
   app.use('/api/auth', rateLimit({ windowMs: 15 * 60_000, max: 30, bucket: 'auth' }));
   app.use(AI_PATHS, rateLimit({ windowMs: 60_000, max: 30, bucket: 'ai' }));
 
+  // Stricter, separate bucket on the brute-force-sensitive login route.
+  app.use('/api/auth/login', rateLimit({ windowMs: 60_000, max: 10, bucket: 'login' }));
   app.use('/api/auth', authRoutes(ctx));
   app.use('/api', whatsappRoutes(ctx));
   app.use('/api', aiRoutes(ctx));

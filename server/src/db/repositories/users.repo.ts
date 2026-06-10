@@ -7,6 +7,7 @@ export interface User {
   passwordHash: string;
   name: string | null;
   createdAt: number;
+  tokenVersion: number;
 }
 
 export class UsersRepo {
@@ -19,10 +20,11 @@ export class UsersRepo {
       passwordHash: input.passwordHash,
       name: input.name ?? null,
       createdAt: Date.now(),
+      tokenVersion: 0,
     };
     this.db
-      .prepare('INSERT INTO users (id,email,password_hash,name,created_at) VALUES (?,?,?,?,?)')
-      .run(user.id, user.email, user.passwordHash, user.name, user.createdAt);
+      .prepare('INSERT INTO users (id,email,password_hash,name,created_at,token_version) VALUES (?,?,?,?,?,?)')
+      .run(user.id, user.email, user.passwordHash, user.name, user.createdAt, user.tokenVersion);
     return user;
   }
 
@@ -36,7 +38,11 @@ export class UsersRepo {
     return r ? this.map(r) : undefined;
   }
 
+  bumpTokenVersion(id: string): void {
+    this.db.prepare('UPDATE users SET token_version = token_version + 1 WHERE id=?').run(id);
+  }
+
   private map(r: any): User {
-    return { id: r.id, email: r.email, passwordHash: r.password_hash, name: r.name, createdAt: r.created_at };
+    return { id: r.id, email: r.email, passwordHash: r.password_hash, name: r.name, createdAt: r.created_at, tokenVersion: r.token_version ?? 0 };
   }
 }

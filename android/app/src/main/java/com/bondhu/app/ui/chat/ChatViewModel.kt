@@ -233,10 +233,18 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /** Insert one message keeping ascending-by-timestamp order. Fast-paths the common
+     *  case (new message is the newest) to a plain append, avoiding an O(n log n) sort. */
+    private fun insertSorted(list: List<Message>, m: Message): List<Message> {
+        val last = list.lastOrNull()
+        return if (last == null || m.timestamp >= last.timestamp) list + m
+        else (list + m).sortedBy { it.timestamp }
+    }
+
     private fun upsert(m: Message) {
         val cur = _state.value.messages
         val idx = cur.indexOfFirst { it.id == m.id }
-        val next = if (idx >= 0) {
+        val sorted = if (idx >= 0) {
             val existing = cur[idx]
             // Preserve non-null transcript/translated from existing when incoming has null
             // (guards against socket echo carrying nulls overwriting optimistic values)
@@ -245,11 +253,13 @@ class ChatViewModel @Inject constructor(
                 translated = m.translated ?: existing.translated,
                 localImage = m.localImage ?: existing.localImage,
             )
+            // Replace in place: the merged item keeps the same timestamp, so the list
+            // stays sorted — no re-sort needed.
             cur.toMutableList().also { it[idx] = merged }
         } else {
-            cur + m
+            // New message: fast-path append when it's the newest, else order-insert.
+            insertSorted(cur, m)
         }
-        val sorted = next.sortedBy { it.timestamp }
         cache.put(account, chatId, sorted)
         _state.value = _state.value.copy(messages = sorted)
     }
@@ -635,9 +645,9 @@ class ChatViewModel @Inject constructor(
     private fun confirmSent(tmpId: String, realId: String?, body: String) {
         val rid = realId ?: tmpId
         val rest = _state.value.messages.filterNot { it.id == tmpId }
-        val merged = if (rest.any { it.id == rid }) rest
-        else rest + Message(rid, chatId, true, "text", body, now(), AckTick.SENT, null, null, null)
-        val sorted = merged.sortedBy { it.timestamp }
+        // Adding a single confirmed message — fast-path append when it's the newest.
+        val sorted = if (rest.any { it.id == rid }) rest
+        else insertSorted(rest, Message(rid, chatId, true, "text", body, now(), AckTick.SENT, null, null, null))
         cache.put(account, chatId, sorted)
         _state.value = _state.value.copy(messages = sorted)
     }

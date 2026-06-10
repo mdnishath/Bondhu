@@ -21,9 +21,10 @@ import com.bondhu.app.data.model.ApiKeyDto
 import com.bondhu.app.ui.chat.LanguageSheet
 import com.bondhu.app.ui.common.BondhuButton
 import com.bondhu.app.ui.common.BondhuField
+import com.bondhu.app.ui.theme.Radii
 import com.bondhu.app.ui.theme.Tokens
 
-private val CardShape = RoundedCornerShape(18.dp)
+private val CardShape = RoundedCornerShape(Radii.md)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,10 +101,11 @@ fun SettingsScreen(
             GlassCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "API keys",
-                        color = Tokens.Primary,
+                        "API keys".uppercase(),
+                        color = Tokens.TextMut,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.5.sp,
                     )
                     if (s.keys.isEmpty()) {
                         Text("No keys added yet.", color = Tokens.TextMut, fontSize = 13.sp)
@@ -151,10 +153,11 @@ fun SettingsScreen(
             GlassCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Default language",
-                        color = Tokens.Primary,
+                        "Default language".uppercase(),
+                        color = Tokens.TextMut,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.5.sp,
                     )
                     val currentLang = s.supported.find { it.code == s.globalLang }
                     val display = if (currentLang != null) "${currentLang.flag}  ${currentLang.name}" else s.globalLang.ifBlank { "—" }
@@ -174,7 +177,7 @@ fun SettingsScreen(
             // --- Updates ---
             GlassCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Updates", color = Tokens.Primary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text("Updates".uppercase(), color = Tokens.TextMut, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 0.5.sp)
                     Text("Current version: ${s.currentVersion}", color = Tokens.TextMut, fontSize = 13.sp)
                     val upd = s.update
                     if (upd != null) {
@@ -198,7 +201,7 @@ fun SettingsScreen(
             // --- Appearance ---
             GlassCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Appearance", color = Tokens.Primary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text("Appearance".uppercase(), color = Tokens.TextMut, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 0.5.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("system" to "System", "light" to "Light", "dark" to "Dark").forEach { (mode, label) ->
                             FilterChip(
@@ -221,10 +224,11 @@ fun SettingsScreen(
             GlassCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Account",
-                        color = Tokens.Primary,
+                        "Account".uppercase(),
+                        color = Tokens.TextMut,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.5.sp,
                     )
                     OutlinedButton(
                         onClick = { vm.logout(onLoggedOut) },

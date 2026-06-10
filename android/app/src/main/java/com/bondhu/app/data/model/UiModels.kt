@@ -1,7 +1,10 @@
 package com.bondhu.app.data.model
 
+import androidx.compose.runtime.Immutable
+
 enum class AckTick { NONE, SENT, DELIVERED, READ }
 
+@Immutable
 data class Account(
     val id: String,
     val label: String,
@@ -10,6 +13,7 @@ data class Account(
     val qr: String?,
 )
 
+@Immutable
 data class ChatRow(
     val jid: String,
     val title: String,
@@ -18,8 +22,10 @@ data class ChatRow(
     val unread: Int,
 )
 
+@Immutable
 data class ReactionUi(val emoji: String, val fromMe: Boolean)
 
+@Immutable
 data class Message(
     val id: String,
     val chatJid: String,

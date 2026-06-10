@@ -6,13 +6,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -21,20 +29,26 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bondhu.app.ui.theme.Radii
 import com.bondhu.app.ui.theme.Tokens
 
 private val PillShape = RoundedCornerShape(50)
 
 @Composable
-fun BondhuButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun BondhuButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, loading: Boolean = false) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, label = "btnScale")
     Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.height(52.dp),
-        shape = PillShape,
-        colors = ButtonDefaults.buttonColors(containerColor = Tokens.Primary, contentColor = Tokens.OnPrimary),
+        onClick = onClick, enabled = enabled && !loading, interactionSource = interaction,
+        modifier = modifier.height(52.dp).scale(scale), shape = PillShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Tokens.Primary, contentColor = Tokens.OnPrimary,
+            disabledContainerColor = Tokens.Field, disabledContentColor = Tokens.TextFaint,
+        ),
     ) {
-        Text(text, fontWeight = FontWeight.SemiBold)
+        if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Tokens.OnPrimary)
+        else Text(text, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -42,19 +56,21 @@ fun BondhuButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
 fun BondhuField(
     value: String, onValueChange: (String) -> Unit, label: String,
     modifier: Modifier = Modifier, isPassword: Boolean = false, keyboardType: KeyboardType = KeyboardType.Text,
+    isError: Boolean = false, supportingText: String? = null,
 ) {
     OutlinedTextField(
-        value = value, onValueChange = onValueChange, label = { Text(label) },
-        singleLine = true, modifier = modifier.fillMaxWidth(),
+        value = value, onValueChange = onValueChange, label = { Text(label) }, singleLine = true,
+        modifier = modifier.fillMaxWidth(), isError = isError,
+        supportingText = supportingText?.let { { Text(it, color = Tokens.Danger) } },
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Tokens.Field, unfocusedContainerColor = Tokens.Field,
             focusedBorderColor = Tokens.Primary, unfocusedBorderColor = Color.Transparent,
-            focusedLabelColor = Tokens.Primary, unfocusedLabelColor = Tokens.TextMut,
-            cursorColor = Tokens.Primary,
+            errorBorderColor = Tokens.Danger, errorContainerColor = Tokens.Field,
+            focusedLabelColor = Tokens.Primary, unfocusedLabelColor = Tokens.TextMut, cursorColor = Tokens.Primary,
         ),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(Radii.sm),
     )
 }
 
@@ -97,14 +113,12 @@ fun StatusChip(state: ConnUi) {
 }
 
 @Composable
-fun EmptyState(text: String, modifier: Modifier = Modifier, cta: String? = null, onCta: (() -> Unit)? = null) {
+fun EmptyState(text: String, modifier: Modifier = Modifier, icon: ImageVector? = Icons.Outlined.ChatBubbleOutline, cta: String? = null, onCta: (() -> Unit)? = null) {
     Box(modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (icon != null) { Icon(icon, null, tint = Tokens.TextFaint.copy(alpha = 0.5f), modifier = Modifier.size(72.dp)); Spacer(Modifier.height(16.dp)) }
             Text(text, color = Tokens.TextMut, textAlign = TextAlign.Center)
-            if (cta != null && onCta != null) {
-                Spacer(Modifier.height(16.dp))
-                BondhuButton(cta, onCta)
-            }
+            if (cta != null && onCta != null) { Spacer(Modifier.height(16.dp)); BondhuButton(cta, onCta) }
         }
     }
 }

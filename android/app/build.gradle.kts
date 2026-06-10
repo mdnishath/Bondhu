@@ -15,8 +15,8 @@ android {
         applicationId = "com.bondhu.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 34
-        versionName = "1.11.0"
+        versionCode = 35
+        versionName = "1.12.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.socketio) { exclude(group = "org.json", module = "json") }
     implementation(libs.coil.compose)
     implementation(libs.datastore.preferences)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation(libs.zxing.core)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.common)

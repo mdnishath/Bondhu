@@ -21,7 +21,7 @@ class GateViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val jwt = prefs.jwt.first()
+            val jwt = prefs.getJwt()
             val account = prefs.activeAccount.first()
             _start.value = when {
                 jwt.isNullOrEmpty() -> Routes.AUTH

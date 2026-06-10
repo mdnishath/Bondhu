@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
+import androidx.compose.runtime.Immutable
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -14,6 +15,7 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Immutable
 data class Playback(val id: String? = null, val isPlaying: Boolean = false, val positionMs: Long = 0, val durationMs: Long = 0, val speed: Float = 1f)
 
 @Singleton
@@ -28,7 +30,7 @@ class AudioPlayer @Inject constructor(@ApplicationContext private val context: C
         override fun run() {
             val p = player ?: return
             _state.value = Playback(currentId, p.isPlaying, p.currentPosition.coerceAtLeast(0), p.duration.coerceAtLeast(0), speed)
-            if (p.isPlaying) main.postDelayed(this, 250)
+            if (p.isPlaying) main.postDelayed(this, 400)
         }
     }
 

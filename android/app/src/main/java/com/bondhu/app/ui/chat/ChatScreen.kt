@@ -342,6 +342,7 @@ fun ChatScreen(chatId: String, title: String, unreadAtOpen: Int = 0, onBack: () 
                     contentPadding = PaddingValues(vertical = 8.dp),
                 ) {
                     itemsIndexed(shown, key = { _, m -> m.id }) { i, msg ->
+                      Column(Modifier.animateItem()) {
                         if (i == 0 || dayKey(shown[i - 1].timestamp) != dayKey(msg.timestamp)) {
                             DateSeparator(dayLabel(msg.timestamp))
                         }
@@ -388,6 +389,7 @@ fun ChatScreen(chatId: String, title: String, unreadAtOpen: Int = 0, onBack: () 
                             onDownload = { downloadFile(msg); scope.launch { snackbarHost.showSnackbar("Downloading… check notifications") } },
                         )
                         }
+                      }
                     }
                 }
                 if (!atBottom) {

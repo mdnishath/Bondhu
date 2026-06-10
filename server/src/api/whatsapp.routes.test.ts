@@ -8,7 +8,7 @@ async function authed() {
   ctx.manager.start = vi.fn(async () => {}) as any;
   ctx.manager.sendText = vi.fn(async () => 'sent-1') as any;
   const app = createApp(ctx);
-  const reg = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'secret1' });
+  const reg = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'secret12' });
   return { ctx, app, token: reg.body.token, userId: reg.body.user.id };
 }
 
@@ -64,9 +64,9 @@ test('react, reply, delete, forward, send-image, send-recorded routes call the m
 
 test('rejects access to another user account', async () => {
   const { app } = await authed();
-  const other = await request(app).post('/api/auth/register').send({ email: 'z@z.com', password: 'secret1' });
+  const other = await request(app).post('/api/auth/register').send({ email: 'z@z.com', password: 'secret12' });
   const acc = await request(app).post('/api/accounts').set('Authorization', `Bearer ${other.body.token}`).send({});
-  const first = await request(app).post('/api/auth/login').send({ email: 'a@b.com', password: 'secret1' });
+  const first = await request(app).post('/api/auth/login').send({ email: 'a@b.com', password: 'secret12' });
   const res = await request(app).get(`/api/chats?account=${acc.body.accountId}`).set('Authorization', `Bearer ${first.body.token}`);
   expect(res.status).toBe(403);
 });

@@ -36,6 +36,7 @@ import com.bondhu.app.ui.common.BondhuButton
 import com.bondhu.app.ui.common.BondhuField
 import com.bondhu.app.ui.common.EmptyState
 import com.bondhu.app.ui.common.RemoteAvatar
+import com.bondhu.app.ui.theme.Radii
 import com.bondhu.app.ui.theme.Tokens
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -219,6 +220,7 @@ fun ChatListScreen(
                             account = s.account,
                             vm = vm,
                             onClick = { onOpenChat(row.jid, row.title, row.unread) },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -272,14 +274,14 @@ private fun OnboardBullet(emoji: String, text: String) {
     }
 }
 
-private val CardShape = RoundedCornerShape(18.dp)
+private val CardShape = RoundedCornerShape(Radii.md)
 
 @Composable
-private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, onClick: () -> Unit) {
+private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         color = Tokens.Surface,
         shape = CardShape,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 5.dp)
             .border(1.dp, Tokens.Divider, CardShape),
@@ -293,17 +295,18 @@ private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, o
         ) {
             RemoteAvatar(name = row.title, url = vm.avatarUrl(row.jid))
             Spacer(Modifier.width(14.dp))
+            val unread = row.unread > 0
             Column(Modifier.weight(1f)) {
                 Text(
                     row.title,
                     color = Tokens.TextMain,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = if (unread) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     row.preview,
-                    color = Tokens.TextMut,
+                    color = if (unread) Tokens.TextMain else Tokens.TextMut,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
