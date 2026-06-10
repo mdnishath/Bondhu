@@ -135,7 +135,6 @@ fun ChatListScreen(
                         titleContentColor = Tokens.TextMain,
                     ),
                 )
-                HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
                 if (!connected) com.bondhu.app.ui.common.ReconnectingBanner()
                 s.update?.let { u ->
                     Surface(color = Tokens.Primary.copy(alpha = 0.16f), modifier = Modifier.fillMaxWidth()) {
@@ -153,11 +152,14 @@ fun ChatListScreen(
                         }
                     }
                 }
-                // Always-visible search bar (web-style), matched to the app's glassy field.
+                // Always-visible search bar — part of the header band (same Header bg as
+                // the app bar) so the header reads as one cohesive block with balanced
+                // top/bottom spacing; a single divider sits under the whole header.
+                Surface(color = Tokens.Header, modifier = Modifier.fillMaxWidth()) {
                 Surface(
                     color = Tokens.Field,
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
                 ) {
                     Row(
                         modifier = Modifier.padding(start = 12.dp, end = 4.dp),
@@ -185,6 +187,8 @@ fun ChatListScreen(
                         }
                     }
                 }
+                }
+                HorizontalDivider(color = Tokens.Divider, thickness = 1.dp)
             }
         },
         floatingActionButton = {
