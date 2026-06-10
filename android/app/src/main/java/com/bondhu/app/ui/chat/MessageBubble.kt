@@ -1,5 +1,9 @@
 package com.bondhu.app.ui.chat
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bondhu.app.data.model.AckTick
@@ -88,11 +93,14 @@ fun MessageBubble(
     val bg = if (m.fromMe) Tokens.OutBubble else Tokens.InBubble
     val shape = if (m.fromMe) OutBubbleShape else InBubbleShape
     var showFullTime by remember { mutableStateOf(false) }
+    val popScale by animateFloatAsState(if (m.pending) 0.94f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), label = "popIn")
+    val selBg by animateColorAsState(if (selected) Tokens.Primary.copy(alpha = 0.12f) else androidx.compose.ui.graphics.Color.Transparent, label = "selBg")
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (selected) Tokens.Primary.copy(alpha = 0.12f) else androidx.compose.ui.graphics.Color.Transparent)
+            .graphicsLayer { scaleX = popScale; scaleY = popScale }
+            .background(selBg)
             .padding(horizontal = 12.dp, vertical = 4.dp),
         horizontalAlignment = align,
     ) {
