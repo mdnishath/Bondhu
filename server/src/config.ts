@@ -12,7 +12,7 @@ function parseOrigins(): string[] {
 export const config = {
   port: Number(process.env.PORT ?? 3050),
   dbPath: process.env.DB_PATH ?? 'bondhu.db',
-  jwtExpiresIn: '30d',
+  jwtExpiresIn: '30d' as const,
   /** Browser origins allowed to read API responses (CORS). Native apps / curl
    *  send no Origin header and are always allowed. */
   corsOrigins: parseOrigins(),

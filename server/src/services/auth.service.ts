@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import type { UsersRepo, User } from '../db/repositories/users.repo.js';
 import type { SettingsRepo } from '../db/repositories/settings.repo.js';
+import { config } from '../config.js';
 
 export interface AuthResult {
   token: string;
@@ -38,11 +39,13 @@ export class AuthService {
 
   verifyToken(token: string): { userId: string } {
     const payload = jwt.verify(token, this.settings.getOrCreateJwtSecret()) as any;
+    const user = this.users.findById(payload.sub);
+    if (!user || (payload.tv ?? 0) !== user.tokenVersion) throw new Error('Token revoked');
     return { userId: payload.sub };
   }
 
   private result(user: User): AuthResult {
-    const token = jwt.sign({ sub: user.id }, this.settings.getOrCreateJwtSecret(), { expiresIn: '30d' });
+    const token = jwt.sign({ sub: user.id, tv: user.tokenVersion }, this.settings.getOrCreateJwtSecret(), { expiresIn: config.jwtExpiresIn });
     return { token, user: { id: user.id, email: user.email, name: user.name } };
   }
 }

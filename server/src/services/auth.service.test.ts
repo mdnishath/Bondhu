@@ -41,3 +41,13 @@ test('email is normalized (lowercased + trimmed) for storage and login', async (
   const res = await svc.login('user@example.com', 'g00d-pass-1');
   expect(res.user.email).toBe('user@example.com');
 });
+
+test('verifyToken rejects a token after the user token_version is bumped', async () => {
+  const db = createDb(':memory:');
+  const users = new UsersRepo(db);
+  const svc = new AuthService(users, new SettingsRepo(db));
+  const { token, user } = await svc.register('a@b.com', 'g00d-pass-1', 'A');
+  expect(svc.verifyToken(token).userId).toBe(user.id);
+  users.bumpTokenVersion(user.id);
+  expect(() => svc.verifyToken(token)).toThrow();
+});
