@@ -30,7 +30,7 @@ class AudioPlayer @Inject constructor(@ApplicationContext private val context: C
         override fun run() {
             val p = player ?: return
             _state.value = Playback(currentId, p.isPlaying, p.currentPosition.coerceAtLeast(0), p.duration.coerceAtLeast(0), speed)
-            if (p.isPlaying) main.postDelayed(this, 250)
+            if (p.isPlaying) main.postDelayed(this, 400)
         }
     }
 
