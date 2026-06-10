@@ -21,9 +21,10 @@ import com.bondhu.app.data.model.ApiKeyDto
 import com.bondhu.app.ui.chat.LanguageSheet
 import com.bondhu.app.ui.common.BondhuButton
 import com.bondhu.app.ui.common.BondhuField
+import com.bondhu.app.ui.theme.Radii
 import com.bondhu.app.ui.theme.Tokens
 
-private val CardShape = RoundedCornerShape(18.dp)
+private val CardShape = RoundedCornerShape(Radii.md)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

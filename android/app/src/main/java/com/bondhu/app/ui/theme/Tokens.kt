@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 /** The full Bondhu colour palette. Two instances exist (dark + light); the active
  *  one lives in [Tokens.palette] (a reactive state), so flipping it recomposes the
@@ -86,4 +87,13 @@ object Tokens {
     val Field get() = palette.Field
     val Danger get() = palette.Danger
     val Online get() = palette.Online
+}
+
+/** Canonical corner-radius scale — replaces scattered magic dp values. */
+object Radii {
+    val xs = 8.dp    // chips, small tags
+    val sm = 12.dp   // fields, search, small surfaces
+    val md = 16.dp   // cards, sheets, list rows
+    val lg = 20.dp   // dialogs, hero cards, bubbles
+    val pill = 50    // pills / FABs (Int for RoundedCornerShape(50))
 }

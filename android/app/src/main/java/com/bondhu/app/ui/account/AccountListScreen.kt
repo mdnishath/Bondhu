@@ -23,9 +23,10 @@ import com.bondhu.app.ui.common.ConnUi
 import com.bondhu.app.ui.common.EmptyState
 import com.bondhu.app.ui.common.StatusChip
 import com.bondhu.app.ui.theme.InterFamily
+import com.bondhu.app.ui.theme.Radii
 import com.bondhu.app.ui.theme.Tokens
 
-private val RowCardShape = RoundedCornerShape(18.dp)
+private val RowCardShape = RoundedCornerShape(Radii.md)
 
 private fun statusToUi(status: String): ConnUi = when (status) {
     "connected" -> ConnUi.Connected

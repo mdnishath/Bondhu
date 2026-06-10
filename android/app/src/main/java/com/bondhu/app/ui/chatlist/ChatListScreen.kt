@@ -36,6 +36,7 @@ import com.bondhu.app.ui.common.BondhuButton
 import com.bondhu.app.ui.common.BondhuField
 import com.bondhu.app.ui.common.EmptyState
 import com.bondhu.app.ui.common.RemoteAvatar
+import com.bondhu.app.ui.theme.Radii
 import com.bondhu.app.ui.theme.Tokens
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -272,7 +273,7 @@ private fun OnboardBullet(emoji: String, text: String) {
     }
 }
 
-private val CardShape = RoundedCornerShape(18.dp)
+private val CardShape = RoundedCornerShape(Radii.md)
 
 @Composable
 private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, onClick: () -> Unit) {
