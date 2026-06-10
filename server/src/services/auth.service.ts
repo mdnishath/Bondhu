@@ -15,6 +15,13 @@ const COMMON = new Set([
 ]);
 function normEmail(email: string): string { return (email ?? '').trim().toLowerCase(); }
 
+// A real bcrypt hash compared against when the email is unknown, so login takes
+// roughly the same time whether or not the account exists (no user-enumeration
+// timing oracle).
+const DUMMY_HASH = '$2b$12$zBIQDtzrXYi6xpEsE88Z.OGn0iROgvNmOU/SLYqi3DcRBKs3Mn9gO';
+const fails = new Map<string, { n: number; until: number }>();
+const MAX_FAILS = 8, LOCK_MS = 10 * 60_000;
+
 export class AuthService {
   constructor(private users: UsersRepo, private settings: SettingsRepo) {}
 
@@ -30,10 +37,18 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<AuthResult> {
-    const user = this.users.findByEmail(normEmail(email));
-    if (!user) throw new Error('Invalid credentials');
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) throw new Error('Invalid credentials');
+    const e = normEmail(email);
+    const rec = fails.get(e);
+    if (rec && rec.until > Date.now()) throw new Error('Too many attempts — try again later');
+    const user = this.users.findByEmail(e);
+    const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+    if (!user || !ok) {
+      const prior = (rec?.n ?? 0);
+      const n = prior + 1;
+      fails.set(e, { n, until: n >= MAX_FAILS ? Date.now() + LOCK_MS : 0 });
+      throw new Error('Invalid credentials');
+    }
+    fails.delete(e);
     return this.result(user);
   }
 

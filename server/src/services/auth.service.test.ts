@@ -51,3 +51,10 @@ test('verifyToken rejects a token after the user token_version is bumped', async
   users.bumpTokenVersion(user.id);
   expect(() => svc.verifyToken(token)).toThrow();
 });
+
+test('login locks an email after repeated failures', async () => {
+  const svc = makeService();
+  await svc.register('a@b.com', 'g00d-pass-1', 'A');
+  for (let i = 0; i < 8; i++) await expect(svc.login('a@b.com', 'wrong')).rejects.toThrow(/Invalid credentials/);
+  await expect(svc.login('a@b.com', 'wrong')).rejects.toThrow(/Too many/);
+});
