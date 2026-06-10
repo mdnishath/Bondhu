@@ -295,17 +295,18 @@ private fun ChatRowItem(row: ChatRow, account: String?, vm: ChatListViewModel, o
         ) {
             RemoteAvatar(name = row.title, url = vm.avatarUrl(row.jid))
             Spacer(Modifier.width(14.dp))
+            val unread = row.unread > 0
             Column(Modifier.weight(1f)) {
                 Text(
                     row.title,
                     color = Tokens.TextMain,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = if (unread) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     row.preview,
-                    color = Tokens.TextMut,
+                    color = if (unread) Tokens.TextMain else Tokens.TextMut,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
