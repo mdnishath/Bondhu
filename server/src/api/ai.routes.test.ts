@@ -10,7 +10,7 @@ vi.mock('../ai/transcode.js', () => ({
 async function authed() {
   const ctx = createContext(':memory:');
   const app = createApp(ctx);
-  const reg = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'secret1' });
+  const reg = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'secret12' });
   return { ctx, app, token: reg.body.token };
 }
 
@@ -35,12 +35,12 @@ test('per-chat language requires account ownership (no IDOR)', async () => {
   const ctx = createContext(':memory:');
   const app = createApp(ctx);
   // user A owns an account
-  const regA = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'secret1' });
+  const regA = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'secret12' });
   const tokenA = regA.body.token;
   const created = await request(app).post('/api/accounts').set('Authorization', `Bearer ${tokenA}`).send({});
   const accA = created.body.accountId;
   // user B is a different user
-  const regB = await request(app).post('/api/auth/register').send({ email: 'b@b.com', password: 'secret1' });
+  const regB = await request(app).post('/api/auth/register').send({ email: 'b@b.com', password: 'secret12' });
   const tokenB = regB.body.token;
 
   // missing account -> 400

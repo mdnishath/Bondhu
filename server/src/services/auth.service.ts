@@ -8,20 +8,28 @@ export interface AuthResult {
   user: { id: string; email: string; name: string | null };
 }
 
+const COMMON = new Set([
+  'password','12345678','123456789','qwerty123','11111111','iloveyou',
+  '12345678910','password1','qwertyuiop','1q2w3e4r','football','baseball',
+]);
+function normEmail(email: string): string { return (email ?? '').trim().toLowerCase(); }
+
 export class AuthService {
   constructor(private users: UsersRepo, private settings: SettingsRepo) {}
 
   async register(email: string, password: string, name?: string): Promise<AuthResult> {
-    if (!email || !email.includes('@')) throw new Error('Invalid email');
-    if (!password || password.length < 6) throw new Error('Password too short');
-    if (this.users.findByEmail(email)) throw new Error('Email already registered');
-    const hash = await bcrypt.hash(password, 10);
-    const user = this.users.create({ email, passwordHash: hash, name });
+    const e = normEmail(email);
+    if (!e || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error('Invalid email');
+    if (!password || password.length < 8) throw new Error('Password must be at least 8 characters');
+    if (COMMON.has(password.toLowerCase())) throw new Error('Password is too common — pick a stronger one');
+    if (this.users.findByEmail(e)) throw new Error('Email already registered');
+    const hash = await bcrypt.hash(password, 12);
+    const user = this.users.create({ email: e, passwordHash: hash, name });
     return this.result(user);
   }
 
   async login(email: string, password: string): Promise<AuthResult> {
-    const user = this.users.findByEmail(email);
+    const user = this.users.findByEmail(normEmail(email));
     if (!user) throw new Error('Invalid credentials');
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw new Error('Invalid credentials');

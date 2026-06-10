@@ -12,17 +12,32 @@ function makeService() {
 test('register returns token + user, rejects short password and duplicates', async () => {
   const svc = makeService();
   await expect(svc.register('a@b.com', '123', 'A')).rejects.toThrow();
-  const res = await svc.register('a@b.com', 'secret1', 'A');
+  const res = await svc.register('a@b.com', 'secret12', 'A');
   expect(res.token).toBeTruthy();
   expect(res.user.email).toBe('a@b.com');
-  await expect(svc.register('a@b.com', 'secret1', 'A')).rejects.toThrow();
+  await expect(svc.register('a@b.com', 'secret12', 'A')).rejects.toThrow();
 });
 
 test('login verifies password and verifyToken round-trips', async () => {
   const svc = makeService();
-  await svc.register('a@b.com', 'secret1', 'A');
+  await svc.register('a@b.com', 'secret12', 'A');
   await expect(svc.login('a@b.com', 'wrong')).rejects.toThrow();
-  const res = await svc.login('a@b.com', 'secret1');
+  const res = await svc.login('a@b.com', 'secret12');
   const decoded = svc.verifyToken(res.token);
   expect(decoded.userId).toBe(res.user.id);
+});
+
+test('register enforces >=8 char password and rejects common passwords', async () => {
+  const svc = makeService();
+  await expect(svc.register('a@b.com', 'short', 'A')).rejects.toThrow(/at least 8/);
+  await expect(svc.register('a@b.com', 'password', 'A')).rejects.toThrow(/too common/);
+  const res = await svc.register('a@b.com', 'g00d-pass-1', 'A');
+  expect(res.token).toBeTruthy();
+});
+
+test('email is normalized (lowercased + trimmed) for storage and login', async () => {
+  const svc = makeService();
+  await svc.register('  User@Example.COM ', 'g00d-pass-1', 'A');
+  const res = await svc.login('user@example.com', 'g00d-pass-1');
+  expect(res.user.email).toBe('user@example.com');
 });
