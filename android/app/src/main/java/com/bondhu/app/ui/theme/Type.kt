@@ -16,9 +16,9 @@ val InterFamily = FontFamily(
 )
 
 val BondhuTypography = Typography(
-    titleLarge  = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
-    titleMedium = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
-    bodyLarge   = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Normal,   fontSize = 15.sp),
-    bodyMedium  = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Normal,   fontSize = 14.sp),
-    labelSmall  = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium,   fontSize = 11.sp),
+    titleLarge  = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp, letterSpacing = (-0.2).sp),
+    titleMedium = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+    bodyLarge   = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Normal,   fontSize = 15.sp, lineHeight = 21.sp),
+    bodyMedium  = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Normal,   fontSize = 14.sp, lineHeight = 20.sp),
+    labelSmall  = TextStyle(fontFamily = InterFamily, fontWeight = FontWeight.Medium,   fontSize = 11.sp, lineHeight = 14.sp),
 )
