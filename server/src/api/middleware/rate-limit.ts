@@ -9,7 +9,9 @@ export function rateLimit(opts: { windowMs: number; max: number; bucket: string 
 
   return (req: Request, res: Response, next: NextFunction) => {
     if (config.isTest) return next();
-    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    // req.ip is derived by Express from X-Forwarded-For using `trust proxy` (1 hop = nginx),
+    // so it is NOT spoofable the way the raw left-most XFF entry is.
+    const ip = req.ip || 'unknown';
     const key = `${opts.bucket}:${ip}`;
     const now = Date.now();
     const rec = hits.get(key);

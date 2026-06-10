@@ -41,6 +41,8 @@ export function createApp(ctx: AppContext): Express {
   app.use('/api/auth', rateLimit({ windowMs: 15 * 60_000, max: 30, bucket: 'auth' }));
   app.use(AI_PATHS, rateLimit({ windowMs: 60_000, max: 30, bucket: 'ai' }));
 
+  // Stricter, separate bucket on the brute-force-sensitive login route.
+  app.use('/api/auth/login', rateLimit({ windowMs: 60_000, max: 10, bucket: 'login' }));
   app.use('/api/auth', authRoutes(ctx));
   app.use('/api', whatsappRoutes(ctx));
   app.use('/api', aiRoutes(ctx));
