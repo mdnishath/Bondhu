@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.socketio) { exclude(group = "org.json", module = "json") }
     implementation(libs.coil.compose)
     implementation(libs.datastore.preferences)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation(libs.zxing.core)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.common)
