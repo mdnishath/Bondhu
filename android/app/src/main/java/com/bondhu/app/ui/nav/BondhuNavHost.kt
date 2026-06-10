@@ -1,5 +1,7 @@
 package com.bondhu.app.ui.nav
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -32,7 +34,14 @@ fun BondhuNavHost(
         }
     }
 
-    NavHost(navController = nav, startDestination = start!!) {
+    NavHost(
+        navController = nav,
+        startDestination = start!!,
+        enterTransition = { slideInHorizontally(initialOffsetX = { it / 4 }, animationSpec = tween(280)) + fadeIn(tween(280)) },
+        exitTransition  = { fadeOut(tween(180)) + scaleOut(targetScale = 0.97f, animationSpec = tween(180)) },
+        popEnterTransition = { fadeIn(tween(200)) + scaleIn(initialScale = 0.97f, animationSpec = tween(200)) },
+        popExitTransition  = { slideOutHorizontally(targetOffsetX = { it / 4 }, animationSpec = tween(220)) + fadeOut(tween(220)) },
+    ) {
         composable(Routes.AUTH) {
             AuthScreen(onAuthed = { nav.navigate(Routes.ACCOUNTS) { popUpTo(Routes.AUTH) { inclusive = true } } })
         }
