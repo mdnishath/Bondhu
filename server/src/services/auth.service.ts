@@ -46,6 +46,10 @@ export class AuthService {
       const prior = (rec?.n ?? 0);
       const n = prior + 1;
       fails.set(e, { n, until: n >= MAX_FAILS ? Date.now() + LOCK_MS : 0 });
+      // Opportunistic cleanup so a unique-email enumeration flood can't grow the
+      // map unbounded: keep only still-active locks (until in the future), drop
+      // expired locks and not-yet-locked counters.
+      if (fails.size > 5000) { const t = Date.now(); for (const [k, v] of fails) if (v.until < t) fails.delete(k); }
       throw new Error('Invalid credentials');
     }
     fails.delete(e);
