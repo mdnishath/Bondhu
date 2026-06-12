@@ -85,7 +85,9 @@ export function aiRoutes(ctx: AppContext): Router {
       // — the highest-fidelity, ASR-friendly format. (Was 24 kbps Opus, which
       // degraded speech and caused hallucinated/English transcripts.)
       const wav = await toWavForAsr(Buffer.from(audioBase64, 'base64'));
-      const transcript = await ctx.transcription.transcribe(req.userId!, wav.toString('base64'), 'audio/wav');
+      // transcribeWav chunks long recordings at natural pauses — a single
+      // Gemini call on multi-minute audio silently drops whole sentences.
+      const transcript = await ctx.transcription.transcribeWav(req.userId!, wav);
       res.json({ transcript });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
@@ -95,8 +97,11 @@ export function aiRoutes(ctx: AppContext): Router {
     const acc = account(req, res); if (!acc) return;
     const { msgId } = req.body ?? {};
     try {
-      const { buffer, mime } = await ctx.manager.downloadMedia(acc, msgId);
-      const text = await ctx.transcription.transcribe(req.userId!, buffer.toString('base64'), mime);
+      // Same ASR-quality path as /transcribe: normalize to 16k WAV and chunk
+      // long voice notes so nothing is dropped mid-recording.
+      const { buffer } = await ctx.manager.downloadMedia(acc, msgId);
+      const wav = await toWavForAsr(buffer);
+      const text = await ctx.transcription.transcribeWav(req.userId!, wav);
       res.json({ transcript: text });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
