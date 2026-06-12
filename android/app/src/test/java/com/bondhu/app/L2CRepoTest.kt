@@ -24,7 +24,7 @@ class L2CRepoTest {
             enqueue(MockResponse().setBody("""{"success":true}"""))
             start()
         }
-        val repo = ChatRepository(api(s))
+        val repo = chatRepoFor(s)
         val result = repo.clearChat("acc1", "chat@lid")
         assertTrue(result.success)
         val req = s.takeRequest()
@@ -38,7 +38,7 @@ class L2CRepoTest {
             enqueue(MockResponse().setBody("""{"success":true}"""))
             start()
         }
-        val repo = ChatRepository(api(s))
+        val repo = chatRepoFor(s)
         val result = repo.forward("acc1", listOf("msg1", "msg2"), listOf("target@lid"))
         assertTrue(result.success)
         val req = s.takeRequest()

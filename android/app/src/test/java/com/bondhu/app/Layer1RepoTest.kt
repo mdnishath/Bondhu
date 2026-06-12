@@ -19,14 +19,14 @@ class Layer1RepoTest {
 
     @Test fun tts_returnsAudio() = runTest {
         val s = MockWebServer().apply { enqueue(MockResponse().setBody("""{"audioBase64":"AAA","mime":"audio/wav"}""")); start() }
-        val r = ChatRepository(api(s))
+        val r = chatRepoFor(s)
         val res = r.tts("acc","m1","hi","en")
         assertEquals("AAA", res.audioBase64); assertEquals("audio/wav", res.mime)
         assertEquals("/api/tts", s.takeRequest().path); s.shutdown()
     }
     @Test fun sendVoice_returnsIds() = runTest {
         val s = MockWebServer().apply { enqueue(MockResponse().setBody("""{"success":true,"voiceMsgId":"v1","textMsgId":"t1","sentText":"salut","audioBase64":"AA","mime":"audio/wav"}""")); start() }
-        val res = ChatRepository(api(s)).sendVoice("acc","c@lid","hi","fr")
+        val res = chatRepoFor(s).sendVoice("acc","c@lid","hi","fr")
         assertEquals("v1", res.voiceMsgId); assertEquals("t1", res.textMsgId); assertEquals("salut", res.sentText); s.shutdown()
     }
     @Test fun language_listAndPerChat() = runTest {

@@ -24,7 +24,7 @@ class ChatSendTest {
             enqueue(MockResponse().setBody("""{"success":true,"msgId":"m9","sentText":"hi","original":null}"""))
             start()
         }
-        val repo = ChatRepository(apiFor(server))
+        val repo = chatRepoFor(server)
         val res = repo.send("acc1", "c@lid", "hi", null)
         assertEquals("m9", res.msgId)
         val recorded = server.takeRequest()
@@ -38,7 +38,7 @@ class ChatSendTest {
             enqueue(MockResponse().setBody("""{"success":true,"msgId":"img1"}"""))
             start()
         }
-        val repo = ChatRepository(apiFor(server))
+        val repo = chatRepoFor(server)
         val res = repo.sendImage("acc1", "c@lid", "base64data==", "nice photo")
         assertEquals("img1", res.msgId)
         val recorded = server.takeRequest()
@@ -56,7 +56,7 @@ class ChatSendTest {
             enqueue(MockResponse().setBody("""{"lang":"bn","messages":[{"msgId":"m2","chatJid":"c@lid","fromMe":true,"type":"text","body":"yo","timestamp":2,"ack":2},{"msgId":"m1","chatJid":"c@lid","fromMe":false,"type":"text","body":"hi","timestamp":1,"ack":0}]}"""))
             start()
         }
-        val repo = ChatRepository(apiFor(server))
+        val repo = chatRepoFor(server)
         val msgs = repo.messages("acc1", "c@lid")
         assertEquals(2, msgs.size)
         assertEquals("m1", msgs.first().id)   // oldest first

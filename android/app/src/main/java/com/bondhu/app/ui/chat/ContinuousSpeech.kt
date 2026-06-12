@@ -96,10 +96,14 @@ class SpeechController(
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            // Snappier: finalise a segment after ~1s of silence (was 2.5s) so the
-            // text settles and the next phrase starts being recognised quickly.
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 900L)
+            // ~2s of silence before a segment finalises. Finalising triggers a
+            // recognizer restart, and the mic is DEAF during that re-init — so a
+            // short window (1s) made every breath-pause a restart, and words
+            // spoken right after the pause were swallowed. 2s means restarts only
+            // happen inside genuinely long pauses, when nothing is being said.
+            // (Live partials keep the on-screen text flowing regardless.)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 800L)
         }
         try { recognizer?.startListening(intent) } catch (_: Exception) { scheduleRestart() }
@@ -150,7 +154,14 @@ class SpeechController(
         when (error) {
             SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS,
             SpeechRecognizer.ERROR_CLIENT -> stop()
-            else -> if (listening) scheduleRestart() // silence / no-match / busy → keep going
+            else -> { // silence / no-match / busy → keep going
+                // A session that dies on NO_MATCH/timeout never delivers final
+                // results — but its partial was REAL recognised speech. Dropping
+                // it here made dictated words appear live and then vanish; commit
+                // it instead so nothing the user said is lost.
+                if (partial.isNotBlank()) { appendSegment(partial); partial = ""; emitLive() }
+                if (listening) scheduleRestart()
+            }
         }
     }
 
