@@ -284,6 +284,7 @@ fun ChatScreen(chatId: String, title: String, unreadAtOpen: Int = 0, onBack: () 
                 onSetOutLang = vm::setOutLang,
                 recording = s.recording,
                 recordSecs = s.recordSecs,
+                transcribing = s.transcribing,
                 onStartRecord = { nowMs -> vm.startRecording(nowMs) },
                 onStopRecord = vm::stopRecordingAndTranscribe,
                 onCancelRecord = vm::cancelRecording,

@@ -35,6 +35,7 @@ data class ChatUiState(
     val supported: List<LangOption> = emptyList(),
     val recording: Boolean = false,
     val recordSecs: Int = 0,
+    val transcribing: Boolean = false,
     val chatLang: String? = null,
     val langSheetOpen: Boolean = false,
     val retranscribing: Set<String> = emptySet(),
@@ -569,13 +570,21 @@ class ChatViewModel @Inject constructor(
         if (result == null) return
         val (base64, mime) = result
         viewModelScope.launch {
+            _state.value = _state.value.copy(transcribing = true)
             try {
                 val transcript = repo.transcribe(account, base64, mime)
                 if (!transcript.isNullOrBlank()) {
-                    _state.value = _state.value.copy(draft = transcript)
+                    // Append, don't overwrite — the draft may already hold dictated
+                    // or hand-typed text the user wants to keep.
+                    val existing = _state.value.draft.trimEnd()
+                    _state.value = _state.value.copy(
+                        draft = if (existing.isEmpty()) transcript else "$existing $transcript",
+                    )
                 }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)
+            } finally {
+                _state.value = _state.value.copy(transcribing = false)
             }
         }
     }

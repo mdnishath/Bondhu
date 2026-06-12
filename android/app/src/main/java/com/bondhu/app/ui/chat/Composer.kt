@@ -11,9 +11,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -50,7 +52,7 @@ import kotlinx.coroutines.delay
 private val PillShape = RoundedCornerShape(50)
 private val InputShape = RoundedCornerShape(24.dp)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun Composer(
     draft: String,
@@ -64,6 +66,7 @@ fun Composer(
     onSetOutLang: (String?) -> Unit = {},
     recording: Boolean = false,
     recordSecs: Int = 0,
+    transcribing: Boolean = false,
     onStartRecord: (Long) -> Unit = {},
     onStopRecord: () -> Unit = {},
     onCancelRecord: () -> Unit = {},
@@ -197,7 +200,10 @@ fun Composer(
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED
         if (granted) onStartRecord(System.currentTimeMillis())
-        else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        else {
+            micGrantAction.value = { onStartRecord(System.currentTimeMillis()) }
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     // Format seconds as M:SS
@@ -372,8 +378,8 @@ fun Composer(
                         }
                     }
                 } else {
-                    // Pulsing "Translating…" / "Sending…" caption while sending
-                    if (sending) {
+                    // Pulsing "Translating…" / "Sending…" / "Transcribing…" caption
+                    if (sending || transcribing) {
                         val infiniteTransition = rememberInfiniteTransition(label = "sendingPulse")
                         val pulse by infiniteTransition.animateFloat(
                             initialValue = 0.3f,
@@ -397,7 +403,11 @@ fun Composer(
                                     .alpha(pulse),
                             )
                             Text(
-                                text = if (outLang != null) "Translating…" else "Sending…",
+                                text = when {
+                                    transcribing -> "Transcribing…"
+                                    outLang != null -> "Translating…"
+                                    else -> "Sending…"
+                                },
                                 color = Tokens.Primary,
                                 fontSize = 12.sp,
                                 modifier = Modifier.alpha(pulse),
@@ -572,14 +582,23 @@ fun Composer(
                                 )
                             }
 
-                            // Mic button — continuous on-device dictation (tap to start)
-                            IconButton(
-                                onClick = { toggleMic() },
-                                modifier = Modifier.size(44.dp),
+                            // Mic button — tap: live on-device dictation. Long-press:
+                            // full recording → server (Gemini) transcription, which
+                            // captures EVERY word of a long dictation (no recognizer
+                            // restart gaps) at the cost of text arriving at the end.
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .combinedClickable(
+                                        onClick = { toggleMic() },
+                                        onLongClick = { requestMic() },
+                                    ),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     Icons.Default.Mic,
-                                    contentDescription = "Dictate",
+                                    contentDescription = "Dictate (long-press: record & transcribe)",
                                     tint = Tokens.TextMut,
                                     modifier = Modifier.size(26.dp),
                                 )

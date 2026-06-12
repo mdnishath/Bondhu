@@ -21,7 +21,10 @@ class VoiceRecorder @Inject constructor(@ApplicationContext private val context:
         stopQuietly()
         val f = File(context.cacheDir, "rec_${nowMs}.m4a")
         val r = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
-        r.setAudioSource(MediaRecorder.AudioSource.MIC)
+        // VOICE_RECOGNITION, not MIC: the ASR-tuned source. Plain MIC lets device
+        // AGC/noise-suppression "help", which clips the first syllables after a
+        // pause and softens quiet words — the transcript then misses them.
+        r.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
         r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
         r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
         r.setAudioSamplingRate(44100); r.setAudioEncodingBitRate(96000)
